@@ -8,6 +8,21 @@ import {
   updateDeliveryStatus as updateStatusApi,
   fetchDeliveryRevenue,
 } from '../api/deliveries'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Fix for Leaflet marker icons in Vite/React
+import icon from 'leaflet/dist/images/marker-icon.png'
+import iconShadow from 'leaflet/dist/images/marker-shadow.png'
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+})
+L.Marker.prototype.options.icon = DefaultIcon
 
 const statusColors = {
   'Delivered': 'badge-green',
@@ -354,14 +369,21 @@ export default function Deliveries() {
                 <div className="chart-subtitle">GPS tracking — {activeDelivery ? '1 active delivery' : 'No active deliveries'}</div>
               </div>
             </div>
-            <div className="map-placeholder" style={{ height: 180 }}>
-              <MapPin size={26} color="#FFAA00" />
-              <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, color: '#237227', fontSize: '0.88rem' }}>
-                GPS Map View
-              </div>
-              <div style={{ fontSize: '0.73rem', textAlign: 'center', maxWidth: 165, color: '#5e7a61', lineHeight: 1.5 }}>
-                Leaflet.js map integration will show real-time driver locations here
-              </div>
+            <div style={{ height: 180, borderRadius: 12, overflow: 'hidden', border: '1px solid #dddabd', position: 'relative', zIndex: 0 }}>
+              <MapContainer center={[5.6037, -0.1870]} zoom={12} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                {activeDelivery && (
+                  <Marker position={[5.6037, -0.1870]}>
+                    <Popup>
+                      <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600 }}>{activeDelivery.orderId}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#5e7a61' }}>{activeDelivery.customer}</div>
+                    </Popup>
+                  </Marker>
+                )}
+              </MapContainer>
             </div>
 
             {/* Active delivery card — dynamic */}

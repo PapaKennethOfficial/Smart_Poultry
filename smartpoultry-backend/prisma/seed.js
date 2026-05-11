@@ -37,25 +37,8 @@ async function main() {
   console.log("✅ Admin user created");
 
   // ─── Seed Delivery Orders ──────────────────────────────────────────────────
-  const deliveryOrders = [
-    { orderId: "DEL-2026-001", customer: "Kofi Supermart",      product: "Eggs (Crates)",     quantity: 40,  status: "DELIVERED",  driver: "Kwame A.",     deliveryDate: new Date("2026-03-12"), amount: 2400,  notes: null },
-    { orderId: "DEL-2026-002", customer: "Accra Fresh Market",  product: "Broilers (Live)",   quantity: 120, status: "IN_TRANSIT", driver: "Emmanuel B.", deliveryDate: new Date("2026-03-12"), amount: 7200,  notes: null },
-    { orderId: "DEL-2026-003", customer: "Good Shepherd Hotel", product: "Eggs (Crates)",     quantity: 25,  status: "PENDING",    driver: "Unassigned",  deliveryDate: new Date("2026-03-13"), amount: 1500,  notes: null },
-    { orderId: "DEL-2026-004", customer: "Tema Cold Store",     product: "Broilers (Frozen)", quantity: 200, status: "PENDING",    driver: "Unassigned",  deliveryDate: new Date("2026-03-13"), amount: 12000, notes: null },
-    { orderId: "DEL-2026-005", customer: "Osu Market Stall",    product: "Noilers (Live)",    quantity: 50,  status: "DELIVERED",  driver: "Kwame A.",     deliveryDate: new Date("2026-03-11"), amount: 3500,  notes: null },
-    { orderId: "DEL-2026-006", customer: "Legon Cafeteria",     product: "Eggs (Crates)",     quantity: 15,  status: "CANCELLED",  driver: "N/A",         deliveryDate: new Date("2026-03-10"), amount: 900,   notes: null },
-  ];
-
-  for (const order of deliveryOrders) {
-    await prisma.deliveryOrder.create({
-      data: {
-        ...order,
-        statusHistory: [{ status: order.status === "IN_TRANSIT" ? "In Transit" : order.status === "PENDING" ? "Pending" : order.status === "DELIVERED" ? "Delivered" : "Cancelled", timestamp: new Date().toISOString() }],
-      },
-    });
-  }
-
-  console.log("✅ 6 delivery orders seeded");
+  // Removed dummy delivery orders for production readiness.
+  // The system will start with 0 deliveries, allowing you to create them manually.
 
   console.log("\n🎉 Seed completed successfully!");
   console.log("─────────────────────────────────────");
