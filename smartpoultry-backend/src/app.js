@@ -1,18 +1,24 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const routes = require("./routes");
+const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
 
-// Middleware
+// ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
 app.use(express.json());
 
-// Health check
+// ─── Health Check ────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.json({ message: "SmartPoultry API is running 🐔" });
 });
 
-// Routes (register here as you build them)
-// app.use("/api/auth", require("./routes/auth.routes"));
+// ─── API Routes ───────────────────────────────────────────────────────────────
+app.use("/api", routes);
+
+// ─── Global Error Handler ─────────────────────────────────────────────────────
+app.use(errorHandler);
 
 module.exports = app;

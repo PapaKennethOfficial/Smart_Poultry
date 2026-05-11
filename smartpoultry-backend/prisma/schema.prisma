@@ -187,3 +187,29 @@ model AuditLog {
   // Relations
   user User @relation(fields: [userId], references: [id])
 }
+
+// ─── Delivery Orders (Customer Sales) ─────────────────────────────────────────
+
+enum DeliveryStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model DeliveryOrder {
+  id            String         @id @default(cuid())
+  orderId       String         @unique                  // "DEL-2026-001"
+  customer      String
+  product       String
+  quantity      Int
+  driver        String         @default("Unassigned")
+  deliveryDate  DateTime
+  address       String?
+  amount        Float
+  notes         String?
+  status        DeliveryStatus @default(PENDING)
+  statusHistory Json           @default("[]")           // [{status, timestamp}]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
