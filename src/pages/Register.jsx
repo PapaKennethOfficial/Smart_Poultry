@@ -1,31 +1,64 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
-import { useLogin } from '../hooks/auth/useLogin'
+import { useRegister } from '../hooks/auth/useRegister'
 
-export default function Login() {
+// UI label → Prisma Role enum
+const ROLE_MAP = {
+  farmer:  'WORKER',
+  worker:  'WORKER',
+  manager: 'MANAGER',
+  admin:   'ADMIN',
+}
+
+export default function Register() {
   const [showPass, setShowPass] = useState(false)
-  const [role, setRole] = useState('farmer')
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [role, setRole] = useState('farmer')
+  const [matchError, setMatchError] = useState(null)
 
-  const { mutate: login, isPending, error, reset } = useLogin()
+  const { mutate: register, isPending, error, reset } = useRegister()
 
-  // Backend ignores `role` on login (resolved from the user record), so only
-  // email + password are sent. `role` remains a UI affordance for now.
   const handleSubmit = (e) => {
     e.preventDefault()
-    login({ email, password })
+
+    if (password !== confirm) {
+      setMatchError('Passwords do not match')
+      return
+    }
+    setMatchError(null)
+
+    register({
+      name: name.trim(),
+      email,
+      password,
+      role: ROLE_MAP[role] || 'WORKER',
+    })
   }
 
-  const isInvalidCreds = error?.response?.status === 401
-  const inlineError = isInvalidCreds
-    ? 'Incorrect email or password'
-    : error
-      ? (error?.response?.data?.message || 'Login failed. Please try again.')
-      : null
+  // Surface server-side errors inline
+  const serverStatus = error?.response?.status
+  const serverData = error?.response?.data
 
-  const clearErrorOnChange = (setter) => (e) => {
+  let serverError = null
+  if (serverStatus === 409) {
+    serverError = serverData?.message || 'Email already registered'
+  } else if (serverStatus === 400 && serverData?.errors) {
+    // Zod field errors → flatten to one-line message
+    const first = Object.values(serverData.errors).flat()[0]
+    serverError = first || 'Please check your details and try again'
+  } else if (error) {
+    serverError = serverData?.message || 'Sign up failed. Please try again.'
+  }
+
+  const inlineError = matchError || serverError
+
+  const clearOnChange = (setter) => (e) => {
+    if (matchError) setMatchError(null)
     if (error) reset()
     setter(e.target.value)
   }
@@ -39,7 +72,7 @@ export default function Login() {
 
   return (
     <form className="login-page" onSubmit={handleSubmit} noValidate>
-      {/* Left panel */}
+      {/* Left panel — mirrors Login.jsx for visual consistency */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 44 }}>
@@ -69,7 +102,7 @@ export default function Login() {
               fontWeight: 600, letterSpacing: '0.07em',
               textTransform: 'uppercase', marginBottom: 14
             }}>
-              AI-Driven Farm Intelligence
+              Join the platform
             </div>
 
             <h1 style={{
@@ -77,15 +110,15 @@ export default function Login() {
               fontSize: '2.1rem', color: '#fff',
               lineHeight: 1.15, letterSpacing: '-0.03em'
             }}>
-              Smarter Poultry.<br />
-              <span style={{ color: '#84be88' }}>Better Yields.</span>
+              Create your<br />
+              <span style={{ color: '#84be88' }}>SmartPoultry account</span>
             </h1>
 
             <p style={{
               marginTop: 14, color: 'rgba(255,255,255,0.58)',
               fontSize: '0.88rem', lineHeight: 1.65, maxWidth: 320
             }}>
-              An integrated platform built for Ghanaian poultry farmers — from daily logging to AI-powered decision support.
+              Set up access for yourself or your team — pick the role that matches your responsibilities on the farm.
             </p>
           </div>
 
@@ -110,23 +143,24 @@ export default function Login() {
       {/* Right panel */}
       <div className="login-right">
         <div className="login-card">
-          <div style={{ marginBottom: 28 }}>
+          <div style={{ marginBottom: 22 }}>
             <h2 style={{
               fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.45rem',
               fontWeight: 700, color: '#0d1f0e', letterSpacing: '-0.02em',
               marginBottom: 6
-            }}>Welcome back</h2>
+            }}>Create account</h2>
             <p style={{ fontSize: '0.875rem', color: '#5e7a61', lineHeight: 1.55 }}>
-              Sign in to access your farm dashboard
+              Sign up to access your farm dashboard
             </p>
           </div>
 
           {/* Role selector */}
           <div className="form-group">
-            <label className="form-label">Sign in as</label>
+            <label className="form-label">Sign up as</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {['farmer', 'manager', 'delivery', 'admin'].map(r => (
+              {['farmer', 'manager', 'admin'].map(r => (
                 <button
+                  type="button"
                   key={r}
                   onClick={() => setRole(r)}
                   style={{
@@ -143,10 +177,24 @@ export default function Login() {
                     transition: 'all 0.15s'
                   }}
                 >
-                  {r === 'delivery' ? 'Delivery Staff' : r.charAt(0).toUpperCase() + r.slice(1)}
+                  {r.charAt(0).toUpperCase() + r.slice(1)}
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input
+              className="form-input"
+              type="text"
+              id="register-name"
+              placeholder="Dennis Akpalolo"
+              value={name}
+              onChange={clearOnChange(setName)}
+              disabled={isPending}
+              required
+            />
           </div>
 
           <div className="form-group">
@@ -154,10 +202,10 @@ export default function Login() {
             <input
               className="form-input"
               type="email"
-              id="login-email"
+              id="register-email"
               placeholder="dennis@smartpoultry.gh"
               value={email}
-              onChange={clearErrorOnChange(setEmail)}
+              onChange={clearOnChange(setEmail)}
               disabled={isPending}
               required
             />
@@ -169,12 +217,13 @@ export default function Login() {
               <input
                 className="form-input"
                 type={showPass ? 'text' : 'password'}
-                id="login-password"
-                placeholder="••••••••"
+                id="register-password"
+                placeholder="At least 6 characters"
                 value={password}
-                onChange={clearErrorOnChange(setPassword)}
+                onChange={clearOnChange(setPassword)}
                 disabled={isPending}
                 required
+                minLength={6}
                 style={{ paddingRight: 44 }}
               />
               <button
@@ -192,17 +241,33 @@ export default function Login() {
             </div>
           </div>
 
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', marginBottom: 22
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked style={{ accentColor: '#237227', width: 14, height: 14 }} />
-              <span style={{ fontSize: '0.8rem', color: '#5e7a61' }}>Remember me</span>
-            </label>
-            <span style={{
-              fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
-            }}>Forgot password?</span>
+          <div className="form-group">
+            <label className="form-label">Confirm Password</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type={showConfirm ? 'text' : 'password'}
+                id="register-confirm"
+                placeholder="Re-enter your password"
+                value={confirm}
+                onChange={clearOnChange(setConfirm)}
+                disabled={isPending}
+                required
+                style={{ paddingRight: 44 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                style={{
+                  position: 'absolute', right: 13, top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#8da58f'
+                }}
+              >
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           {inlineError && (
@@ -232,33 +297,23 @@ export default function Login() {
             {isPending ? (
               <>
                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                Signing in…
+                Creating account…
               </>
             ) : (
               <>
-                Sign In to Dashboard
+                Create Account
                 <ArrowRight size={16} />
               </>
             )}
           </button>
 
-          <div style={{
-            marginTop: 20, padding: '12px 14px',
-            background: 'rgba(35,114,39,0.06)', borderRadius: 9,
-            border: '1px solid rgba(35,114,39,0.14)'
-          }}>
-            <p style={{ fontSize: '0.75rem', color: '#5e7a61', lineHeight: 1.55 }}>
-              <strong style={{ color: '#237227' }}>Demo credentials:</strong> Use any email & password above. Select a role to see role-specific views.
-            </p>
-          </div>
-
           <p style={{
             marginTop: 18, textAlign: 'center',
             fontSize: '0.82rem', color: '#5e7a61'
           }}>
-            Don't have an account?{' '}
-            <Link to="/register" style={{ color: '#237227', fontWeight: 600, textDecoration: 'none' }}>
-              Sign Up
+            Already have an account?{' '}
+            <Link to="/login" style={{ color: '#237227', fontWeight: 600, textDecoration: 'none' }}>
+              Sign In
             </Link>
           </p>
         </div>

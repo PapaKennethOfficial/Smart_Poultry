@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import SplashScreen from './components/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Logbook from './pages/Logbook'
 import Analytics from './pages/Analytics'
@@ -53,6 +54,7 @@ export default function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Protected routes */}

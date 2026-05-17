@@ -8,8 +8,11 @@ import { useToast } from '../../components/Toast'
  * useLogin — mutation hook for POST /api/auth/login
  *
  * Usage:
- *   const { mutate: login, isPending } = useLogin()
+ *   const { mutate: login, isPending, error } = useLogin()
  *   login({ email, password })
+ *
+ * 401 (invalid credentials) is surfaced via `error` for inline display.
+ * Non-401 errors fall back to a toast.
  */
 export function useLogin() {
   const { setToken, setRole } = useAuth()
@@ -21,14 +24,16 @@ export function useLogin() {
 
     onSuccess: (data) => {
       setToken(data.token)
-      setRole(data.role)
+      if (data.role) setRole(data.role)
       showSuccess('Welcome back! Redirecting to dashboard…')
       navigate('/dashboard')
     },
 
     onError: (error) => {
+      // 401 is rendered inline by the Login form — skip toast for that case.
+      if (error?.response?.status === 401) return
       const message =
-        error?.response?.data?.message || 'Login failed. Please check your credentials.'
+        error?.response?.data?.message || 'Login failed. Please try again.'
       showError(message)
     },
   })
