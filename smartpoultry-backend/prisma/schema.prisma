@@ -107,6 +107,7 @@ model LogEntry {
   userId           String
   date             DateTime @default(now())
   mortality        Int      @default(0)
+  eggsCount        Int      @default(0)
   feedConsumption  Float    @default(0)
   waterConsumption Float    @default(0)
   avgWeight        Float?
@@ -119,6 +120,9 @@ model LogEntry {
   // Relations
   batch  Batch @relation(fields: [batchId], references: [id])
   loggedBy User  @relation(fields: [userId], references: [id])
+
+  @@index([batchId, date])
+  @@index([userId])
 }
 
 model Delivery {
@@ -165,6 +169,8 @@ model Report {
   type      ReportType
   title     String
   content   Json
+  fileUrl   String?
+  format    String?
   startDate DateTime?
   endDate   DateTime?
   createdAt DateTime   @default(now())
@@ -173,12 +179,16 @@ model Report {
   // Relations
   farm        Farm @relation(fields: [farmId], references: [id])
   generatedBy User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([farmId])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String
   action    String
+  endpoint  String?
   entity    String
   entityId  String?
   details   Json?
@@ -186,6 +196,9 @@ model AuditLog {
 
   // Relations
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // ─── Delivery Orders (Customer Sales) ─────────────────────────────────────────
