@@ -107,6 +107,7 @@ model LogEntry {
   userId           String
   date             DateTime @default(now())
   mortality        Int      @default(0)
+  eggCount         Int      @default(0)
   feedConsumption  Float    @default(0)
   waterConsumption Float    @default(0)
   avgWeight        Float?

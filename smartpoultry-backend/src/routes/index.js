@@ -3,11 +3,15 @@ const router = Router();
 
 const authRoutes = require("../routes/auth.routes")
 const deliveryRoutes = require("../routes/delivery.routes")
+const dashboardRoutes = require("../routes/dashboard.routes")
+const alertRoutes = require("../routes/alert.routes")
 
 // ─── Route Modules ────────────────────────────────────────────────────────────
 // Register additional routes here as they are built, e.g.:
 router.use("/auth", authRoutes)
 router.use("/deliveries", deliveryRoutes)
+router.use("/dashboard", dashboardRoutes)
+router.use("/alerts", alertRoutes)
 // router.use("/farms",    require("./farm.routes"));
 // router.use("/batches",  require("./batch.routes"));
 
