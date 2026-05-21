@@ -48,13 +48,16 @@ enum ReportType {
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(WORKER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  name                    String
+  email                   String   @unique
+  password                String
+  phone                   String?
+  role                    Role     @default(WORKER)
+  notificationPreferences Json     @default("{}")
+  lastLoginAt             DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   // Relations
   farms     Farm[]
