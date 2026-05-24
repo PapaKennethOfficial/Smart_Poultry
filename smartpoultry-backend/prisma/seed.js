@@ -23,7 +23,13 @@ async function main() {
   await prisma.user.deleteMany();
 
   // ─── Create Admin User Only ────────────────────────────────────────────────
-  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || "admin123", 10);
+  // No password fallback on purpose — set ADMIN_PASSWORD in .env (see .env.example)
+  if (!process.env.ADMIN_PASSWORD) {
+    throw new Error(
+      "ADMIN_PASSWORD is required to seed the admin user. Set it in .env (see .env.example)."
+    );
+  }
+  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
 
   const admin = await prisma.user.create({
     data: {
@@ -43,7 +49,7 @@ async function main() {
   console.log("\n🎉 Seed completed successfully!");
   console.log("─────────────────────────────────────");
   console.log("  Admin → admin@smartpoultry.com");
-  console.log(`  Password: ${process.env.ADMIN_PASSWORD || "admin123"}`);
+  console.log("  Password: (value from ADMIN_PASSWORD env var)");
   console.log("─────────────────────────────────────");
 }
 

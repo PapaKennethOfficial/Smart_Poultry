@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "LogEntry" ADD COLUMN     "eggCount" INTEGER NOT NULL DEFAULT 0;

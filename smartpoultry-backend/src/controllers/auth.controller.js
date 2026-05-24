@@ -17,6 +17,11 @@ const login = async (req, res, next) => {
 
         const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" })
 
+        // Stamp last login — fire-and-forget; never block the response on this.
+        prisma.user
+            .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+            .catch((e) => console.error("[login] failed to stamp lastLoginAt:", e.message))
+
         // Strip the password hash before returning the user object
         const { password: _pw, ...safeUser } = user
 
