@@ -3,3 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+
+# Ignore generated uploads
+/uploads
+

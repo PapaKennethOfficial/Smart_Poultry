@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const routes = require("./src/routes");
 const errorHandler = require("./src/middleware/errorHandler");
+const path = require("path");
+const auditLog = require("./src/middleware/auditLog");
 
 const app = express();
 
@@ -10,10 +12,16 @@ const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
+// ─── Static Files (report downloads) ──────────────────────────────────────────
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // ─── Root Route ──────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.json({ message: "SmartPoultry API is up and running 🐔" });
 });
+
+// ─── Audit Log Middleware ─────────────────────────────────────────────────────
+app.use(auditLog);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api", routes);
