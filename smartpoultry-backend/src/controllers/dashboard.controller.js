@@ -38,7 +38,7 @@ const getSummary = async (req, res, next) => {
     const [logsAgg, batches, pendingDeliveries] = await Promise.all([
       prisma.logEntry.aggregate({
         where: { date: { gte: from, lte: to } },
-        _sum: { eggCount: true, feedConsumption: true, mortality: true },
+        _sum: { eggsCount: true, feedConsumption: true, mortality: true },
       }),
       prisma.batch.findMany({
         where: { status: "ACTIVE" },
@@ -47,7 +47,7 @@ const getSummary = async (req, res, next) => {
       prisma.deliveryOrder.count({ where: { status: "PENDING" } }),
     ]);
 
-    const totalEggs = logsAgg._sum.eggCount || 0;
+    const totalEggs = logsAgg._sum.eggsCount || 0;
     const feedUsed = logsAgg._sum.feedConsumption || 0;
     const todaysMortality = logsAgg._sum.mortality || 0;
     const flockSize = batches.reduce((sum, b) => sum + b.currentCount, 0);
@@ -68,7 +68,7 @@ const getSummary = async (req, res, next) => {
 };
 
 // ─── GET /dashboard/egg-chart?days=7 ─────────────────────────────────────────
-// Returns N day-buckets of summed eggCount, oldest → newest.
+// Returns N day-buckets of summed eggsCount, oldest → newest.
 // Days with no log entries are zero-filled so Recharts has a continuous series.
 const getEggChart = async (req, res, next) => {
   try {
@@ -80,14 +80,14 @@ const getEggChart = async (req, res, next) => {
 
     const entries = await prisma.logEntry.findMany({
       where: { date: { gte: from, lte: endOfDay(new Date()) } },
-      select: { date: true, eggCount: true },
+      select: { date: true, eggsCount: true },
     });
 
     // Bucket by yyyy-mm-dd
     const buckets = new Map();
     for (const e of entries) {
       const key = dayKey(e.date);
-      buckets.set(key, (buckets.get(key) || 0) + (e.eggCount || 0));
+      buckets.set(key, (buckets.get(key) || 0) + (e.eggsCount || 0));
     }
 
     // Zero-fill the window
