@@ -6,7 +6,6 @@ import {
   Egg, HeartPulse, PackageCheck, Wheat,
   Thermometer, Droplets, Wind, AlertTriangle, Loader2
 } from 'lucide-react'
-import { sensorData } from '../data/dummy'
 import { useDashboardSummary } from '../hooks/dashboard/useDashboardSummary'
 import { useEggChart } from '../hooks/dashboard/useEggChart'
 import { useMortalityChart } from '../hooks/dashboard/useMortalityChart'
@@ -252,9 +251,9 @@ export default function Dashboard() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
             {[
-              { label: 'Temperature', value: '29°C', icon: Thermometer, color: '#ef4444', ok: true },
-              { label: 'Humidity', value: '76%', icon: Droplets, color: '#3b82f6', ok: false },
-              { label: 'Ammonia', value: '17 ppm', icon: Wind, color: '#FFAA00', ok: true },
+              { label: 'Temperature', value: '0°C', icon: Thermometer, color: '#ef4444', ok: true },
+              { label: 'Humidity', value: '0%', icon: Droplets, color: '#3b82f6', ok: true },
+              { label: 'Ammonia', value: '0 ppm', icon: Wind, color: '#FFAA00', ok: true },
             ].map((sn, i) => (
               <div key={i} style={{
                 background: '#F7F6E5', borderRadius: 10,
@@ -276,7 +275,7 @@ export default function Dashboard() {
           </div>
 
           <ResponsiveContainer width="100%" height={110}>
-            <LineChart data={sensorData} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={[]} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#eceacc" />
               <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#8da58f' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#8da58f' }} axisLine={false} tickLine={false} />
