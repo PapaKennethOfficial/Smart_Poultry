@@ -1,11 +1,98 @@
-import { useState } from 'react'
-import { Plus, X, Search, Download } from 'lucide-react'
-import { logbookEntries } from '../data/dummy'
+import { useState, useEffect } from 'react'
+import { Plus, X, Search, Download, Loader2 } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import api from '../api/axios'
+import { useToast } from '../components/Toast'
 
 function AddEntryModal({ onClose }) {
+  const queryClient = useQueryClient()
+  const { showSuccess, showError } = useToast()
+
+  const BATCH_DETAILS = {
+    'cm4a5b2x80000abc123456789': { breed: 'Broiler', hasEggs: false },
+    'cm4a5b2x80000abc123456790': { breed: 'Layer', hasEggs: true },
+    'cm4a5b2x80000abc123456791': { breed: 'Noiler', hasEggs: true },
+    'cm4a5b2x80000abc123456792': { breed: 'Local Fowl', hasEggs: true },
+  }
+
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    batchId: 'cm4a5b2x80000abc123456789',
+    feedConsumption: '',
+    eggsCount: '',
+    dailyEggPurchases: '',
+    weeklyEggPurchases: '',
+    birdsBought: '',
+    mortality: '',
+    expenses: '',
+    waterConsumption: '',
+    sales: '',
+    notes: '',
+  })
+
+  const [errors, setErrors] = useState({})
+
+  const selectedBatch = BATCH_DETAILS[formData.batchId] || { breed: 'Birds', hasEggs: true }
+  
+  const validate = () => {
+    const newErrors = {}
+    if (selectedBatch.hasEggs && Number(formData.eggsCount) < 0) {
+      newErrors.eggsCount = "Egg count cannot be negative"
+    }
+    if (Number(formData.feedConsumption) < 0) newErrors.feedConsumption = "Feed amount cannot be negative"
+    if (Number(formData.birdsBought) < 0) newErrors.birdsBought = "Birds bought count cannot be negative"
+    
+    const today = new Date().toISOString().split('T')[0]
+    if (formData.date > today) newErrors.date = "Date cannot be in the future"
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const mutation = useMutation({
+    mutationFn: (newEntry) => api.post('/api/logbook', newEntry),
+    onSuccess: () => {
+      showSuccess("Entry saved")
+      queryClient.invalidateQueries({ queryKey: ['logbook'] })
+      onClose()
+    },
+    onError: (err) => {
+      showError(err.response?.data?.error || "Failed to save entry")
+    }
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!validate()) return
+
+    mutation.mutate({
+      date: formData.date,
+      batchId: formData.batchId,
+      feedConsumption: Number(formData.feedConsumption || 0),
+      eggsCount: selectedBatch.hasEggs ? Number(formData.eggsCount || 0) : 0,
+      dailyEggPurchases: selectedBatch.hasEggs ? Number(formData.dailyEggPurchases || 0) : 0,
+      weeklyEggPurchases: selectedBatch.hasEggs ? Number(formData.weeklyEggPurchases || 0) : 0,
+      birdsBought: Number(formData.birdsBought || 0),
+      mortality: Number(formData.mortality || 0),
+      expenses: Number(formData.expenses || 0),
+      waterConsumption: Number(formData.waterConsumption || 0),
+      sales: Number(formData.sales || 0),
+      notes: formData.notes,
+    })
+  }
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // clear error for that field
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }))
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal-box">
+      <div className="modal-box" style={{ maxWidth: '600px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
           <div>
             <div className="modal-title">Add Logbook Entry</div>
@@ -16,76 +103,164 @@ function AddEntryModal({ onClose }) {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Date</label>
-            <input className="form-input" type="date" defaultValue="2026-03-12" />
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Date</label>
+              <input className="form-input" type="date" name="date" value={formData.date} onChange={handleChange} required />
+              {errors.date && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.date}</div>}
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Batch / House</label>
+              <select className="form-select" name="batchId" value={formData.batchId} onChange={handleChange} required>
+                <option value="cm4a5b2x80000abc123456789">Batch A - Broilers</option>
+                <option value="cm4a5b2x80000abc123456790">Batch B - Layers</option>
+                <option value="cm4a5b2x80000abc123456791">Batch C - Noilers</option>
+                <option value="cm4a5b2x80000abc123456792">Batch D - Local Fowls</option>
+              </select>
+            </div>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Batch / House</label>
-            <select className="form-select">
-              <option>Batch A - Broilers</option>
-              <option>Batch B - Layers</option>
-              <option>Batch C - Noilers</option>
-            </select>
+
+          <div style={{ height: 14 }} />
+
+          {selectedBatch.hasEggs ? (
+            <>
+              {/* Row 2: Feed and Eggs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Feed Used (kg)</label>
+                  <input className="form-input" type="number" step="any" name="feedConsumption" value={formData.feedConsumption} onChange={handleChange} placeholder="e.g. 480" required />
+                  {errors.feedConsumption && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.feedConsumption}</div>}
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Egg Count</label>
+                  <input className="form-input" type="number" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder="e.g. 1200" />
+                  {errors.eggsCount && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.eggsCount}</div>}
+                </div>
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              {/* Row 3: Egg Purchases */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Daily Egg Purchases</label>
+                  <input className="form-input" type="number" name="dailyEggPurchases" value={formData.dailyEggPurchases} onChange={handleChange} placeholder="e.g. 20" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Weekly Egg Purchases</label>
+                  <input className="form-input" type="number" name="weeklyEggPurchases" value={formData.weeklyEggPurchases} onChange={handleChange} placeholder="e.g. 150" />
+                </div>
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              {/* Row 4: Mortality & Birds Bought */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Mortality Count</label>
+                  <input className="form-input" type="number" name="mortality" value={formData.mortality} onChange={handleChange} placeholder="e.g. 2" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">{selectedBatch.breed}s Bought</label>
+                  <input className="form-input" type="number" name="birdsBought" value={formData.birdsBought} onChange={handleChange} placeholder="e.g. 100" />
+                  {errors.birdsBought && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.birdsBought}</div>}
+                </div>
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              {/* Row 5: Water Consumption & Expenses */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Water Consumption (L)</label>
+                  <input className="form-input" type="number" step="any" name="waterConsumption" value={formData.waterConsumption} onChange={handleChange} placeholder="e.g. 320" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Expenses (GHS)</label>
+                  <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
+                </div>
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              {/* Row 6: Sales */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Sales (GHS)</label>
+                  <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
+                </div>
+                <div></div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Row 2: Feed & Birds Bought */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Feed Used (kg)</label>
+                  <input className="form-input" type="number" step="any" name="feedConsumption" value={formData.feedConsumption} onChange={handleChange} placeholder="e.g. 480" required />
+                  {errors.feedConsumption && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.feedConsumption}</div>}
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">{selectedBatch.breed}s Bought</label>
+                  <input className="form-input" type="number" name="birdsBought" value={formData.birdsBought} onChange={handleChange} placeholder="e.g. 100" />
+                  {errors.birdsBought && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.birdsBought}</div>}
+                </div>
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              {/* Row 3: Mortality & Water */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Mortality Count</label>
+                  <input className="form-input" type="number" name="mortality" value={formData.mortality} onChange={handleChange} placeholder="e.g. 2" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Water Consumption (L)</label>
+                  <input className="form-input" type="number" step="any" name="waterConsumption" value={formData.waterConsumption} onChange={handleChange} placeholder="e.g. 320" />
+                </div>
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              {/* Row 4: Expenses & Sales */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Expenses (GHS)</label>
+                  <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Sales (GHS)</label>
+                  <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div style={{ height: 14 }} />
+
+          <div className="form-group">
+            <label className="form-label">Health & Notes</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="Any observations, vet visits, environmental issues..."
+              style={{ resize: 'vertical' }}
+            />
           </div>
-        </div>
 
-        <div style={{ height: 14 }} />
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Feed Used (kg)</label>
-            <input className="form-input" type="number" placeholder="e.g. 480" />
+          <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+            <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={mutation.isPending}>
+              {mutation.isPending ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Save Entry'}
+            </button>
+            <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Egg Count</label>
-            <input className="form-input" type="number" placeholder="e.g. 1200" />
-          </div>
-        </div>
-
-        <div style={{ height: 14 }} />
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Mortality Count</label>
-            <input className="form-input" type="number" placeholder="e.g. 2" />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Expenses (GHS)</label>
-            <input className="form-input" type="number" placeholder="e.g. 1200" />
-          </div>
-        </div>
-
-        <div style={{ height: 14 }} />
-
-        <div className="form-group">
-          <label className="form-label">Health & Notes</label>
-          <textarea
-            className="form-input"
-            rows={3}
-            placeholder="Any observations, vet visits, environmental issues..."
-            style={{ resize: 'vertical' }}
-          />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Water Consumption (L)</label>
-            <input className="form-input" type="number" placeholder="e.g. 320" />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Sales (GHS)</label>
-            <input className="form-input" type="number" placeholder="e.g. 2400" />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-          <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
-            Save Entry
-          </button>
-          <button className="btn-outline" onClick={onClose}>Cancel</button>
-        </div>
+        </form>
       </div>
     </div>
   )
@@ -93,21 +268,37 @@ function AddEntryModal({ onClose }) {
 
 export default function Logbook() {
   const [showModal, setShowModal] = useState(false)
-  const [search, setSearch]       = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [page, setPage] = useState(1)
 
-  const filtered = logbookEntries.filter(e => {
-    const matchSearch = (
-      e.batch.toLowerCase().includes(search.toLowerCase()) ||
-      e.date.includes(search)
-    )
-    const matchTab =
-      activeTab === 'all'      ? true :
-      activeTab === 'broilers' ? e.batch.toLowerCase().includes('broiler') :
-      activeTab === 'layers'   ? e.batch.toLowerCase().includes('layer')   :
-      activeTab === 'noilers'  ? e.batch.toLowerCase().includes('noiler')  : true
-    return matchSearch && matchTab
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput)
+      setPage(1) // reset page on new search
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  // React Query Fetch
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['logbook', debouncedSearch, activeTab, page],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (debouncedSearch) params.append('search', debouncedSearch)
+      if (activeTab !== 'all') params.append('batch', activeTab)
+      params.append('page', page)
+      params.append('limit', 20)
+      
+      const res = await api.get(`/api/logbook?${params.toString()}`)
+      return res.data
+    }
   })
+
+  const logEntries = data?.data || []
+  const totalEntries = data?.meta?.total || 0
 
   return (
     <div>
@@ -124,13 +315,13 @@ export default function Logbook() {
         </div>
       </div>
 
-      {/* Summary row */}
+      {/* Summary row (Dummy Data for now, can be computed or fetched later) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
         {[
-          { label: 'Total Entries',   value: '247',        sub: 'This season'  },
-          { label: 'Avg Daily Eggs',  value: '1,133',      sub: 'Last 7 days'  },
-          { label: 'Total Mortality', value: '9',          sub: 'Last 7 days'  },
-          { label: 'Total Expenses',  value: 'GHS 7,750',  sub: 'Last 7 days'  },
+          { label: 'Total Entries',   value: totalEntries.toString(), sub: 'In database'  },
+          { label: 'Avg Daily Eggs',  value: '0',          sub: 'Last 7 days'  },
+          { label: 'Total Mortality', value: '0',          sub: 'Last 7 days'  },
+          { label: 'Total Expenses',  value: 'GHS 0',      sub: 'Last 7 days'  },
         ].map((s, i) => (
           <div key={i} style={{
             background: '#fff', borderRadius: 12, padding: '15px 18px',
@@ -152,15 +343,15 @@ export default function Logbook() {
         <div className="chart-header">
           <div>
             <div className="chart-title">Log Entries</div>
-            <div className="chart-subtitle">{filtered.length} records found</div>
+            <div className="chart-subtitle">{totalEntries} records found</div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Tabs */}
             <div className="filter-tabs">
-              {['all', 'broilers', 'layers', 'noilers'].map(t => (
+              {['all', 'broiler', 'layer', 'noiler', 'local fowl'].map(t => (
                 <button key={t} className={`filter-tab${activeTab === t ? ' active' : ''}`}
-                  onClick={() => setActiveTab(t)}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  onClick={() => { setActiveTab(t); setPage(1); }}>
+                  {t === 'all' ? 'All' : t === 'local fowl' ? 'Local Fowls' : t.charAt(0).toUpperCase() + t.slice(1) + 's'}
                 </button>
               ))}
             </div>
@@ -174,8 +365,8 @@ export default function Logbook() {
               <Search size={13} color="#8da58f" />
               <input
                 placeholder="Search entries..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
                 style={{
                   border: 'none', background: 'transparent', outline: 'none',
                   fontSize: '0.78rem', color: '#2a3d2b', width: 130,
@@ -192,69 +383,122 @@ export default function Logbook() {
         </div>
 
         <div className="table-wrapper">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Entry ID</th>
-                <th>Date</th>
-                <th>Batch / House</th>
-                <th>Feed Used</th>
-                <th>Egg Count</th>
-                <th>Mortality</th>
-                <th>Expenses</th>
-                <th>Notes</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(entry => (
-                <tr key={entry.id}>
-                  <td style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600, fontSize: '0.8rem', color: '#237227' }}>
-                    {entry.id}
-                  </td>
-                  <td style={{ color: '#5e7a61', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{entry.date}</td>
-                  <td>
-                    <span className={`badge ${entry.batch.includes('Broiler') ? 'badge-green' : entry.batch.includes('Layer') ? 'badge-blue' : 'badge-amber'}`}>
-                      {entry.batch}
-                    </span>
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{entry.feeding}</td>
-                  <td style={{ fontWeight: 600 }}>{entry.eggs.toLocaleString()}</td>
-                  <td>
-                    <span className={`badge ${entry.mortality === 0 ? 'badge-green' : entry.mortality <= 2 ? 'badge-amber' : 'badge-red'}`}>
-                      {entry.mortality} deaths
-                    </span>
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{entry.expenses}</td>
-                  <td className="td-notes" title={entry.notes}>{entry.notes}</td>
-                  <td><span className="badge badge-green">Verified</span></td>
+          {isLoading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#8da58f' }}>
+               <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 10px' }} />
+               Loading logs...
+            </div>
+          ) : isError ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>
+               Error loading logbook entries.
+            </div>
+          ) : logEntries.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#8da58f' }}>
+               No log entries found.
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Entry ID</th>
+                  <th>Date</th>
+                  <th>Batch / House</th>
+                  <th>Feed (kg)</th>
+                  <th>Egg Count</th>
+                  <th>Purchases (D/W)</th>
+                  <th>Birds Bought</th>
+                  <th>Mortality</th>
+                  <th>Notes (Exp/Sales)</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {logEntries.map(entry => {
+                  const dateStr = new Date(entry.date).toLocaleDateString()
+                  const batchName = entry.batch?.breed || "Unknown Batch"
+                  const isBroiler = batchName.toLowerCase().includes('broiler')
+                  const badgeClass = batchName.toLowerCase().includes('broiler') ? 'badge-green' :
+                                     batchName.toLowerCase().includes('layer') ? 'badge-blue' :
+                                     batchName.toLowerCase().includes('noiler') ? 'badge-amber' :
+                                     batchName.toLowerCase().includes('local') ? 'badge-purple' : 'badge-gray';
+                  
+                  return (
+                    <tr key={entry.id}>
+                      <td style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600, fontSize: '0.8rem', color: '#237227' }}>
+                        {entry.id.substring(entry.id.length - 6).toUpperCase()}
+                      </td>
+                      <td style={{ color: '#5e7a61', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{dateStr}</td>
+                      <td>
+                        <span className={`badge ${badgeClass}`}>
+                          {batchName}
+                        </span>
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{entry.feedConsumption}</td>
+                      <td style={{ fontWeight: 600 }}>{isBroiler ? '-' : entry.eggsCount.toLocaleString()}</td>
+                      <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>
+                        {isBroiler ? '-' : `${entry.dailyEggPurchases} / ${entry.weeklyEggPurchases}`}
+                      </td>
+                      <td style={{ fontWeight: 600, color: '#2a3d2b' }}>
+                        {entry.birdsBought > 0 ? `+${entry.birdsBought}` : '-'}
+                      </td>
+                      <td>
+                        <span className={`badge ${entry.mortality === 0 ? 'badge-green' : entry.mortality <= 2 ? 'badge-amber' : 'badge-red'}`}>
+                          {entry.mortality} deaths
+                        </span>
+                      </td>
+                      <td className="td-notes" title={entry.notes}>{entry.notes || '-'}</td>
+                      <td><span className="badge badge-green">Saved</span></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Pagination */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '14px 0 2px', borderTop: '1px solid #edebd6', marginTop: 6
-        }}>
-          <span style={{ fontSize: '0.77rem', color: '#8da58f' }}>
-            Showing {filtered.length} of {logbookEntries.length} entries
-          </span>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {['←', '1', '2', '3', '...', '35', '→'].map((p, i) => (
-              <button key={i} style={{
-                width: 30, height: 30, borderRadius: 7,
-                border: p === '1' ? '1.5px solid #237227' : '1px solid #dddabd',
-                background: p === '1' ? 'rgba(35,114,39,0.08)' : '#fff',
-                color: p === '1' ? '#237227' : '#5e7a61',
-                fontSize: '0.77rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                fontWeight: p === '1' ? 600 : 400
-              }}>{p}</button>
-            ))}
+        {!isLoading && data?.meta && (
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '14px 0 2px', borderTop: '1px solid #edebd6', marginTop: 6
+          }}>
+            <span style={{ fontSize: '0.77rem', color: '#8da58f' }}>
+              Showing {logEntries.length} of {data.meta.total} entries
+            </span>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <button 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{
+                  width: 30, height: 30, borderRadius: 7,
+                  border: '1px solid #dddabd',
+                  background: '#fff',
+                  color: '#5e7a61',
+                  fontSize: '0.77rem', cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif'
+                }}>←</button>
+              
+              <button style={{
+                  width: 30, height: 30, borderRadius: 7,
+                  border: '1.5px solid #237227',
+                  background: 'rgba(35,114,39,0.08)',
+                  color: '#237227',
+                  fontSize: '0.77rem', cursor: 'default', fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600
+                }}>{page}</button>
+
+              <button 
+                onClick={() => setPage(p => p + 1)}
+                disabled={page >= (data.meta.totalPages || 1)}
+                style={{
+                  width: 30, height: 30, borderRadius: 7,
+                  border: '1px solid #dddabd',
+                  background: '#fff',
+                  color: '#5e7a61',
+                  fontSize: '0.77rem', cursor: page >= (data.meta.totalPages || 1) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif'
+                }}>→</button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {showModal && <AddEntryModal onClose={() => setShowModal(false)} />}

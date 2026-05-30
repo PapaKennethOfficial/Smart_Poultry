@@ -46,6 +46,64 @@ async function main() {
 
   console.log("✅ Admin user created");
 
+  const farm = await prisma.farm.create({
+    data: {
+      id: "default-farm-id",
+      name: "SmartPoultry Farm",
+      location: "Accra, Ghana",
+      userId: admin.id,
+    }
+  });
+
+  console.log("✅ Default farm created");
+
+  await prisma.batch.createMany({
+    data: [
+      {
+        id: "cm4a5b2x80000abc123456789",
+        batchNumber: "BATCH-BROILERS-A",
+        farmId: farm.id,
+        breed: "Broiler",
+        initialCount: 500,
+        currentCount: 500,
+        status: "ACTIVE",
+        startDate: new Date(),
+      },
+      {
+        id: "cm4a5b2x80000abc123456790",
+        batchNumber: "BATCH-LAYERS-B",
+        farmId: farm.id,
+        breed: "Layer",
+        initialCount: 1000,
+        currentCount: 1000,
+        status: "ACTIVE",
+        startDate: new Date(),
+      },
+      {
+        id: "cm4a5b2x80000abc123456791",
+        batchNumber: "BATCH-NOILERS-C",
+        farmId: farm.id,
+        breed: "Noiler",
+        initialCount: 300,
+        currentCount: 300,
+        status: "ACTIVE",
+        startDate: new Date(),
+      },
+      {
+        id: "cm4a5b2x80000abc123456792",
+        batchNumber: "BATCH-LOCALFOWLS-D",
+        farmId: farm.id,
+        breed: "Local Fowl",
+        initialCount: 200,
+        currentCount: 200,
+        status: "ACTIVE",
+        startDate: new Date(),
+      }
+    ]
+  });
+
+  console.log("✅ Default batches created");
+
   // ─── Seed Delivery Orders ──────────────────────────────────────────────────
   // Removed dummy delivery orders for production readiness.
   // The system will start with 0 deliveries, allowing you to create them manually.
