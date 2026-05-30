@@ -11,11 +11,14 @@ const createDeliverySchema = z.object({
     .string({ required_error: "Product type is required" })
     .trim()
     .min(1, "Product type is required"),
+  customerId: z.string().trim().optional().nullable(),
+  productId: z.string().trim().optional().nullable(),
   quantity: z
     .number({ required_error: "Quantity is required" })
     .int("Quantity must be a whole number")
     .positive("Quantity must be positive"),
   driver: z.string().trim().optional().default("Unassigned"),
+  driverId: z.string().trim().optional().nullable(),
   deliveryDate: z
     .string({ required_error: "Delivery date is required" })
     .min(1, "Delivery date is required"),

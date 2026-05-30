@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useRegister } from '../hooks/auth/useRegister'
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { auth } from '../firebase'
+import { googleAuthUser } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
 
 // UI label → Prisma Role enum
 const ROLE_MAP = {
-  farmer:  'WORKER',
-  worker:  'WORKER',
-  manager: 'MANAGER',
-  admin:   'ADMIN',
+  delivery: 'DELIVERY',
+  customer: 'CUSTOMER',
 }
 
 export default function Register() {
@@ -18,10 +20,32 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [role, setRole] = useState('farmer')
+  const [role, setRole] = useState('customer')
   const [matchError, setMatchError] = useState(null)
 
   const { mutate: register, isPending, error, reset } = useRegister()
+  const { setToken, setRole: setAuthRole, setUser } = useAuth()
+  const navigate = useNavigate()
+
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
+      const idToken = await result.user.getIdToken()
+      const data = await googleAuthUser({ token: idToken, role: ROLE_MAP[role] || 'CUSTOMER' })
+      setToken(data.token)
+      if (data.role) setAuthRole(data.role)
+      if (data.user) setUser(data.user)
+      navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
+    } catch (err) {
+      console.error(err)
+      if (err.code === "auth/invalid-api-key" || err.message.includes("dummy")) {
+        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign Up.")
+      } else {
+        alert("Google Sign-Up failed: " + err.message)
+      }
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -36,7 +60,7 @@ export default function Register() {
       name: name.trim(),
       email,
       password,
-      role: ROLE_MAP[role] || 'WORKER',
+      role: ROLE_MAP[role] || 'CUSTOMER',
     })
   }
 
@@ -157,8 +181,8 @@ export default function Register() {
           {/* Role selector */}
           <div className="form-group">
             <label className="form-label">Sign up as</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {['farmer', 'manager', 'admin'].map(r => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+              {['customer', 'delivery'].map(r => (
                 <button
                   type="button"
                   key={r}
@@ -177,7 +201,7 @@ export default function Register() {
                     transition: 'all 0.15s'
                   }}
                 >
-                  {r.charAt(0).toUpperCase() + r.slice(1)}
+                  {r === 'delivery' ? 'Delivery Staff' : r.charAt(0).toUpperCase() + r.slice(1)}
                 </button>
               ))}
             </div>
@@ -305,6 +329,30 @@ export default function Register() {
                 <ArrowRight size={16} />
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            style={{ 
+              width: '100%', 
+              justifyContent: 'center', 
+              padding: '12px', 
+              marginTop: '12px',
+              background: '#fff',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              color: '#333'
+            }}
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
+            Continue with Google
           </button>
 
           <p style={{

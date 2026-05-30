@@ -1,30 +1,47 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, BookOpen, BarChart2, Truck,
-  FileText, Settings, LogOut, Leaf
+  FileText, Settings, LogOut, Leaf, ShoppingCart, ShieldCheck
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-const navItems = [
-  { label: 'Dashboard',   icon: LayoutDashboard, to: '/dashboard' },
-  { label: 'Farm Logbook', icon: BookOpen,         to: '/logbook'   },
-  { label: 'Analytics & AI', icon: BarChart2,      to: '/analytics' },
-  { label: 'Deliveries',  icon: Truck,             to: '/deliveries'},
-  { label: 'Reports',     icon: FileText,          to: '/reports'   },
-]
-
-const bottomItems = [
-  { label: 'Settings', icon: Settings, to: '/settings' },
-]
-
 export default function Sidebar() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, user, role } = useAuth()
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
+
+  const getNavItems = () => {
+    if (role === 'MANAGER' || role === 'ADMIN') {
+      return [
+        { label: 'Dashboard',            icon: LayoutDashboard, to: '/dashboard' },
+        { label: 'Vehicle Verification', icon: ShieldCheck,     to: '/dashboard/verify-vehicles' },
+        { label: 'Customer Orders',      icon: ShoppingCart,    to: '/dashboard/orders' },
+        { label: 'Deliveries',           icon: Truck,           to: '/deliveries' },
+        { label: 'Farm Logbook',         icon: BookOpen,        to: '/logbook' },
+        { label: 'Analytics & AI',       icon: BarChart2,       to: '/analytics' },
+        { label: 'Reports',              icon: FileText,        to: '/reports' },
+      ]
+    }
+    if (role === 'DELIVERY') {
+      return [
+        { label: 'My Vehicle', icon: Truck, to: '/delivery/vehicle' },
+        { label: 'Assigned Deliveries', icon: FileText, to: '/delivery/orders' },
+      ]
+    }
+    if (role === 'CUSTOMER') {
+      return [
+        { label: 'Marketplace', icon: ShoppingCart, to: '/customer/marketplace' },
+        { label: 'My Orders', icon: FileText, to: '/customer/orders' },
+      ]
+    }
+    return []
+  }
+
+  const navItems = getNavItems()
 
   return (
     <aside className="sidebar">
@@ -47,6 +64,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            end={to === '/dashboard'}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             <Icon size={16} className="icon" />
@@ -55,16 +73,13 @@ export default function Sidebar() {
         ))}
 
         <div className="nav-section-label" style={{ marginTop: 12 }}>System</div>
-        {bottomItems.map(({ label, icon: Icon, to }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-          >
-            <Icon size={16} className="icon" />
-            {label}
-          </NavLink>
-        ))}
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+        >
+          <Settings size={16} className="icon" />
+          Settings
+        </NavLink>
 
         <div
           className="nav-item"
@@ -78,10 +93,10 @@ export default function Sidebar() {
 
       {/* User */}
       <div className="sidebar-user">
-        <div className="user-avatar">AK</div>
+        <div className="user-avatar">{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</div>
         <div className="user-info">
-          <div className="name">Akpalolo Dennis</div>
-          <div className="role">Farm Manager</div>
+          <div className="name">{user?.name || 'User'}</div>
+          <div className="role">{role}</div>
         </div>
       </div>
     </aside>

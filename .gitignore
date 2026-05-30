@@ -42,3 +42,5 @@ vite.config.js.timestamp-*
 # Cache
 .cache/
 .eslintcache
+
+/src/generated/prisma

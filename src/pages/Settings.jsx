@@ -16,7 +16,7 @@ const sections = [
   { id: 'users',         icon: Users,    label: 'Team & Roles'   },
 ]
 
-const NOTIF_ITEMS = [
+const MANAGER_NOTIF_ITEMS = [
   { key: 'environmental', title: 'Environmental Alerts',  desc: 'Temp, humidity, ammonia threshold breaches'         },
   { key: 'mortality',     title: 'Mortality Alerts',      desc: 'Unusual death counts detected by AI'                },
   { key: 'delivery',      title: 'Delivery Updates',      desc: 'Order status changes and driver notifications'      },
@@ -24,6 +24,36 @@ const NOTIF_ITEMS = [
   { key: 'daily',         title: 'Daily Summary',         desc: 'End-of-day report via email'                        },
   { key: 'feeding',       title: 'Feeding Reminders',     desc: 'Scheduled feed time notifications'                  },
 ]
+
+const CUSTOMER_NOTIF_ITEMS = [
+  { key: 'payment',        title: 'Payment Updates',       desc: 'Payment method selection and payment progress'      },
+  { key: 'orderPlaced',    title: 'Order Confirmation',    desc: 'When an order is placed successfully'               },
+  { key: 'orderShipped',   title: 'Order Shipped',         desc: 'When your order leaves the farm for delivery'       },
+  { key: 'orderDelivered', title: 'Order Delivered',       desc: 'When your order reaches you'                        },
+  { key: 'smsPayment',     title: 'SMS Payment Updates',   desc: 'Receive payment updates by SMS'                     },
+  { key: 'smsOrderPlaced', title: 'SMS Order Confirmation', desc: 'Receive order confirmation by SMS'                  },
+  { key: 'smsOrderShipped', title: 'SMS Order Shipped',    desc: 'Receive shipping updates by SMS'                    },
+  { key: 'smsOrderDelivered', title: 'SMS Order Delivered', desc: 'Receive delivery completion updates by SMS'         },
+]
+
+const DELIVERY_NOTIF_ITEMS = [
+  { key: 'vehicleVerification', title: 'Vehicle Verification', desc: 'Approval, rejection, and requested changes'      },
+  { key: 'deliveryAssigned',    title: 'Delivery Assignments',  desc: 'New customer orders assigned to you'            },
+  { key: 'orderChat',           title: 'Customer Messages',     desc: 'Messages from customers about active deliveries'},
+]
+
+function visibleSectionsForRole(role) {
+  if (role === 'CUSTOMER' || role === 'DELIVERY') {
+    return sections.filter((s) => s.id !== 'farm' && s.id !== 'users')
+  }
+  return sections
+}
+
+function notificationItemsForRole(role) {
+  if (role === 'CUSTOMER') return CUSTOMER_NOTIF_ITEMS
+  if (role === 'DELIVERY') return DELIVERY_NOTIF_ITEMS
+  return MANAGER_NOTIF_ITEMS
+}
 
 // Convert ISO timestamp into "Today / Yesterday / N days ago / Never"
 function relativeLogin(iso) {
@@ -69,6 +99,8 @@ export default function Settings() {
   const [activeSection, setActiveSection] = useState('profile')
   const { role: authRole } = useAuth()
   const { showError } = useToast()
+  const visibleSections = visibleSectionsForRole(authRole)
+  const notificationItems = notificationItemsForRole(authRole)
 
   // ─── /users/me ────────────────────────────────────────────────────────────
   const meQuery = useMe()
@@ -86,6 +118,12 @@ export default function Settings() {
       setPhone(me.phone || '')
     }
   }, [me])
+
+  useEffect(() => {
+    if (!visibleSections.some((section) => section.id === activeSection)) {
+      setActiveSection('profile')
+    }
+  }, [activeSection, visibleSections])
 
   const updateMe = useUpdateMe()
   const handleSaveProfile = () => {
@@ -138,7 +176,7 @@ export default function Settings() {
     <div>
       <div className="page-header">
         <div className="page-title">Settings</div>
-        <div className="page-desc">Manage your account, farm configuration, and team permissions</div>
+        <div className="page-desc">Manage your account security and notification preferences</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 18 }}>
@@ -147,7 +185,7 @@ export default function Settings() {
           background: '#fff', borderRadius: 14, padding: '10px',
           border: '1px solid #dddabd', height: 'fit-content'
         }}>
-          {sections.map((s) => (
+          {visibleSections.map((s) => (
             <button
               key={s.id}
               onClick={() => setActiveSection(s.id)}
@@ -352,10 +390,10 @@ export default function Settings() {
                 Choose what alerts you receive and how
               </div>
 
-              {NOTIF_ITEMS.map((n, i) => (
+              {notificationItems.map((n, i) => (
                 <div key={n.key} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '13px 0', borderBottom: i < NOTIF_ITEMS.length - 1 ? '1px solid #edebd6' : 'none'
+                  padding: '13px 0', borderBottom: i < notificationItems.length - 1 ? '1px solid #edebd6' : 'none'
                 }}>
                   <div>
                     <div style={{ fontSize: '0.845rem', fontWeight: 500, color: '#0d1f0e' }}>{n.title}</div>

@@ -5,6 +5,16 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('token') || null)
   const [role, setRole] = useState(() => localStorage.getItem('role') || null)
+  const [user, setUserState] = useState(() => {
+    const raw = localStorage.getItem('user')
+    if (!raw) return null
+    try {
+      return JSON.parse(raw)
+    } catch {
+      localStorage.removeItem('user')
+      return null
+    }
+  })
 
   const handleSetToken = (newToken) => {
     setToken(newToken)
@@ -24,9 +34,19 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const handleSetUser = (newUser) => {
+    setUserState(newUser)
+    if (newUser) {
+      localStorage.setItem('user', JSON.stringify(newUser))
+    } else {
+      localStorage.removeItem('user')
+    }
+  }
+
   const logout = () => {
     handleSetToken(null)
     handleSetRole(null)
+    handleSetUser(null)
   }
 
   return (
@@ -34,8 +54,10 @@ export function AuthProvider({ children }) {
       value={{
         token,
         role,
+        user,
         setToken: handleSetToken,
         setRole: handleSetRole,
+        setUser: handleSetUser,
         logout,
         isAuthenticated: !!token,
       }}

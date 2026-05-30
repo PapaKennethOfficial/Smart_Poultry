@@ -9,10 +9,12 @@ const userRoutes = require("../routes/user.routes")
 const reportRoutes = require("../routes/report.routes")
 const analyticsRoutes = require("../routes/analytics.routes")
 const auditRoutes = require("../routes/audit.routes")
+const notificationRoutes = require("../routes/notification.routes")
 const logbookRoutes = require("../routes/logbook.routes")
+const vehicleRoutes = require("../routes/vehicle.routes")
+const orderRoutes = require("../routes/order.routes")
+const productRoutes = require("../routes/product.routes")
 
-// ─── Route Modules ────────────────────────────────────────────────────────────
-// Register additional routes here as they are built, e.g.:
 router.use("/auth", authRoutes)
 router.use("/deliveries", deliveryRoutes)
 router.use("/dashboard", dashboardRoutes)
@@ -21,11 +23,12 @@ router.use("/users", userRoutes)
 router.use("/reports", reportRoutes)
 router.use("/analytics", analyticsRoutes)
 router.use("/logs", auditRoutes)
+router.use("/notifications", notificationRoutes)
 router.use("/logbook", logbookRoutes)
-// router.use("/farms",    require("./farm.routes"));
-// router.use("/batches",  require("./batch.routes"));
+router.use("/vehicles", vehicleRoutes)
+router.use("/orders", orderRoutes)
+router.use("/products", productRoutes)
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });

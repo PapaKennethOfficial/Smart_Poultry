@@ -10,8 +10,7 @@ const jwt = require("jsonwebtoken");
  * On success  → attaches req.user = { id, role } and calls next()
  * On failure  → responds 401 { error: "Unauthorized" }
  */
-function authenticate(req, res, next) {
-  // 1. Extract token from "Authorization: Bearer <token>"
+function requireAuth(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
@@ -21,21 +20,29 @@ function authenticate(req, res, next) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // 2. Verify signature + expiry
+  if (!process.env.JWT_SECRET) {
+    return res.status(500).json({ error: "Authentication is not configured" });
+  }
+
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-
-    // 3. Attach only what routes need — never forward the raw payload
     req.user = {
       id:   payload.id,
       role: payload.role,
     };
-
     next();
   } catch {
-    // Covers: JsonWebTokenError, TokenExpiredError, NotBeforeError
     return res.status(401).json({ error: "Unauthorized" });
   }
 }
 
-module.exports = authenticate;
+function requireRole(roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ error: "Forbidden: insufficient role" });
+    }
+    next();
+  }
+}
+
+module.exports = { requireAuth, requireRole, authenticate: requireAuth };

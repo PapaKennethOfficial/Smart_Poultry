@@ -12,7 +12,9 @@ async function main() {
   console.log("🌱 Starting seed...");
 
   // ─── Clean existing data (order matters for FK constraints) ───────────────
+  await prisma.deliveryMessage.deleteMany();
   await prisma.deliveryOrder.deleteMany();
+  await prisma.userNotification.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.alert.deleteMany();
   await prisma.report.deleteMany();
@@ -20,6 +22,8 @@ async function main() {
   await prisma.logEntry.deleteMany();
   await prisma.batch.deleteMany();
   await prisma.farm.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.vehicle.deleteMany();
   await prisma.user.deleteMany();
 
   // ─── Create Admin User Only ────────────────────────────────────────────────

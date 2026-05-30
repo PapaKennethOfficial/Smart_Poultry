@@ -10,8 +10,15 @@ export const fetchDeliveries = (status) => {
 }
 
 /**
+ * GET /api/deliveries/available-drivers
+ * Returns approved, active delivery staff with no pending/in-transit order.
+ */
+export const fetchAvailableDrivers = () =>
+  api.get('/api/deliveries/available-drivers').then((res) => res.data.drivers || [])
+
+/**
  * POST /api/deliveries
- * @param {object} data - { customer, product, quantity, driver, deliveryDate, address, amount, notes }
+ * @param {object} data - { customer, product, quantity, driverId, deliveryDate, address, amount, notes }
  * @returns {{ delivery: object }}
  */
 export const createDelivery = (data) =>
