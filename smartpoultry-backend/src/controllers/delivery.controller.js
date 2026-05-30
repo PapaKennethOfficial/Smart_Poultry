@@ -21,10 +21,13 @@ function formatDelivery(d) {
   return {
     id: d.id,
     orderId: d.orderId,
-    customer: d.customer,
-    product: d.product,
+    customer: d.customer?.name || d.customer,
+    product: d.product?.name || d.product,
     quantity: d.quantity,
-    driver: d.driver,
+    driver: d.driver?.name || d.driver || "Unassigned",
+    customerDetails: d.customer || null,
+    productDetails: d.product || null,
+    driverDetails: d.driver || null,
     deliveryDate: d.deliveryDate,
     address: d.address,
     amount: d.amount,
@@ -34,6 +37,50 @@ function formatDelivery(d) {
     createdAt: d.createdAt,
   };
 }
+
+function driverSelect() {
+  return {
+    id: true,
+    name: true,
+    email: true,
+    phone: true,
+    vehicle: {
+      select: {
+        id: true,
+        make: true,
+        model: true,
+        vehicle_type: true,
+        license_plate: true,
+        driver_contact_number: true,
+        driver_residential_address: true,
+        is_active: true,
+        verification_status: true,
+      },
+    },
+    assignedDeliveries: {
+      where: { status: { in: ["PENDING", "IN_TRANSIT"] } },
+      select: { id: true, orderId: true, status: true, deliveryDate: true },
+    },
+  };
+}
+
+const getAvailableDrivers = async (req, res, next) => {
+  try {
+    const drivers = await prisma.user.findMany({
+      where: {
+        role: "DELIVERY",
+        vehicle: { verification_status: "APPROVED", is_active: true },
+        assignedDeliveries: { none: { status: { in: ["PENDING", "IN_TRANSIT"] } } },
+      },
+      select: driverSelect(),
+      orderBy: { name: "asc" },
+    });
+
+    res.json({ drivers });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // ─── GET /deliveries?status= ──────────────────────────────────────────────────
 
@@ -50,6 +97,11 @@ const getDeliveries = async (req, res, next) => {
     const [deliveries, countGroups] = await Promise.all([
       prisma.deliveryOrder.findMany({
         where,
+        include: {
+          customer: { select: { id: true, name: true, email: true, phone: true } },
+          product: true,
+          driver: { select: { id: true, name: true, email: true, phone: true } },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.deliveryOrder.groupBy({
@@ -80,7 +132,7 @@ const getDeliveries = async (req, res, next) => {
 
 const createDelivery = async (req, res, next) => {
   try {
-    const { customer, product, quantity, driver, deliveryDate, address, amount, notes } = req.body;
+    const { customer, customerId, product, productId, quantity, driverId, deliveryDate, address, amount, notes } = req.body;
 
     // Auto-generate order ID: DEL-YYYY-NNN
     const year = new Date().getFullYear();
@@ -99,19 +151,76 @@ const createDelivery = async (req, res, next) => {
 
     const orderId = `${prefix}${String(nextNum).padStart(3, "0")}`;
 
+    let resolvedCustomerId = customerId;
+    if (!resolvedCustomerId) {
+      // Legacy manager-created deliveries used a free-text customer name.
+      // Preserve compatibility by creating a non-login customer shell.
+      const safeName = (customer || "Walk-in Customer").trim();
+      const emailSlug = safeName.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "") || "customer";
+      const createdCustomer = await prisma.user.create({
+        data: {
+          name: safeName,
+          email: `${emailSlug}.${Date.now()}@placeholder.smartpoultry.local`,
+          password: "",
+          role: "CUSTOMER",
+        },
+      });
+      resolvedCustomerId = createdCustomer.id;
+    }
+
+    let resolvedProductId = productId;
+    if (!resolvedProductId) {
+      const productName = (product || "Farm product").trim();
+      const existingProduct = await prisma.product.findFirst({ where: { name: productName } });
+      if (existingProduct) {
+        resolvedProductId = existingProduct.id;
+      } else {
+        const createdProduct = await prisma.product.create({
+          data: {
+            name: productName,
+            price: quantity > 0 ? amount / quantity : amount,
+            unit: "item",
+            stock: 0,
+          },
+        });
+        resolvedProductId = createdProduct.id;
+      }
+    }
+
+    if (driverId) {
+      const availableDriver = await prisma.user.findFirst({
+        where: {
+          id: driverId,
+          role: "DELIVERY",
+          vehicle: { verification_status: "APPROVED", is_active: true },
+          assignedDeliveries: { none: { status: { in: ["PENDING", "IN_TRANSIT"] } } },
+        },
+        select: { id: true },
+      });
+
+      if (!availableDriver) {
+        return res.status(400).json({ error: "Selected driver is not currently available" });
+      }
+    }
+
     const delivery = await prisma.deliveryOrder.create({
       data: {
         orderId,
-        customer,
-        product,
+        customerId: resolvedCustomerId,
+        productId: resolvedProductId,
         quantity,
-        driver: driver || "Unassigned",
+        driverId: driverId || null,
         deliveryDate: new Date(deliveryDate),
         address: address || null,
         amount,
         notes: notes || null,
         status: "PENDING",
         statusHistory: [{ status: "Pending", timestamp: new Date().toISOString() }],
+      },
+      include: {
+        customer: { select: { id: true, name: true, email: true, phone: true } },
+        product: true,
+        driver: { select: { id: true, name: true, email: true, phone: true } },
       },
     });
 
@@ -149,6 +258,11 @@ const updateDeliveryStatus = async (req, res, next) => {
     const updated = await prisma.deliveryOrder.update({
       where: { id: existing.id },
       data: { status: enumStatus, statusHistory: history },
+      include: {
+        customer: { select: { id: true, name: true, email: true, phone: true } },
+        product: true,
+        driver: { select: { id: true, name: true, email: true, phone: true } },
+      },
     });
 
     res.json({ delivery: formatDelivery(updated) });
@@ -203,4 +317,4 @@ const getDeliveryRevenue = async (req, res, next) => {
   }
 };
 
-module.exports = { getDeliveries, createDelivery, updateDeliveryStatus, getDeliveryRevenue };
+module.exports = { getDeliveries, getAvailableDrivers, createDelivery, updateDeliveryStatus, getDeliveryRevenue };

@@ -15,7 +15,7 @@ import { useToast } from '../../components/Toast'
  * Non-401 errors fall back to a toast.
  */
 export function useLogin() {
-  const { setToken, setRole } = useAuth()
+  const { setToken, setRole, setUser } = useAuth()
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
 
@@ -25,8 +25,12 @@ export function useLogin() {
     onSuccess: (data) => {
       setToken(data.token)
       if (data.role) setRole(data.role)
+      if (data.user) setUser(data.user)
       showSuccess('Welcome back! Redirecting to dashboard…')
-      navigate('/dashboard')
+      if (data.role === 'DELIVERY') navigate('/delivery/vehicle')
+      else if (data.role === 'CUSTOMER') navigate('/customer/marketplace')
+      else if (data.role === 'MANAGER' || data.role === 'ADMIN') navigate('/dashboard/verify-vehicles')
+      else navigate('/dashboard')
     },
 
     onError: (error) => {

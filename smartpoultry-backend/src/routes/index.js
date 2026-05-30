@@ -9,6 +9,7 @@ const userRoutes = require("../routes/user.routes")
 const reportRoutes = require("../routes/report.routes")
 const analyticsRoutes = require("../routes/analytics.routes")
 const auditRoutes = require("../routes/audit.routes")
+const notificationRoutes = require("../routes/notification.routes")
 
 // ─── Route Modules ────────────────────────────────────────────────────────────
 // Register additional routes here as they are built, e.g.:
@@ -20,8 +21,15 @@ router.use("/users", userRoutes)
 router.use("/reports", reportRoutes)
 router.use("/analytics", analyticsRoutes)
 router.use("/logs", auditRoutes)
-// router.use("/farms",    require("./farm.routes"));
-// router.use("/batches",  require("./batch.routes"));
+router.use("/notifications", notificationRoutes)
+
+const vehicleRoutes = require("./vehicle.routes")
+const orderRoutes = require("./order.routes")
+const productRoutes = require("./product.routes")
+
+router.use("/vehicles", vehicleRoutes)
+router.use("/orders", orderRoutes)
+router.use("/products", productRoutes)
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {

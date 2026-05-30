@@ -2,14 +2,50 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useLogin } from '../hooks/auth/useLogin'
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { auth } from '../firebase'
+import { googleAuthUser } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+
+const GOOGLE_ROLE_MAP = {
+  delivery: 'DELIVERY',
+  customer: 'CUSTOMER',
+}
 
 export default function Login() {
   const [showPass, setShowPass] = useState(false)
-  const [role, setRole] = useState('farmer')
+  const [role, setRole] = useState('manager')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   const { mutate: login, isPending, error, reset } = useLogin()
+  const { setToken, setRole: setAuthRole, setUser } = useAuth()
+  const navigate = useNavigate()
+
+  const handleGoogleLogin = async () => {
+    try {
+      if (role === 'manager') {
+        alert('Managers and admins must sign in with their approved account credentials.')
+        return
+      }
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
+      const idToken = await result.user.getIdToken()
+      const data = await googleAuthUser({ token: idToken, role: GOOGLE_ROLE_MAP[role] || 'CUSTOMER' })
+      setToken(data.token)
+      if (data.role) setAuthRole(data.role)
+      if (data.user) setUser(data.user)
+      navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
+    } catch (err) {
+      console.error(err)
+      if (err.code === "auth/invalid-api-key" || err.message.includes("dummy")) {
+        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.")
+      } else {
+        alert("Google Sign-In failed: " + err.message)
+      }
+    }
+  }
 
   // Backend ignores `role` on login (resolved from the user record), so only
   // email + password are sent. `role` remains a UI affordance for now.
@@ -124,10 +160,11 @@ export default function Login() {
           {/* Role selector */}
           <div className="form-group">
             <label className="form-label">Sign in as</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {['farmer', 'manager', 'delivery', 'admin'].map(r => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {['manager', 'delivery', 'customer'].map(r => (
                 <button
                   key={r}
+                  type="button"
                   onClick={() => setRole(r)}
                   style={{
                     padding: '9px 14px',
@@ -242,15 +279,29 @@ export default function Login() {
             )}
           </button>
 
-          <div style={{
-            marginTop: 20, padding: '12px 14px',
-            background: 'rgba(35,114,39,0.06)', borderRadius: 9,
-            border: '1px solid rgba(35,114,39,0.14)'
-          }}>
-            <p style={{ fontSize: '0.75rem', color: '#5e7a61', lineHeight: 1.55 }}>
-              <strong style={{ color: '#237227' }}>Demo credentials:</strong> Use any email & password above. Select a role to see role-specific views.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            style={{ 
+              width: '100%', 
+              justifyContent: 'center', 
+              padding: '12px', 
+              marginTop: '12px',
+              background: '#fff',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              color: '#333'
+            }}
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
+            Continue with Google
+          </button>
 
           <p style={{
             marginTop: 18, textAlign: 'center',

@@ -15,3 +15,6 @@ export const loginUser = (credentials) =>
  */
 export const registerUser = (payload) =>
   api.post('/api/auth/register', payload).then((res) => res.data)
+
+export const googleAuthUser = (payload) =>
+  api.post('/api/auth/google', payload).then((res) => res.data)

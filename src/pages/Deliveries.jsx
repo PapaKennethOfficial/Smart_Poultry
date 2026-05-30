@@ -4,6 +4,7 @@ import { Plus, MapPin, X, Truck, CheckCircle2 } from 'lucide-react'
 import { useToast } from '../components/Toast'
 import {
   fetchDeliveries,
+  fetchAvailableDrivers,
   createDelivery as createDeliveryApi,
   updateDeliveryStatus as updateStatusApi,
   fetchDeliveryRevenue,
@@ -64,10 +65,15 @@ function NewDeliveryModal({ onClose }) {
     product: 'Eggs (Crates)',
     quantity: '',
     deliveryDate: new Date().toISOString().split('T')[0],
-    driver: 'Unassigned',
+    driverId: '',
     address: '',
     amount: '',
     notes: '',
+  })
+
+  const { data: availableDrivers = [], isLoading: driversLoading } = useQuery({
+    queryKey: ['availableDrivers'],
+    queryFn: fetchAvailableDrivers,
   })
 
   const mutation = useMutation({
@@ -75,11 +81,13 @@ function NewDeliveryModal({ onClose }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] })
       queryClient.invalidateQueries({ queryKey: ['deliveryRevenue'] })
+      queryClient.invalidateQueries({ queryKey: ['availableDrivers'] })
       showSuccess('Delivery created')
       onClose()
     },
     onError: (err) => {
-      showError(err.response?.data?.error || err.response?.data?.errors ? 'Please check the form fields' : 'Failed to create delivery')
+      const fieldErrors = err.response?.data?.errors
+      showError(err.response?.data?.error || (fieldErrors ? 'Please check the form fields' : 'Failed to create delivery'))
     },
   })
 
@@ -141,11 +149,19 @@ function NewDeliveryModal({ onClose }) {
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Assign Driver</label>
-              <select className="form-select" name="driver" value={form.driver} onChange={handleChange}>
-                <option>Unassigned</option>
-                <option>Kwame A.</option>
-                <option>Emmanuel B.</option>
+              <select className="form-select" name="driverId" value={form.driverId} onChange={handleChange}>
+                <option value="">{driversLoading ? 'Loading available drivers...' : 'Unassigned'}</option>
+                {availableDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.name} - {driver.vehicle?.vehicle_type || 'Vehicle'} {driver.vehicle?.license_plate || driver.vehicle?.model || ''}
+                  </option>
+                ))}
               </select>
+              {!driversLoading && availableDrivers.length === 0 && (
+                <div style={{ fontSize: '0.72rem', color: '#8da58f', marginTop: 6 }}>
+                  No approved delivery staff is free right now.
+                </div>
+              )}
             </div>
           </div>
 
