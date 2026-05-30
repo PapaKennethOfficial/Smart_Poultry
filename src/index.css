@@ -540,6 +540,11 @@ body {
   color: var(--accent-dark);
 }
 
+.badge-purple {
+  background: rgba(139, 92, 246, 0.08);
+  color: rgb(139, 92, 246);
+}
+
 /* ── Buttons ─────────────────────────────────────────────────── */
 .btn-primary {
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));

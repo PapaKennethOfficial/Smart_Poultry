@@ -9,6 +9,7 @@ const userRoutes = require("../routes/user.routes")
 const reportRoutes = require("../routes/report.routes")
 const analyticsRoutes = require("../routes/analytics.routes")
 const auditRoutes = require("../routes/audit.routes")
+const logbookRoutes = require("../routes/logbook.routes")
 
 // ─── Route Modules ────────────────────────────────────────────────────────────
 // Register additional routes here as they are built, e.g.:
@@ -20,6 +21,7 @@ router.use("/users", userRoutes)
 router.use("/reports", reportRoutes)
 router.use("/analytics", analyticsRoutes)
 router.use("/logs", auditRoutes)
+router.use("/logbook", logbookRoutes)
 // router.use("/farms",    require("./farm.routes"));
 // router.use("/batches",  require("./batch.routes"));
 
