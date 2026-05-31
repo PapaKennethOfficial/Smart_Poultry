@@ -77,7 +77,9 @@ Update the `.env` file with your PostgreSQL connection string and a secret for J
 ```env
 DATABASE_URL="postgresql://postgres:your_password@localhost:5432/smartpoultry"
 JWT_SECRET="your_secure_jwt_secret"
-PORT=3000
+ADMIN_PASSWORD="your_secure_admin_password"
+MANAGER_REGISTRATION_CODE="optional_long_random_manager_setup_code"
+PORT=5000
 CLIENT_URL="http://localhost:5173"
 ```
 
@@ -87,6 +89,8 @@ Run database migrations and seed initial data (like the admin user):
 npx prisma migrate dev
 npm run db:seed
 ```
+
+The seeded admin can sign in through the Manager/Admin area with `admin@smartpoultry.com` and the `ADMIN_PASSWORD` value from your backend `.env`. Public customer and delivery signup remains open; manager signup requires `MANAGER_REGISTRATION_CODE` unless the database has no privileged account yet.
 
 Start the backend server:
 

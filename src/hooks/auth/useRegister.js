@@ -26,9 +26,9 @@ export function useRegister() {
     },
 
     onError: (error) => {
-      // 400 (Zod) and 409 (duplicate email) are rendered inline by the form.
+      // 400 (Zod), 403 (role/access code), and 409 (duplicate email) are rendered inline by the form.
       const status = error?.response?.status
-      if (status === 400 || status === 409) return
+      if (status === 400 || status === 403 || status === 409) return
       const message =
         error?.response?.data?.message || 'Sign up failed. Please try again.'
       showError(message)

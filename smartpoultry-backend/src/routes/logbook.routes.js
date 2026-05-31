@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const authenticate = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
 const authorize = require("../middleware/role");
 const {
   getLogbook,
@@ -10,7 +10,7 @@ const {
 } = require("../controllers/logbook.controller");
 
 // Require authentication for all logbook routes
-router.use(authenticate);
+router.use(requireAuth);
 
 // Everyone can view logbook (WORKER, MANAGER, ADMIN)
 router.get("/", getLogbook);

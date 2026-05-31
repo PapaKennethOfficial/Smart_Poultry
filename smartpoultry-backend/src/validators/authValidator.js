@@ -8,12 +8,14 @@ const registerSchema = z.object({
   name:     z.string({ required_error: "Name is required" }).trim().min(1, "Name is required"),
   email:    z.string({ required_error: "Email is required" }).email("Invalid email format"),
   password: z.string({ required_error: "Password is required" }).min(6, "Password must be at least 6 characters"),
-  role:     z.enum(["DELIVERY", "CUSTOMER"]).optional(),
+  role:     z.enum(["MANAGER", "DELIVERY", "CUSTOMER"]).optional(),
+  managerAccessCode: z.string().trim().optional(),
 });
 
 const loginSchema = z.object({
   email:    z.string({ required_error: "Email is required" }).email("Invalid email format"),
   password: z.string({ required_error: "Password is required" }).min(1, "Password is required"),
+  role:     z.enum(["MANAGER", "DELIVERY", "CUSTOMER"]).optional(),
 });
 
 // ─── Exports ──────────────────────────────────────────────────────────────────

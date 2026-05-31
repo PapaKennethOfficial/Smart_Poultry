@@ -9,10 +9,10 @@ import { useToast } from '../../components/Toast'
  *
  * Usage:
  *   const { mutate: login, isPending, error } = useLogin()
- *   login({ email, password })
+ *   login({ email, password, role })
  *
- * 401 (invalid credentials) is surfaced via `error` for inline display.
- * Non-401 errors fall back to a toast.
+ * 401/403 auth errors are surfaced via `error` for inline display.
+ * Other errors fall back to a toast.
  */
 export function useLogin() {
   const { setToken, setRole, setUser } = useAuth()
@@ -34,8 +34,9 @@ export function useLogin() {
     },
 
     onError: (error) => {
-      // 401 is rendered inline by the Login form — skip toast for that case.
-      if (error?.response?.status === 401) return
+      // Credential and selected-role errors are rendered inline by the Login form.
+      const status = error?.response?.status
+      if (status === 401 || status === 403) return
       const message =
         error?.response?.data?.message || 'Login failed. Please try again.'
       showError(message)

@@ -3,12 +3,18 @@ import { Link } from 'react-router-dom'
 import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useLogin } from '../hooks/auth/useLogin'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
-import { auth } from '../firebase'
+import { auth, isFirebaseConfigured } from '../firebase'
 import { googleAuthUser } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
 const GOOGLE_ROLE_MAP = {
+  delivery: 'DELIVERY',
+  customer: 'CUSTOMER',
+}
+
+const PASSWORD_ROLE_MAP = {
+  manager: 'MANAGER',
   delivery: 'DELIVERY',
   customer: 'CUSTOMER',
 }
@@ -29,6 +35,10 @@ export default function Login() {
         alert('Managers and admins must sign in with their approved account credentials.')
         return
       }
+      if (!isFirebaseConfigured || !auth) {
+        alert('Firebase is not configured yet. Use email and password, or add your Firebase credentials to enable Google Sign-In.')
+        return
+      }
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       const idToken = await result.user.getIdToken()
@@ -39,19 +49,17 @@ export default function Login() {
       navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
     } catch (err) {
       console.error(err)
-      if (err.code === "auth/invalid-api-key" || err.message.includes("dummy")) {
+      if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
         alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.")
       } else {
-        alert("Google Sign-In failed: " + err.message)
+        alert("Google Sign-In failed: " + (err?.message || 'Please try again.'))
       }
     }
   }
 
-  // Backend ignores `role` on login (resolved from the user record), so only
-  // email + password are sent. `role` remains a UI affordance for now.
   const handleSubmit = (e) => {
     e.preventDefault()
-    login({ email, password })
+    login({ email, password, role: PASSWORD_ROLE_MAP[role] })
   }
 
   const isInvalidCreds = error?.response?.status === 401
@@ -65,6 +73,13 @@ export default function Login() {
     if (error) reset()
     setter(e.target.value)
   }
+
+  const googleDisabled = role === 'manager' || !isFirebaseConfigured
+  const googleButtonLabel = !isFirebaseConfigured
+    ? 'Google Sign-In unavailable'
+    : role === 'manager'
+      ? 'Use password for managers'
+      : 'Continue with Google'
 
   const features = [
     'AI-powered egg yield forecasting (10-day)',
@@ -160,7 +175,7 @@ export default function Login() {
           {/* Role selector */}
           <div className="form-group">
             <label className="form-label">Sign in as</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: 8 }}>
               {['manager', 'delivery', 'customer'].map(r => (
                 <button
                   key={r}
@@ -282,6 +297,7 @@ export default function Login() {
           <button
             type="button"
             onClick={handleGoogleLogin}
+            disabled={googleDisabled}
             style={{ 
               width: '100%', 
               justifyContent: 'center', 
@@ -290,17 +306,18 @@ export default function Login() {
               background: '#fff',
               border: '1px solid #ddd',
               borderRadius: '8px',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
-              color: '#333'
+              color: '#333',
+              opacity: googleDisabled ? 0.6 : 1,
+              cursor: googleDisabled ? 'not-allowed' : 'pointer'
             }}
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
-            Continue with Google
+            {googleButtonLabel}
           </button>
 
           <p style={{
