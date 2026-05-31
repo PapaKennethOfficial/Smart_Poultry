@@ -2,7 +2,7 @@ import api from './axios'
 
 /**
  * POST /api/auth/login
- * @param {{ email: string, password: string }} credentials
+ * @param {{ email: string, password: string, role?: string }} credentials
  * @returns {Promise<{ token: string, role: string, user: object }>}
  */
 export const loginUser = (credentials) =>
