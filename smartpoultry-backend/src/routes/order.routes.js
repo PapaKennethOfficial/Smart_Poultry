@@ -5,13 +5,17 @@ const router = express.Router()
 const prisma = require("../config/prisma")
 const { requireAuth, requireRole } = require("../middleware/auth")
 const { createUserNotification } = require("../services/notification.service")
+const {
+  createAssignmentHistory,
+  findEligibleDriver,
+  selectAvailableDriver,
+} = require("../services/deliveryAssignment.service")
+const { buildDeliveryOrderWhere } = require("../utils/deliveryFilters")
 
 const STATUS_VALUES = ["PENDING", "IN_TRANSIT", "DELIVERED", "CANCELLED"]
-const PAYMENT_METHODS = ["MOBILE_MONEY", "BANK_TRANSFER", "CARD", "PAY_ON_DELIVERY"]
+const PAYMENT_METHODS = ["MOBILE_MONEY", "PAY_ON_DELIVERY"]
 const PAYMENT_LABELS = {
   MOBILE_MONEY: "Mobile Money",
-  BANK_TRANSFER: "Bank Transfer",
-  CARD: "Card",
   PAY_ON_DELIVERY: "Payment on Delivery",
 }
 
@@ -60,7 +64,7 @@ function parseBody(schema, req, res) {
 }
 
 function publicUserSelect() {
-  return { id: true, name: true, email: true, phone: true, role: true }
+  return { id: true, name: true, email: true, phone: true, role: true, deliveryStaffStatus: true }
 }
 
 function orderInclude() {
@@ -76,9 +80,11 @@ function orderInclude() {
             make: true,
             model: true,
             license_plate: true,
+            color: true,
             vehicle_type: true,
             vehicle_photo: true,
             driver_photo: true,
+            driver_contact_number: true,
             verification_status: true,
           },
         },
@@ -146,14 +152,26 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
 
     const orderId = await generateOrderId()
     const amount = product.price * data.quantity
+    let assignedDriver = null
 
     const order = await prisma.$transaction(async (tx) => {
+      assignedDriver = await selectAvailableDriver({
+        db: tx,
+        deliveryLatitude: data.deliveryLatitude,
+        deliveryLongitude: data.deliveryLongitude,
+      })
+
+      const statusHistory = [{ status: "PENDING", timestamp: new Date().toISOString() }]
+      const assignmentHistory = createAssignmentHistory(assignedDriver, "AUTO")
+      if (assignmentHistory) statusHistory.push(assignmentHistory)
+
       const created = await tx.deliveryOrder.create({
         data: {
           orderId,
           customerId: req.user.id,
           productId: data.productId,
           quantity: data.quantity,
+          driverId: assignedDriver?.id || null,
           deliveryDate,
           address: data.address,
           contactNumber: data.contactNumber,
@@ -164,7 +182,7 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
           deliveryLatitude: data.deliveryLatitude,
           deliveryLongitude: data.deliveryLongitude,
           status: "PENDING",
-          statusHistory: [{ status: "PENDING", timestamp: new Date().toISOString() }],
+          statusHistory,
         },
         include: orderInclude(),
       })
@@ -177,7 +195,7 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
       return created
     })
 
-    await Promise.all([
+    const notifications = [
       createNotification(
         req.user.id,
         "Order placed",
@@ -192,7 +210,21 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
         "PAYMENT_STATUS",
         { orderId: order.id, paymentMethod: data.paymentMethod, paymentStatus: order.paymentStatus }
       ),
-    ])
+    ]
+
+    if (assignedDriver) {
+      notifications.push(
+        createNotification(
+          assignedDriver.id,
+          "New delivery assigned",
+          `You have been assigned order ${order.orderId}.`,
+          "DELIVERY_ASSIGNED",
+          { orderId: order.id }
+        )
+      )
+    }
+
+    await Promise.all(notifications)
 
     res.status(201).json({ message: "Order placed successfully", order })
   } catch (error) {
@@ -203,8 +235,9 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
 // Customer: view their own orders
 router.get("/me", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) => {
   try {
+    const { customerId: _customerId, driverId: _driverId, ...filters } = req.query
     const orders = await prisma.deliveryOrder.findMany({
-      where: { customerId: req.user.id },
+      where: buildDeliveryOrderWhere(filters, { customerId: req.user.id }),
       include: orderInclude(),
       orderBy: { createdAt: "desc" },
     })
@@ -217,8 +250,9 @@ router.get("/me", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next)
 // Delivery staff: view assigned orders
 router.get("/assigned", requireAuth, requireRole(["DELIVERY"]), async (req, res, next) => {
   try {
+    const { customerId: _customerId, driverId: _driverId, ...filters } = req.query
     const orders = await prisma.deliveryOrder.findMany({
-      where: { driverId: req.user.id },
+      where: buildDeliveryOrderWhere(filters, { driverId: req.user.id }),
       include: orderInclude(),
       orderBy: { deliveryDate: "asc" },
     })
@@ -232,6 +266,7 @@ router.get("/assigned", requireAuth, requireRole(["DELIVERY"]), async (req, res,
 router.get("/", requireAuth, requireRole(["MANAGER", "ADMIN"]), async (req, res, next) => {
   try {
     const orders = await prisma.deliveryOrder.findMany({
+      where: buildDeliveryOrderWhere(req.query),
       include: orderInclude(),
       orderBy: { createdAt: "desc" },
     })
@@ -262,19 +297,43 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN", "DELIVERY"]),
       }
     }
 
-    if (data.driverId && data.driverId !== existingOrder.driverId) {
-      const driver = await prisma.user.findFirst({
-        where: {
-          id: data.driverId,
-          role: "DELIVERY",
-          vehicle: { verification_status: "APPROVED", is_active: true },
-          assignedDeliveries: { none: { status: { in: ["PENDING", "IN_TRANSIT"] } } },
-        },
-        select: { id: true, name: true },
-      })
+    let assignedDriver = null
+    let assignmentSource = null
 
-      if (!driver) {
-        return res.status(400).json({ message: "Select an approved delivery staff member who is currently available" })
+    if (data.status === "IN_TRANSIT" && data.driverId === null) {
+      return res.status(400).json({ message: "An in-transit order must have an assigned driver" })
+    }
+
+    if (data.driverId === null && existingOrder.status === "IN_TRANSIT" && data.status !== "CANCELLED") {
+      return res.status(400).json({ message: "Move the order out of transit before unassigning the driver" })
+    }
+
+    if (data.driverId && data.driverId !== existingOrder.driverId) {
+      assignedDriver = await findEligibleDriver(data.driverId)
+      assignmentSource = "MANUAL"
+
+      if (!assignedDriver) {
+        return res.status(400).json({
+          message: "Select an active company driver with an approved active vehicle and no active delivery",
+        })
+      }
+    }
+
+    if (
+      data.driverId === undefined &&
+      data.status === "IN_TRANSIT" &&
+      !existingOrder.driverId
+    ) {
+      assignedDriver = await selectAvailableDriver({
+        deliveryLatitude: existingOrder.deliveryLatitude,
+        deliveryLongitude: existingOrder.deliveryLongitude,
+      })
+      assignmentSource = "AUTO_DISPATCH"
+
+      if (!assignedDriver) {
+        return res.status(400).json({
+          message: "No active company driver is currently available for this order",
+        })
       }
     }
 
@@ -283,11 +342,15 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN", "DELIVERY"]),
       : []
 
     const update = {}
+    const assignmentHistory = createAssignmentHistory(assignedDriver, assignmentSource)
+    if (assignmentHistory) statusHistory.push(assignmentHistory)
+
     if (data.status && data.status !== existingOrder.status) {
       update.status = data.status
       statusHistory.push({ status: data.status, timestamp: new Date().toISOString(), by: req.user.id })
     }
     if (data.driverId !== undefined) update.driverId = data.driverId
+    if (assignedDriver && data.driverId === undefined) update.driverId = assignedDriver.id
     update.statusHistory = statusHistory
 
     const order = await prisma.deliveryOrder.update({
@@ -296,9 +359,9 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN", "DELIVERY"]),
       include: orderInclude(),
     })
 
-    if (data.driverId && data.driverId !== existingOrder.driverId) {
+    if (assignedDriver && assignedDriver.id !== existingOrder.driverId) {
       await createNotification(
-        data.driverId,
+        assignedDriver.id,
         "New delivery assigned",
         `You have been assigned order ${order.orderId}.`,
         "DELIVERY_ASSIGNED",
