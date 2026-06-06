@@ -143,6 +143,7 @@ const register = async (req, res, next) => {
                 email,
                 password: hashed,
                 role: requestedRole,
+                deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
             },
         })
 
@@ -198,7 +199,8 @@ const googleAuth = async (req, res, next) => {
                     name,
                     email,
                     password: "", // No password for OAuth
-                    role: requestedRole
+                    role: requestedRole,
+                    deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
                 }
             })
         }

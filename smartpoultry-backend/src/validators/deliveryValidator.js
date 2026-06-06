@@ -27,6 +27,8 @@ const createDeliverySchema = z.object({
     .number({ required_error: "Amount is required" })
     .positive("Amount must be positive"),
   notes: z.string().trim().optional().default(""),
+  deliveryLatitude: z.coerce.number().min(-90).max(90).optional(),
+  deliveryLongitude: z.coerce.number().min(-180).max(180).optional(),
 });
 
 const updateStatusSchema = z.object({

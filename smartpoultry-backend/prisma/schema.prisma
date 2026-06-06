@@ -19,6 +19,13 @@ enum Role {
   CUSTOMER
 }
 
+enum DeliveryStaffStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
 enum BatchStatus {
   ACTIVE
   COMPLETED
@@ -56,6 +63,7 @@ model User {
   password                String
   phone                   String?
   role                    Role     @default(WORKER)
+  deliveryStaffStatus     DeliveryStaffStatus?
   notificationPreferences Json     @default("{}")
   lastLoginAt             DateTime?
   createdAt               DateTime @default(now())
@@ -256,7 +264,11 @@ model DeliveryOrder {
 
   @@index([customerId])
   @@index([driverId])
+  @@index([productId])
   @@index([status])
+  @@index([deliveryDate])
+  @@index([paymentStatus])
+  @@index([paymentMethod])
 }
 
 model Product {
@@ -283,19 +295,13 @@ model Vehicle {
   vin                     String?
   color                   String
   vehicle_type            String
-  insurance_provider      String?
-  insurance_policy_number String?
-  insurance_expiration    DateTime?
   driver_contact_number   String   @default("")
   driver_residential_address String @default("")
   driver_license_number   String
   license_expiration      DateTime
   vehicle_photo           String?
-  insurance_document      String?
   registration_document   String?
   driver_photo            String?
-  seating_capacity        Int?
-  mileage                 Float?
   is_active               Boolean  @default(true)
   verification_status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
   verification_notes      String?

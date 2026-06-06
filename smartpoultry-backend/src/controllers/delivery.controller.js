@@ -1,4 +1,15 @@
 const prisma = require("../config/prisma");
+const { createUserNotification } = require("../services/notification.service");
+const {
+  createAssignmentHistory,
+  eligibleDriverWhere,
+  findEligibleDriver,
+  selectAvailableDriver,
+} = require("../services/deliveryAssignment.service");
+const {
+  buildCountWhere,
+  buildDeliveryOrderWhere,
+} = require("../utils/deliveryFilters");
 
 // ─── Status Mappings ──────────────────────────────────────────────────────────
 
@@ -31,10 +42,19 @@ function formatDelivery(d) {
     deliveryDate: d.deliveryDate,
     address: d.address,
     amount: d.amount,
+    contactNumber: d.contactNumber,
+    paymentMethod: d.paymentMethod,
+    paymentStatus: d.paymentStatus,
     notes: d.notes,
     status: enumToStatus[d.status] || d.status,
     statusHistory: d.statusHistory,
+    deliveryLatitude: d.deliveryLatitude,
+    deliveryLongitude: d.deliveryLongitude,
+    driverLatitude: d.driverLatitude,
+    driverLongitude: d.driverLongitude,
+    driverLocationUpdatedAt: d.driverLocationUpdatedAt,
     createdAt: d.createdAt,
+    updatedAt: d.updatedAt,
   };
 }
 
@@ -44,6 +64,8 @@ function driverSelect() {
     name: true,
     email: true,
     phone: true,
+    role: true,
+    deliveryStaffStatus: true,
     vehicle: {
       select: {
         id: true,
@@ -51,6 +73,8 @@ function driverSelect() {
         model: true,
         vehicle_type: true,
         license_plate: true,
+        vehicle_photo: true,
+        driver_photo: true,
         driver_contact_number: true,
         driver_residential_address: true,
         is_active: true,
@@ -67,11 +91,7 @@ function driverSelect() {
 const getAvailableDrivers = async (req, res, next) => {
   try {
     const drivers = await prisma.user.findMany({
-      where: {
-        role: "DELIVERY",
-        vehicle: { verification_status: "APPROVED", is_active: true },
-        assignedDeliveries: { none: { status: { in: ["PENDING", "IN_TRANSIT"] } } },
-      },
+      where: eligibleDriverWhere(),
       select: driverSelect(),
       orderBy: { name: "asc" },
     });
@@ -86,12 +106,8 @@ const getAvailableDrivers = async (req, res, next) => {
 
 const getDeliveries = async (req, res, next) => {
   try {
-    const { status } = req.query;
-
-    const where = {};
-    if (status && statusToEnum[status]) {
-      where.status = statusToEnum[status];
-    }
+    const where = buildDeliveryOrderWhere(req.query);
+    const countWhere = buildCountWhere(where);
 
     // Fetch filtered deliveries + counts for all statuses in parallel
     const [deliveries, countGroups] = await Promise.all([
@@ -100,12 +116,13 @@ const getDeliveries = async (req, res, next) => {
         include: {
           customer: { select: { id: true, name: true, email: true, phone: true } },
           product: true,
-          driver: { select: { id: true, name: true, email: true, phone: true } },
+          driver: { select: driverSelect() },
         },
         orderBy: { createdAt: "desc" },
       }),
       prisma.deliveryOrder.groupBy({
         by: ["status"],
+        where: countWhere,
         _count: { id: true },
       }),
     ]);
@@ -132,7 +149,20 @@ const getDeliveries = async (req, res, next) => {
 
 const createDelivery = async (req, res, next) => {
   try {
-    const { customer, customerId, product, productId, quantity, driverId, deliveryDate, address, amount, notes } = req.body;
+    const {
+      customer,
+      customerId,
+      product,
+      productId,
+      quantity,
+      driverId,
+      deliveryDate,
+      address,
+      amount,
+      notes,
+      deliveryLatitude,
+      deliveryLongitude,
+    } = req.body;
 
     // Auto-generate order ID: DEL-YYYY-NNN
     const year = new Date().getFullYear();
@@ -187,21 +217,21 @@ const createDelivery = async (req, res, next) => {
       }
     }
 
+    let assignedDriver = null;
     if (driverId) {
-      const availableDriver = await prisma.user.findFirst({
-        where: {
-          id: driverId,
-          role: "DELIVERY",
-          vehicle: { verification_status: "APPROVED", is_active: true },
-          assignedDeliveries: { none: { status: { in: ["PENDING", "IN_TRANSIT"] } } },
-        },
-        select: { id: true },
-      });
-
-      if (!availableDriver) {
-        return res.status(400).json({ error: "Selected driver is not currently available" });
+      assignedDriver = await findEligibleDriver(driverId);
+      if (!assignedDriver) {
+        return res.status(400).json({
+          error: "Selected driver must be an active company driver with an approved active vehicle and no active delivery",
+        });
       }
+    } else {
+      assignedDriver = await selectAvailableDriver({ deliveryLatitude, deliveryLongitude });
     }
+
+    const statusHistory = [{ status: "Pending", timestamp: new Date().toISOString() }];
+    const assignmentHistory = createAssignmentHistory(assignedDriver, driverId ? "MANUAL" : "AUTO");
+    if (assignmentHistory) statusHistory.push(assignmentHistory);
 
     const delivery = await prisma.deliveryOrder.create({
       data: {
@@ -209,20 +239,34 @@ const createDelivery = async (req, res, next) => {
         customerId: resolvedCustomerId,
         productId: resolvedProductId,
         quantity,
-        driverId: driverId || null,
+        driverId: assignedDriver?.id || null,
         deliveryDate: new Date(deliveryDate),
         address: address || null,
         amount,
+        paymentMethod: "PAY_ON_DELIVERY",
+        paymentStatus: "PENDING",
         notes: notes || null,
         status: "PENDING",
-        statusHistory: [{ status: "Pending", timestamp: new Date().toISOString() }],
+        statusHistory,
+        deliveryLatitude,
+        deliveryLongitude,
       },
       include: {
         customer: { select: { id: true, name: true, email: true, phone: true } },
         product: true,
-        driver: { select: { id: true, name: true, email: true, phone: true } },
+        driver: { select: driverSelect() },
       },
     });
+
+    if (assignedDriver) {
+      await createUserNotification({
+        userId: assignedDriver.id,
+        title: "New delivery assigned",
+        message: `You have been assigned delivery ${delivery.orderId}.`,
+        type: "DELIVERY_ASSIGNED",
+        metadata: { orderId: delivery.id },
+      });
+    }
 
     res.status(201).json({ delivery: formatDelivery(delivery) });
   } catch (error) {
@@ -253,17 +297,48 @@ const updateDeliveryStatus = async (req, res, next) => {
 
     // Append to status history with timestamp
     const history = Array.isArray(existing.statusHistory) ? [...existing.statusHistory] : [];
+    let assignedDriver = null;
+
+    if (enumStatus === "IN_TRANSIT" && !existing.driverId) {
+      assignedDriver = await selectAvailableDriver({
+        deliveryLatitude: existing.deliveryLatitude,
+        deliveryLongitude: existing.deliveryLongitude,
+      });
+
+      if (!assignedDriver) {
+        return res.status(400).json({
+          error: "No active company driver is currently available for this delivery",
+        });
+      }
+
+      history.push(createAssignmentHistory(assignedDriver, "AUTO_DISPATCH"));
+    }
+
     history.push({ status, timestamp: new Date().toISOString() });
 
     const updated = await prisma.deliveryOrder.update({
       where: { id: existing.id },
-      data: { status: enumStatus, statusHistory: history },
+      data: {
+        status: enumStatus,
+        statusHistory: history,
+        ...(assignedDriver ? { driverId: assignedDriver.id } : {}),
+      },
       include: {
         customer: { select: { id: true, name: true, email: true, phone: true } },
         product: true,
-        driver: { select: { id: true, name: true, email: true, phone: true } },
+        driver: { select: driverSelect() },
       },
     });
+
+    if (assignedDriver) {
+      await createUserNotification({
+        userId: assignedDriver.id,
+        title: "New delivery assigned",
+        message: `You have been assigned delivery ${updated.orderId}.`,
+        type: "DELIVERY_ASSIGNED",
+        metadata: { orderId: updated.id },
+      });
+    }
 
     res.json({ delivery: formatDelivery(updated) });
   } catch (error) {

@@ -31,19 +31,13 @@ const vehicleBaseSchema = z.object({
   license_plate: z.string().trim().optional().nullable(),
   vin: z.string().trim().optional().nullable(),
   color: z.string().trim().min(1, "Color is required"),
-  insurance_provider: z.string().trim().optional().nullable(),
-  insurance_policy_number: z.string().trim().optional().nullable(),
-  insurance_expiration: z.string().optional().nullable(),
   driver_contact_number: z.string().trim().min(7, "Driver contact number is required"),
   driver_residential_address: z.string().trim().min(5, "Residential address is required"),
   driver_license_number: z.string().trim().min(1, "Driver license number is required"),
   license_expiration: z.string().min(1, "License expiration is required"),
   vehicle_photo: imageDataSchema,
   driver_photo: imageDataSchema,
-  insurance_document: optionalDocumentSchema,
   registration_document: optionalDocumentSchema,
-  seating_capacity: z.coerce.number().int().positive().optional().nullable(),
-  mileage: z.coerce.number().min(0).optional().nullable(),
 })
 
 const vehicleSchema = vehicleBaseSchema.superRefine((data, ctx) => {
@@ -53,9 +47,6 @@ const vehicleSchema = vehicleBaseSchema.superRefine((data, ctx) => {
   const requiredFields = [
     ["license_plate", "License plate is required"],
     ["vin", "VIN is required"],
-    ["insurance_provider", "Insurance provider is required"],
-    ["insurance_policy_number", "Insurance policy number is required"],
-    ["insurance_expiration", "Insurance expiration is required"],
   ]
 
   requiredFields.forEach(([field, message]) => {
@@ -124,6 +115,7 @@ function includeDriver() {
         email: true,
         phone: true,
         role: true,
+        deliveryStaffStatus: true,
         assignedDeliveries: {
           where: { status: { in: ["PENDING", "IN_TRANSIT"] } },
           select: { id: true, orderId: true, status: true, deliveryDate: true },
@@ -143,11 +135,6 @@ router.post("/", requireAuth, requireRole(["DELIVERY"]), async (req, res, next) 
     const licenseExpiration = parseDate(parsed.license_expiration, "License expiration", res, true)
     if (!licenseExpiration) return
 
-    const insuranceExpiration = parsed.insurance_expiration
-      ? parseDate(parsed.insurance_expiration, "Insurance expiration", res)
-      : null
-    if (parsed.insurance_expiration && !insuranceExpiration) return
-
     const data = {
       vehicle_type: parsed.vehicle_type,
       make: parsed.make,
@@ -156,19 +143,14 @@ router.post("/", requireAuth, requireRole(["DELIVERY"]), async (req, res, next) 
       license_plate: parsed.license_plate || null,
       vin: parsed.vin || null,
       color: parsed.color,
-      insurance_provider: parsed.insurance_provider || null,
-      insurance_policy_number: parsed.insurance_policy_number || null,
-      insurance_expiration: insuranceExpiration,
       driver_contact_number: parsed.driver_contact_number,
       driver_residential_address: parsed.driver_residential_address,
       driver_license_number: parsed.driver_license_number,
       license_expiration: licenseExpiration,
       vehicle_photo: parsed.vehicle_photo,
       driver_photo: parsed.driver_photo,
-      insurance_document: parsed.insurance_document || null,
       registration_document: parsed.registration_document || null,
-      seating_capacity: parsed.seating_capacity || null,
-      mileage: parsed.mileage || 0,
+      is_active: true,
       verification_status: "PENDING",
       verification_notes: null,
       changes_requested: null,
@@ -177,16 +159,23 @@ router.post("/", requireAuth, requireRole(["DELIVERY"]), async (req, res, next) 
       verified_at: null,
     }
 
-    const vehicle = await prisma.vehicle.upsert({
-      where: { user_id: req.user.id },
-      update: data,
-      create: { ...data, user_id: req.user.id },
-      include: includeDriver(),
-    })
+    const vehicle = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: req.user.id },
+        data: {
+          phone: parsed.driver_contact_number,
+          deliveryStaffStatus: "PENDING",
+        },
+      })
 
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { phone: parsed.driver_contact_number },
+      const savedVehicle = await tx.vehicle.upsert({
+        where: { user_id: req.user.id },
+        update: data,
+        create: { ...data, user_id: req.user.id },
+        include: includeDriver(),
+      })
+
+      return savedVehicle
     })
 
     res.status(200).json({ message: "Vehicle details submitted successfully", vehicle })
@@ -243,17 +232,12 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN"]), async (req,
       "license_plate",
       "vin",
       "color",
-      "insurance_provider",
-      "insurance_policy_number",
       "driver_contact_number",
       "driver_residential_address",
       "driver_license_number",
       "vehicle_photo",
       "driver_photo",
-      "insurance_document",
       "registration_document",
-      "seating_capacity",
-      "mileage",
       "is_active",
       "verification_notes",
     ]
@@ -267,25 +251,39 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN"]), async (req,
       if (!update.license_expiration) return
     }
 
-    if (parsed.insurance_expiration !== undefined) {
-      update.insurance_expiration = parsed.insurance_expiration
-        ? parseDate(parsed.insurance_expiration, "Insurance expiration", res)
-        : null
-      if (parsed.insurance_expiration && !update.insurance_expiration) return
-    }
+    const vehicle = await prisma.$transaction(async (tx) => {
+      const userUpdate = {}
+      if (parsed.driver_contact_number) userUpdate.phone = parsed.driver_contact_number
+      if (parsed.is_active === false) userUpdate.deliveryStaffStatus = "SUSPENDED"
+      if (parsed.is_active === true && existing.verification_status === "APPROVED") {
+        userUpdate.deliveryStaffStatus = "ACTIVE"
+      }
 
-    const vehicle = await prisma.vehicle.update({
-      where: { id: existing.id },
-      data: update,
-      include: includeDriver(),
-    })
+      if (Object.keys(userUpdate).length > 0) {
+        await tx.user.update({
+          where: { id: existing.user_id },
+          data: userUpdate,
+        })
+      }
 
-    if (parsed.driver_contact_number) {
-      await prisma.user.update({
-        where: { id: existing.user_id },
-        data: { phone: parsed.driver_contact_number },
+      const updatedVehicle = await tx.vehicle.update({
+        where: { id: existing.id },
+        data: update,
+        include: includeDriver(),
       })
-    }
+
+      if (parsed.is_active === false) {
+        await tx.deliveryOrder.updateMany({
+          where: {
+            driverId: existing.user_id,
+            status: { in: ["PENDING", "IN_TRANSIT"] },
+          },
+          data: { driverId: null, status: "PENDING" },
+        })
+      }
+
+      return updatedVehicle
+    })
 
     res.status(200).json({ message: "Vehicle details updated", vehicle })
   } catch (error) {
@@ -302,25 +300,34 @@ router.patch("/:id/deactivate", requireAuth, requireRole(["MANAGER", "ADMIN"]), 
     const existing = await prisma.vehicle.findUnique({ where: { id: req.params.id } })
     if (!existing) return res.status(404).json({ message: "Vehicle not found" })
 
-    const vehicle = await prisma.vehicle.update({
-      where: { id: existing.id },
-      data: {
-        is_active: false,
-        verification_status: "REJECTED",
-        rejection_reason: parsed.reason,
-        changes_requested: "Driver removed from active delivery service by management.",
-        verified_by: req.user.id,
-        verified_at: new Date(),
-      },
-      include: includeDriver(),
-    })
+    const vehicle = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: existing.user_id },
+        data: { deliveryStaffStatus: "SUSPENDED" },
+      })
 
-    await prisma.deliveryOrder.updateMany({
-      where: {
-        driverId: existing.user_id,
-        status: { in: ["PENDING", "IN_TRANSIT"] },
-      },
-      data: { driverId: null },
+      const updatedVehicle = await tx.vehicle.update({
+        where: { id: existing.id },
+        data: {
+          is_active: false,
+          verification_status: "REJECTED",
+          rejection_reason: parsed.reason,
+          changes_requested: "Driver removed from active delivery service by management.",
+          verified_by: req.user.id,
+          verified_at: new Date(),
+        },
+        include: includeDriver(),
+      })
+
+      await tx.deliveryOrder.updateMany({
+        where: {
+          driverId: existing.user_id,
+          status: { in: ["PENDING", "IN_TRANSIT"] },
+        },
+        data: { driverId: null, status: "PENDING" },
+      })
+
+      return updatedVehicle
     })
 
     await notifyDriver(
@@ -346,24 +353,46 @@ router.patch("/:id/verify", requireAuth, requireRole(["MANAGER", "ADMIN"]), asyn
     const existing = await prisma.vehicle.findUnique({ where: { id: req.params.id } })
     if (!existing) return res.status(404).json({ message: "Vehicle not found" })
 
-    const vehicle = await prisma.vehicle.update({
-      where: { id: existing.id },
-      data: {
-        verification_status: parsed.status,
-        verification_notes: parsed.notes || null,
-        rejection_reason: parsed.status === "REJECTED" ? parsed.rejection_reason : null,
-        changes_requested: parsed.status === "REJECTED" ? parsed.changes_requested || null : null,
-        verified_by: req.user.id,
-        verified_at: new Date(),
-      },
-      include: includeDriver(),
+    const vehicle = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: existing.user_id },
+        data: {
+          deliveryStaffStatus: parsed.status === "APPROVED" ? "ACTIVE" : "REJECTED",
+        },
+      })
+
+      const updatedVehicle = await tx.vehicle.update({
+        where: { id: existing.id },
+        data: {
+          is_active: parsed.status === "APPROVED",
+          verification_status: parsed.status,
+          verification_notes: parsed.notes || null,
+          rejection_reason: parsed.status === "REJECTED" ? parsed.rejection_reason : null,
+          changes_requested: parsed.status === "REJECTED" ? parsed.changes_requested || null : null,
+          verified_by: req.user.id,
+          verified_at: new Date(),
+        },
+        include: includeDriver(),
+      })
+
+      if (parsed.status === "REJECTED") {
+        await tx.deliveryOrder.updateMany({
+          where: {
+            driverId: existing.user_id,
+            status: { in: ["PENDING", "IN_TRANSIT"] },
+          },
+          data: { driverId: null, status: "PENDING" },
+        })
+      }
+
+      return updatedVehicle
     })
 
     if (parsed.status === "APPROVED") {
       await notifyDriver(
         vehicle.user_id,
         "Vehicle approved",
-        "Your vehicle has been approved. You can now be assigned delivery orders.",
+        "Your vehicle has been approved and your company driver account is now active.",
         "VEHICLE_APPROVED",
         { vehicleId: vehicle.id }
       )
