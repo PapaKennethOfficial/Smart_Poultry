@@ -1,11 +1,9 @@
 const prisma = require("../config/prisma")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
-const crypto = require("crypto")
 const admin = require("../config/firebaseAdmin")
 
 const PUBLIC_REGISTRATION_ROLES = new Set(["CUSTOMER", "DELIVERY"])
-const PRIVILEGED_REGISTRATION_ROLES = new Set(["ADMIN", "MANAGER"])
 
 function roleCanAccessSignInArea(userRole, requestedRole) {
     if (!requestedRole) return true
@@ -13,54 +11,14 @@ function roleCanAccessSignInArea(userRole, requestedRole) {
     return userRole === requestedRole
 }
 
-function isManagerRegistrationCodeConfigured() {
-    return (process.env.MANAGER_REGISTRATION_CODE || "").trim().length >= 12
-}
-
-function timingSafeEqualString(a, b) {
-    const aBuffer = Buffer.from(a || "")
-    const bBuffer = Buffer.from(b || "")
-
-    if (aBuffer.length !== bBuffer.length) return false
-    return crypto.timingSafeEqual(aBuffer, bBuffer)
-}
-
-async function canBootstrapFirstPrivilegedAccount() {
-    const privilegedCount = await prisma.user.count({
-        where: { role: { in: [...PRIVILEGED_REGISTRATION_ROLES] } },
-    })
-
-    return privilegedCount === 0
-}
-
-async function assertCanRegisterRole(role, managerAccessCode) {
+function assertCanRegisterRole(role) {
     if (PUBLIC_REGISTRATION_ROLES.has(role)) return null
+    if (role === "MANAGER") return null
 
-    if (role !== "MANAGER") {
-        return {
-            status: 403,
-            message: "This role cannot be self-registered. Ask an administrator to create privileged accounts.",
-        }
+    return {
+        status: 403,
+        message: "This role cannot be self-registered. Ask an administrator to create privileged accounts.",
     }
-
-    if (await canBootstrapFirstPrivilegedAccount()) return null
-
-    if (!isManagerRegistrationCodeConfigured()) {
-        return {
-            status: 403,
-            message: "Manager registration is not configured. Set MANAGER_REGISTRATION_CODE or sign in with an existing admin account.",
-        }
-    }
-
-    const expectedCode = process.env.MANAGER_REGISTRATION_CODE.trim()
-    if (!managerAccessCode || !timingSafeEqualString(managerAccessCode, expectedCode)) {
-        return {
-            status: 403,
-            message: "Invalid manager setup code.",
-        }
-    }
-
-    return null
 }
 
 function signToken(user) {
@@ -120,10 +78,10 @@ const login = async (req, res, next) => {
 
 const register = async (req, res, next) => {
     try {
-        const { name, email, password, role, managerAccessCode } = req.body
+        const { name, email, password, role } = req.body
         const requestedRole = role || "CUSTOMER"
 
-        const roleRegistrationError = await assertCanRegisterRole(requestedRole, managerAccessCode)
+        const roleRegistrationError = assertCanRegisterRole(requestedRole)
         if (roleRegistrationError) {
             return res.status(roleRegistrationError.status).json({
                 message: roleRegistrationError.message,
@@ -143,6 +101,7 @@ const register = async (req, res, next) => {
                 email,
                 password: hashed,
                 role: requestedRole,
+                deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
             },
         })
 
@@ -198,7 +157,8 @@ const googleAuth = async (req, res, next) => {
                     name,
                     email,
                     password: "", // No password for OAuth
-                    role: requestedRole
+                    role: requestedRole,
+                    deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
                 }
             })
         }
