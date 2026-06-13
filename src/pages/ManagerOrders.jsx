@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react'
-import { ShoppingBag, Truck, CheckCircle2, Clock, Package, MapPin, Eye, Phone, Edit2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { ShoppingBag, Truck, CheckCircle2, Clock, Package, MapPin, Eye, Phone, Edit2, Filter, X } from 'lucide-react'
 import api from '../api/axios'
+
+// Payment-status options come from the seed flow: PENDING / AWAITING_CONFIRMATION
+// / PAID / FAILED. The backend matches on uppercase strings — anything we add
+// here just becomes another filter chip.
+const PAYMENT_STATUS_OPTIONS = ['PENDING', 'AWAITING_CONFIRMATION', 'PAID', 'FAILED']
 
 function StatCard({ label, value, icon: Icon, iconColor, accent }) {
   return (
@@ -34,22 +39,52 @@ export default function ManagerOrders() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
-  
+
+  // Advanced filter row state
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [driverSearch, setDriverSearch] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [productSearch, setProductSearch] = useState('')
+  const [paymentStatus, setPaymentStatus] = useState('')
+
   // Modals
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [assigningDriver, setAssigningDriver] = useState(false)
   const [selectedDriverId, setSelectedDriverId] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [newStatus, setNewStatus] = useState('')
-  
+
   const [actionLoading, setActionLoading] = useState(false)
 
-  const fetchData = async () => {
+  // Advanced filters go to the backend so the manager can search across the
+  // whole table. The status tabs stay client-side so the stat cards keep
+  // reflecting totals across the loaded set.
+  const orderQueryParams = useMemo(() => {
+    const params = {}
+    if (dateFrom) params.dateFrom = dateFrom
+    if (dateTo) params.dateTo = dateTo
+    if (driverSearch.trim()) params.driver = driverSearch.trim()
+    if (customerSearch.trim()) params.customer = customerSearch.trim()
+    if (productSearch.trim()) params.product = productSearch.trim()
+    if (paymentStatus) params.paymentStatus = paymentStatus
+    return params
+  }, [dateFrom, dateTo, driverSearch, customerSearch, productSearch, paymentStatus])
+
+  const activeFilterCount = (dateFrom ? 1 : 0)
+    + (dateTo ? 1 : 0)
+    + (driverSearch.trim() ? 1 : 0)
+    + (customerSearch.trim() ? 1 : 0)
+    + (productSearch.trim() ? 1 : 0)
+    + (paymentStatus ? 1 : 0)
+
+  const fetchData = async (params = orderQueryParams) => {
     try {
       setLoading(true)
       const [ordersRes, driversRes] = await Promise.all([
-        api.get('/api/orders'),
-        api.get('/api/vehicles?status=APPROVED') // Fetch approved vehicles to get drivers
+        api.get('/api/orders', { params }),
+        api.get('/api/vehicles?status=APPROVED'),
       ])
       setOrders(ordersRes.data.orders || [])
       const availableDrivers = (driversRes.data.vehicles || []).map(v => ({
@@ -65,9 +100,30 @@ export default function ManagerOrders() {
     }
   }
 
+  // Initial load — drivers list doesn't depend on filters.
   useEffect(() => {
-    fetchData()
+    fetchData({})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Refetch when the user changes any filter. Debounce so typing in the
+  // search inputs doesn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchData(orderQueryParams)
+    }, 350)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderQueryParams])
+
+  const resetFilters = () => {
+    setDateFrom('')
+    setDateTo('')
+    setDriverSearch('')
+    setCustomerSearch('')
+    setProductSearch('')
+    setPaymentStatus('')
+  }
 
   const handleUpdate = async (e) => {
     e.preventDefault()
@@ -78,7 +134,7 @@ export default function ManagerOrders() {
       if (updatingStatus) payload.status = newStatus
 
       await api.patch(`/api/orders/${selectedOrder.id}`, payload)
-      await fetchData()
+      await fetchData(orderQueryParams)
       closeModal()
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update order')
@@ -117,11 +173,11 @@ export default function ManagerOrders() {
       </div>
 
       <div className="chart-card">
-        <div className="section-header">
+        <div className="section-header" style={{ flexWrap: 'wrap', gap: 12 }}>
           <div className="filter-tabs">
             {['ALL', 'PENDING', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'].map(f => (
-              <button 
-                key={f} 
+              <button
+                key={f}
                 className={`filter-tab ${filter === f ? 'active' : ''}`}
                 onClick={() => setFilter(f)}
               >
@@ -129,7 +185,106 @@ export default function ManagerOrders() {
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            className="btn-outline"
+            style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+            onClick={() => setFiltersOpen(o => !o)}
+          >
+            <Filter size={14} />
+            {filtersOpen ? 'Hide filters' : 'More filters'}
+            {activeFilterCount > 0 && (
+              <span className="badge badge-gold" style={{ marginLeft: 6, padding: '0 7px' }}>{activeFilterCount}</span>
+            )}
+          </button>
         </div>
+
+        {filtersOpen && (
+          <div style={{
+            background: 'var(--bg)', borderRadius: 10, padding: 14,
+            marginBottom: 16, border: '1px solid var(--border-light)',
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: 12,
+            }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Date from</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Date to</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Driver</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Name, email or phone"
+                  value={driverSearch}
+                  onChange={(e) => setDriverSearch(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Customer</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Name, email or phone"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Product</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Product name"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Payment status</label>
+                <select
+                  className="form-select"
+                  value={paymentStatus}
+                  onChange={(e) => setPaymentStatus(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  {PAYMENT_STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {activeFilterCount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  style={{ padding: '5px 11px', fontSize: '0.75rem' }}
+                  onClick={resetFilters}
+                >
+                  <X size={12} /> Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="table-wrapper">
           <table className="data-table">

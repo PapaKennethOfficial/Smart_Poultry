@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { ShoppingCart, Package, Search, Plus, Minus, CheckCircle2, ShoppingBag, MapPin } from 'lucide-react'
 import api from '../api/axios'
 
+// Keep this list aligned with the backend `PAYMENT_METHODS` enum
+// (smartpoultry-backend/src/routes/order.routes.js). Card and bank transfer
+// are not yet supported server-side, so we don't offer them in the UI.
 const PAYMENT_OPTIONS = [
   { value: 'MOBILE_MONEY', label: 'Mobile Money' },
-  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-  { value: 'CARD', label: 'Card Payment' },
   { value: 'PAY_ON_DELIVERY', label: 'Payment on Delivery' },
 ]
 
