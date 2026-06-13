@@ -22,7 +22,6 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [role, setRole] = useState('customer')
-  const [managerAccessCode, setManagerAccessCode] = useState('')
   const [matchError, setMatchError] = useState(null)
 
   const { mutate: register, isPending, error, reset } = useRegister()
@@ -32,7 +31,7 @@ export default function Register() {
   const handleGoogleLogin = async () => {
     try {
       if (role === 'manager') {
-        alert('Managers must sign up with an approved setup code and password.')
+        alert('Managers must sign up with email and password.')
         return
       }
       if (!isFirebaseConfigured || !auth) {
@@ -71,7 +70,6 @@ export default function Register() {
       email,
       password,
       role: ROLE_MAP[role] || 'CUSTOMER',
-      ...(role === 'manager' ? { managerAccessCode } : {}),
     })
   }
 
@@ -226,22 +224,6 @@ export default function Register() {
               ))}
             </div>
           </div>
-
-          {role === 'manager' && (
-            <div className="form-group">
-              <label className="form-label">Manager Setup Code</label>
-              <input
-                className="form-input"
-                type="password"
-                id="register-manager-code"
-                placeholder="Enter setup code"
-                value={managerAccessCode}
-                onChange={clearOnChange(setManagerAccessCode)}
-                disabled={isPending}
-                required
-              />
-            </div>
-          )}
 
           <div className="form-group">
             <label className="form-label">Full Name</label>
