@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ShoppingBag, Clock, Truck, CheckCircle2, Package, MapPin, Eye, Phone, MessageCircle } from 'lucide-react'
+import { ShoppingBag, Clock, Truck, CheckCircle2, Package, MapPin, Eye, Phone, MessageCircle, Car, User as UserIcon } from 'lucide-react'
 import api from '../api/axios'
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -40,6 +40,84 @@ const PAYMENT_LABELS = {
   BANK_TRANSFER: 'Bank Transfer',
   CARD: 'Card',
   PAY_ON_DELIVERY: 'Pay on Delivery',
+}
+
+// ─── Delivery progress (estimated) ───────────────────────────────────────────
+// Maps the four order statuses to a four-step indicator. CANCELLED orders
+// short-circuit to a single "Cancelled" step rendered in red.
+const PROGRESS_STEPS = [
+  { key: 'PLACED',     label: 'Placed' },
+  { key: 'PENDING',    label: 'Confirmed' },
+  { key: 'IN_TRANSIT', label: 'In Transit' },
+  { key: 'DELIVERED',  label: 'Delivered' },
+]
+
+function progressIndexFor(status) {
+  // 'Placed' is always reached as soon as the order exists.
+  if (!status || status === 'PENDING') return 1
+  if (status === 'IN_TRANSIT') return 2
+  if (status === 'DELIVERED') return 3
+  return 0
+}
+
+function DeliveryProgress({ status }) {
+  if (status === 'CANCELLED') {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 10, marginBottom: 20,
+        background: 'var(--clr-danger-bg)', color: 'var(--clr-danger-txt)',
+        fontSize: '0.85rem', fontWeight: 600, textAlign: 'center',
+      }}>
+        Order cancelled
+      </div>
+    )
+  }
+
+  const currentIndex = progressIndexFor(status)
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+        {/* connecting line behind dots */}
+        <div style={{
+          position: 'absolute', top: 11, left: '8%', right: '8%', height: 2,
+          background: 'var(--border-light)', zIndex: 0,
+        }} />
+        <div style={{
+          position: 'absolute', top: 11, left: '8%',
+          width: `${(currentIndex / (PROGRESS_STEPS.length - 1)) * 84}%`,
+          height: 2, background: 'var(--primary)', zIndex: 0,
+          transition: 'width 0.3s',
+        }} />
+
+        {PROGRESS_STEPS.map((step, i) => {
+          const done = i <= currentIndex
+          return (
+            <div key={step.key} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              flex: 1, position: 'relative', zIndex: 1,
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: done ? 'var(--primary)' : '#fff',
+                border: `2px solid ${done ? 'var(--primary)' : 'var(--border)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: '0.7rem', fontWeight: 700,
+              }}>
+                {done && <CheckCircle2 size={14} />}
+              </div>
+              <div style={{
+                fontSize: '0.72rem', marginTop: 6, textAlign: 'center',
+                fontWeight: i === currentIndex ? 600 : 400,
+                color: done ? 'var(--text-heading)' : 'var(--text-subtle)',
+              }}>
+                {step.label}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export default function CustomerOrders() {
@@ -200,13 +278,16 @@ export default function CustomerOrders() {
       {selectedOrder && (
         <div className="modal-overlay">
           <div className="modal-box">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
               <div>
                 <h2 className="modal-title">Order {selectedOrder.orderId}</h2>
                 <div className="modal-subtitle" style={{ marginBottom: 0 }}>Placed on {new Date(selectedOrder.createdAt).toLocaleString()}</div>
               </div>
               <span className={`badge ${STATUS_MAP[selectedOrder.status]?.color || 'badge-gray'}`}>{selectedOrder.status}</span>
             </div>
+
+            {/* Estimated delivery progress */}
+            <DeliveryProgress status={selectedOrder.status} />
 
             <div className="section-header">
               <div className="section-title">Order Items</div>
@@ -254,19 +335,72 @@ export default function CustomerOrders() {
               {selectedOrder.driver && (
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
                   <div style={{ color: 'var(--text-subtle)', marginBottom: 8 }}>Delivery Driver</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, background: '#fff', border: '1px solid var(--border)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.8rem' }}>
-                      {selectedOrder.driver.name.charAt(0)}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    {selectedOrder.driver.vehicle?.driver_photo ? (
+                      <img
+                        src={selectedOrder.driver.vehicle.driver_photo}
+                        alt={selectedOrder.driver.name}
+                        style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
+                      />
+                    ) : (
+                      <div style={{ width: 44, height: 44, background: '#fff', border: '1px solid var(--border)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.95rem' }}>
+                        {selectedOrder.driver.name.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontWeight: 600 }}>{selectedOrder.driver.name}</div>
-                      {selectedOrder.driver.phone && (
+                      {(selectedOrder.driver.vehicle?.driver_contact_number || selectedOrder.driver.phone) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>
-                          <Phone size={12} /> {selectedOrder.driver.phone}
+                          <Phone size={12} /> {selectedOrder.driver.vehicle?.driver_contact_number || selectedOrder.driver.phone}
                         </div>
                       )}
                     </div>
                   </div>
+
+                  {/* Vehicle details — so the customer knows what to look out for */}
+                  {selectedOrder.driver.vehicle && (
+                    <div style={{
+                      background: '#fff', border: '1px solid var(--border-light)',
+                      borderRadius: 10, padding: 12,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-subtle)', fontSize: '0.78rem', marginBottom: 10 }}>
+                        <Car size={14} /> Delivery vehicle
+                      </div>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        {selectedOrder.driver.vehicle.vehicle_photo ? (
+                          <img
+                            src={selectedOrder.driver.vehicle.vehicle_photo}
+                            alt="Delivery vehicle"
+                            style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-light)', flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{ width: 96, height: 72, background: 'var(--bg)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Truck size={20} color="var(--border)" />
+                          </div>
+                        )}
+                        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: '0.82rem' }}>
+                          <div>
+                            <div style={{ color: 'var(--text-subtle)', fontSize: '0.7rem' }}>Type</div>
+                            <div style={{ fontWeight: 600 }}>{selectedOrder.driver.vehicle.vehicle_type || '—'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-subtle)', fontSize: '0.7rem' }}>Color</div>
+                            <div style={{ fontWeight: 600 }}>{selectedOrder.driver.vehicle.color || '—'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-subtle)', fontSize: '0.7rem' }}>Make / Model</div>
+                            <div style={{ fontWeight: 600 }}>
+                              {[selectedOrder.driver.vehicle.make, selectedOrder.driver.vehicle.model].filter(Boolean).join(' ') || '—'}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--text-subtle)', fontSize: '0.7rem' }}>License Plate</div>
+                            <div style={{ fontWeight: 600 }}>{selectedOrder.driver.vehicle.license_plate || '—'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
