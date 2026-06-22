@@ -9,6 +9,7 @@ const USER_PUBLIC_SELECT = {
   phone: true,
   role: true,
   notificationPreferences: true,
+  isTwoFactorEnabled: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
@@ -131,10 +132,26 @@ const listUsers = async (req, res, next) => {
   }
 };
 
+// ─── PATCH /users/me/2fa ─────────────────────────────────────────────────────
+const toggle2FA = async (req, res, next) => {
+  try {
+    const { enabled } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { isTwoFactorEnabled: enabled },
+      select: USER_PUBLIC_SELECT,
+    });
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMe,
   updateMe,
   updateNotifications,
   updatePassword,
   listUsers,
+  toggle2FA,
 };

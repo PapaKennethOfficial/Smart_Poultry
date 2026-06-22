@@ -10,6 +10,7 @@ const productSchema = z.object({
   price: z.coerce.number().positive("Price must be positive"),
   unit: z.string().trim().min(1, "Unit is required").default("kg"),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative").default(0),
+  category: z.string().trim().min(1, "Category is required").default("General"),
   imageUrl: z.string().trim().optional().nullable(),
 })
 
@@ -26,8 +27,26 @@ function parseBody(schema, req, res) {
   return parsed.data
 }
 
-// Public: get all products visible in the marketplace.
+// Public: get all active products visible in the marketplace.
 router.get("/", async (req, res, next) => {
+  try {
+    const { category } = req.query
+    const where = { isActive: true }
+    if (category && category !== 'All') {
+      where.category = category
+    }
+    const products = await prisma.product.findMany({
+      where,
+      orderBy: { name: "asc" },
+    })
+    res.status(200).json({ products })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Manager/Admin: get ALL products including inactive/out-of-stock.
+router.get("/all", requireAuth, requireRole(["MANAGER", "ADMIN"]), async (req, res, next) => {
   try {
     const products = await prisma.product.findMany({
       orderBy: { name: "asc" },
@@ -55,9 +74,15 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN"]), async (req,
     const data = parseBody(productPatchSchema, req, res)
     if (!data) return
 
+    // Auto-relist the product if stock is being replenished above zero
+    const updateData = { ...data }
+    if (data.stock !== undefined && data.stock > 0) {
+      updateData.isActive = true
+    }
+
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data,
+      data: updateData,
     })
     res.status(200).json({ message: "Product updated", product })
   } catch (error) {

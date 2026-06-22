@@ -15,6 +15,7 @@ const {
   updateNotifications,
   updatePassword,
   listUsers,
+  toggle2FA,
 } = require("../controllers/user.controller");
 
 // All routes require an authenticated user.
@@ -27,6 +28,7 @@ router.get("/me", getMe);
 router.put("/me", validate(updateProfileSchema), updateMe);
 router.patch("/me/notifications", validate(updateNotificationsSchema), updateNotifications);
 router.patch("/me/password", validate(updatePasswordSchema), updatePassword);
+router.patch("/me/2fa", toggle2FA);
 
 // ─── Admin / Manager only ────────────────────────────────────────────────────
 router.get("/", roleGuard(["ADMIN", "MANAGER"]), listUsers);

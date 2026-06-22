@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useLogin } from '../hooks/auth/useLogin'
+import { useVerifyOTP } from '../hooks/auth/useVerifyOTP'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '../firebase'
 import { googleAuthUser } from '../api/auth'
@@ -24,8 +25,10 @@ export default function Login() {
   const [role, setRole] = useState('manager')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otpCode, setOtpCode] = useState('')
 
-  const { mutate: login, isPending, error, reset } = useLogin()
+  const { mutate: login, data: loginData, isPending, error, reset } = useLogin()
+  const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOTP()
   const { setToken, setRole: setAuthRole, setUser } = useAuth()
   const navigate = useNavigate()
 
@@ -59,7 +62,11 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    login({ email, password, role: PASSWORD_ROLE_MAP[role] })
+    if (loginData?.requires2FA) {
+      verifyOtp({ userId: loginData.userId, otpCode })
+    } else {
+      login({ email, password, role: PASSWORD_ROLE_MAP[role] })
+    }
   }
 
   const isInvalidCreds = error?.response?.status === 401
@@ -201,61 +208,81 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
-              className="form-input"
-              type="email"
-              id="login-email"
-              placeholder="dennis@smartpoultry.gh"
-              value={email}
-              onChange={clearErrorOnChange(setEmail)}
-              disabled={isPending}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <div style={{ position: 'relative' }}>
+          {loginData?.requires2FA ? (
+            <div className="form-group">
+              <label className="form-label">Enter OTP Code</label>
               <input
                 className="form-input"
-                type={showPass ? 'text' : 'password'}
-                id="login-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={clearErrorOnChange(setPassword)}
-                disabled={isPending}
+                type="text"
+                placeholder="123456"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                disabled={isVerifying}
                 required
-                style={{ paddingRight: 44 }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                style={{
-                  position: 'absolute', right: 13, top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#8da58f'
-                }}
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+              <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginTop: 6 }}>
+                An OTP has been sent to your email/phone.
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  className="form-input"
+                  type="email"
+                  id="login-email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={clearErrorOnChange(setEmail)}
+                  disabled={isPending}
+                  required
+                />
+              </div>
 
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', marginBottom: 22
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked style={{ accentColor: '#237227', width: 14, height: 14 }} />
-              <span style={{ fontSize: '0.8rem', color: '#5e7a61' }}>Remember me</span>
-            </label>
-            <span style={{
-              fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
-            }}>Forgot password?</span>
-          </div>
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="form-input"
+                    type={showPass ? 'text' : 'password'}
+                    id="login-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={clearErrorOnChange(setPassword)}
+                    disabled={isPending}
+                    required
+                    style={{ paddingRight: 44 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    style={{
+                      position: 'absolute', right: 13, top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: '#8da58f'
+                    }}
+                  >
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', marginBottom: 22
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ accentColor: '#237227', width: 14, height: 14 }} />
+                  <span style={{ fontSize: '0.8rem', color: '#5e7a61' }}>Remember me</span>
+                </label>
+                <span style={{
+                  fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
+                }}>Forgot password?</span>
+              </div>
+            </>
+          )}
 
           {inlineError && (
             <div
@@ -278,17 +305,17 @@ export default function Login() {
           <button
             type="submit"
             className="btn-primary"
-            style={{ width: '100%', justifyContent: 'center', padding: '12px', opacity: isPending ? 0.75 : 1 }}
-            disabled={isPending}
+            style={{ width: '100%', justifyContent: 'center', padding: '12px', opacity: (isPending || isVerifying) ? 0.75 : 1 }}
+            disabled={isPending || isVerifying}
           >
-            {isPending ? (
+            {(isPending || isVerifying) ? (
               <>
                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                Signing in…
+                {isVerifying ? 'Verifying OTP…' : 'Signing in…'}
               </>
             ) : (
               <>
-                Sign In to Dashboard
+                {loginData?.requires2FA ? 'Verify OTP' : 'Sign In to Dashboard'}
                 <ArrowRight size={16} />
               </>
             )}

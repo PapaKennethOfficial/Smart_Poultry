@@ -226,6 +226,43 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
 
     await Promise.all(notifications)
 
+    // ─── Automated Low-Stock & Out-of-Stock Alerts ───────────────────────────
+    const updatedProduct = await prisma.product.findUnique({ where: { id: data.productId } })
+    if (updatedProduct) {
+      const LOW_STOCK_THRESHOLD = 5
+
+      // Auto-unlist product if stock has reached zero
+      if (updatedProduct.stock <= 0) {
+        await prisma.product.update({
+          where: { id: data.productId },
+          data: { isActive: false }
+        })
+      }
+
+      // Notify all managers about low or out-of-stock
+      if (updatedProduct.stock <= LOW_STOCK_THRESHOLD) {
+        const managers = await prisma.user.findMany({
+          where: { role: { in: ["MANAGER", "ADMIN"] } },
+          select: { id: true }
+        })
+
+        const stockMessage = updatedProduct.stock <= 0
+          ? `"${updatedProduct.name}" is now OUT OF STOCK and has been automatically unlisted from the marketplace.`
+          : `"${updatedProduct.name}" is running low — only ${updatedProduct.stock} ${updatedProduct.unit}(s) remaining. Consider restocking soon.`
+
+        const stockAlerts = managers.map((m) =>
+          createNotification(
+            m.id,
+            updatedProduct.stock <= 0 ? "Product out of stock" : "Low stock alert",
+            stockMessage,
+            "LOW_STOCK",
+            { productId: data.productId, currentStock: updatedProduct.stock }
+          )
+        )
+        await Promise.all(stockAlerts)
+      }
+    }
+
     res.status(201).json({ message: "Order placed successfully", order })
   } catch (error) {
     next(error)

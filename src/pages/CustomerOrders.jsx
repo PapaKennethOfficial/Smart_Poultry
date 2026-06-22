@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ShoppingBag, Clock, Truck, CheckCircle2, Package, MapPin, Eye, Phone, MessageCircle, Car, User as UserIcon } from 'lucide-react'
 import api from '../api/axios'
+import Pagination from '../components/Pagination'
+import TableFilter from '../components/TableFilter'
+import { useSocket } from '../context/SocketContext'
+import { useAuth } from '../context/AuthContext'
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -124,36 +128,74 @@ export default function CustomerOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchValue, setSearchValue] = useState('')
+  const itemsPerPage = 10
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
 
+  const { socket } = useSocket()
+  const { user } = useAuth()
+
   useEffect(() => {
     fetchOrders()
-    const interval = setInterval(fetchOrders, 10000)
+    const interval = setInterval(fetchOrders, 30000) // 30s instead of 10s for general order updates
     return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
     if (!selectedOrder) return
     const fresh = orders.find(o => o.id === selectedOrder.id)
-    if (fresh) setSelectedOrder(fresh)
+    if (fresh) setSelectedOrder(prev => ({ ...fresh, driverLatitude: prev.driverLatitude || fresh.driverLatitude, driverLongitude: prev.driverLongitude || fresh.driverLongitude }))
   }, [orders, selectedOrder?.id])
 
   useEffect(() => {
-    if (!selectedOrder) return undefined
+    if (!selectedOrder || !socket) return undefined
 
-    const loadMessages = () => {
-      api.get(`/api/orders/${selectedOrder.id}/messages`)
-        .then(res => setMessages(res.data.messages || []))
-        .catch(() => {})
+    // Join room for this specific order
+    socket.emit('join_order_room', selectedOrder.id)
+
+    // Initial load of messages via API to get history
+    const loadMessages = async () => {
+      try {
+        const res = await api.get(`/api/orders/${selectedOrder.id}/messages`)
+        setMessages(res.data.messages || [])
+      } catch (err) {
+        console.error("Failed to load messages", err)
+      }
+    }
+    loadMessages()
+
+    const handleNewMessage = (msg) => {
+      // msg format from backend/socket: { id, message, createdAt, sender: { id, name, role } }
+      // the socket implementation in backend (socket.js) might just broadcast simple objects.
+      // Assuming it broadcasts the saved message object or a custom format.
+      setMessages(prev => [...prev, msg])
     }
 
-    loadMessages()
-    const interval = setInterval(loadMessages, 5000)
-    return () => clearInterval(interval)
-  }, [selectedOrder?.id])
+    const handleLocationUpdate = (loc) => {
+      // loc format: { orderId, latitude, longitude }
+      if (loc.orderId === selectedOrder.id) {
+        setSelectedOrder(prev => ({
+          ...prev,
+          driverLatitude: loc.latitude,
+          driverLongitude: loc.longitude,
+          driverLocationUpdatedAt: new Date().toISOString()
+        }))
+      }
+    }
+
+    socket.on('chat_message', handleNewMessage)
+    socket.on('location_update', handleLocationUpdate)
+
+    return () => {
+      socket.off('chat_message', handleNewMessage)
+      socket.off('location_update', handleLocationUpdate)
+      // We don't necessarily need to leave the room right away, but it's good practice
+    }
+  }, [selectedOrder?.id, socket])
 
   const fetchOrders = async () => {
     try {
@@ -171,13 +213,24 @@ export default function CustomerOrders() {
     e.preventDefault()
     if (!selectedOrder || !messageText.trim()) return
 
+    const messageContent = messageText.trim()
+    setMessageText('')
     setSendingMessage(true)
     try {
+      // We still save via API to persist, but we also emit via socket for real-time
       const res = await api.post(`/api/orders/${selectedOrder.id}/messages`, {
-        message: messageText.trim(),
+        message: messageContent,
       })
-      setMessages(prev => [...prev, res.data.message])
-      setMessageText('')
+      // The backend should ideally broadcast the message upon API creation or we emit directly.
+      // Based on our socket.js, it expects `socket.emit('chat_message', msg)`
+      socket.emit('chat_message', res.data.message)
+      // The socket listener handles appending it, so we don't need to append here if the server broadcasts back to the sender too.
+      // If it doesn't broadcast to sender, we append here. For safety, we append manually to ensure immediate UI update and let backend handle broadcasting to OTHERS.
+      setMessages(prev => {
+        // Prevent duplicate appending if socket also echoes back
+        if (prev.some(m => m.id === res.data.message.id)) return prev
+        return [...prev, res.data.message]
+      })
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to send message')
     } finally {
@@ -185,8 +238,27 @@ export default function CustomerOrders() {
     }
   }
 
-  const filteredOrders = orders.filter(o => filter === 'ALL' || o.status === filter)
+  const filteredOrders = orders.filter(o => {
+    const matchesFilter = filter === 'ALL' || o.status === filter
+    if (!matchesFilter) return false
+    if (!searchValue) return true
+    const s = searchValue.toLowerCase()
+    return (
+      (o.product?.name || '').toLowerCase().includes(s) ||
+      (o.orderId || '').toLowerCase().includes(s)
+    )
+  })
   
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filter, searchValue])
+
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   const total = orders.length
   const active = orders.filter(o => o.status === 'PENDING' || o.status === 'IN_TRANSIT').length
   const completed = orders.filter(o => o.status === 'DELIVERED').length
@@ -218,16 +290,23 @@ export default function CustomerOrders() {
         </div>
       </div>
 
+      <TableFilter
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder="Search orders by product or ID…"
+        resultCount={filteredOrders.length}
+      />
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-subtle)' }}>Loading your orders...</div>
-      ) : filteredOrders.length === 0 ? (
+      ) : paginatedOrders.length === 0 ? (
         <div className="chart-card" style={{ textAlign: 'center', padding: '60px 0' }}>
           <Package size={48} color="var(--border)" style={{ margin: '0 auto 16px' }} />
           <div style={{ color: 'var(--text-muted)' }}>No orders found for this status.</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-          {filteredOrders.map(o => {
+          {paginatedOrders.map(o => {
             const statusConfig = STATUS_MAP[o.status] || STATUS_MAP.PENDING
             const StatusIcon = statusConfig.icon
             
@@ -272,6 +351,17 @@ export default function CustomerOrders() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {!loading && filteredOrders.length > itemsPerPage && (
+        <div style={{ marginTop: 24 }}>
+          <Pagination 
+            currentPage={currentPage}
+            totalItems={filteredOrders.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 
@@ -340,7 +430,7 @@ export default function CustomerOrders() {
                       <img
                         src={selectedOrder.driver.vehicle.driver_photo}
                         alt={selectedOrder.driver.name}
-                        style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
+                        style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top', border: '1px solid var(--border)' }}
                       />
                     ) : (
                       <div style={{ width: 44, height: 44, background: '#fff', border: '1px solid var(--border)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.95rem' }}>
@@ -349,11 +439,9 @@ export default function CustomerOrders() {
                     )}
                     <div>
                       <div style={{ fontWeight: 600 }}>{selectedOrder.driver.name}</div>
-                      {(selectedOrder.driver.vehicle?.driver_contact_number || selectedOrder.driver.phone) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>
-                          <Phone size={12} /> {selectedOrder.driver.vehicle?.driver_contact_number || selectedOrder.driver.phone}
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>
+                        <Phone size={12} /> {selectedOrder.driver.vehicle?.driver_contact_number || selectedOrder.driver.phone || 'Contact not available'}
+                      </div>
                     </div>
                   </div>
 
@@ -371,7 +459,7 @@ export default function CustomerOrders() {
                           <img
                             src={selectedOrder.driver.vehicle.vehicle_photo}
                             alt="Delivery vehicle"
-                            style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-light)', flexShrink: 0 }}
+                            style={{ width: 96, height: 72, objectFit: 'cover', objectPosition: 'center', borderRadius: 8, border: '1px solid var(--border-light)', flexShrink: 0, background: 'var(--bg)' }}
                           />
                         ) : (
                           <div style={{ width: 96, height: 72, background: 'var(--bg)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
