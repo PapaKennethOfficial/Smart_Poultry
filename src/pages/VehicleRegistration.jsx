@@ -3,6 +3,7 @@ import {
   AlertCircle, CheckCircle2, RefreshCw, Car, Hash,
   Image as ImageIcon, Truck, User as UserIcon,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import api from '../api/axios'
 
 const defaultVehicleForm = (vehicleType = 'Truck') => ({
@@ -173,6 +174,7 @@ export default function VehicleRegistration() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState(() => defaultVehicleForm())
@@ -257,6 +259,11 @@ export default function VehicleRegistration() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms and Conditions and Privacy Policy.')
+      return
+    }
+    
     setSubmitting(true)
     setError('')
     try {
@@ -518,7 +525,25 @@ export default function VehicleRegistration() {
           </div>
         </div>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', justifyContent: 'flex-end' }}>
+            <input 
+              type="checkbox" 
+              id="agree-staff-terms" 
+              checked={agreedToTerms}
+              onChange={(e) => {
+                setAgreedToTerms(e.target.checked)
+                if (error) setError('')
+              }}
+              style={{ marginTop: '3px', cursor: 'pointer' }}
+            />
+            <label htmlFor="agree-staff-terms" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', maxWidth: '400px' }}>
+              I agree to the{' '}
+              <Link to="/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms and Conditions</Link>
+              {' '}and{' '}
+              <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>, and acknowledge that platform interactions contribute to AI analytics.
+            </label>
+          </div>
           <button type="submit" className="btn-primary" disabled={submitting} style={{ padding: '12px 24px' }}>
             {submitting ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
             {submitting ? 'Submitting...' : 'Submit Vehicle Details'}

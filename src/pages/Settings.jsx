@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { User, Lock, Bell, Database, Users, Loader2 } from 'lucide-react'
+import { User, Lock, Bell, Database, Users, Loader2, FileText } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import { useMe } from '../hooks/users/useMe'
@@ -14,6 +15,7 @@ const sections = [
   { id: 'notifications', icon: Bell,     label: 'Notifications'  },
   { id: 'farm',          icon: Database, label: 'Farm Settings'  },
   { id: 'users',         icon: Users,    label: 'Team & Roles'   },
+  { id: 'legal',         icon: FileText, label: 'Legal & Policies'},
 ]
 
 const MANAGER_NOTIF_ITEMS = [
@@ -518,6 +520,37 @@ export default function Settings() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Legal & Policies ── */}
+          {activeSection === 'legal' && (
+            <div className="chart-card">
+              <div className="section-title" style={{ marginBottom: 3 }}>Legal & Policies</div>
+              <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginBottom: 22, lineHeight: 1.55 }}>
+                Review our terms of service and privacy practices.
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ padding: '16px', border: '1px solid #edebd6', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0d1f0e' }}>Terms & Conditions</div>
+                    <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 2 }}>Rules and guidelines for using the Smart Poultry platform.</div>
+                  </div>
+                  <Link to="/terms" style={{ padding: '6px 12px', background: '#237227', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 500 }}>
+                    View
+                  </Link>
+                </div>
+                <div style={{ padding: '16px', border: '1px solid #edebd6', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0d1f0e' }}>Privacy Policy</div>
+                    <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 2 }}>How we collect, use, and protect your data and AI insights.</div>
+                  </div>
+                  <Link to="/privacy" style={{ padding: '6px 12px', background: '#237227', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 500 }}>
+                    View
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ShoppingCart, Package, Search, Plus, Minus, CheckCircle2, ShoppingBag, MapPin } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import api from '../api/axios'
 
 // Keep this list aligned with the backend `PAYMENT_METHODS` enum
@@ -278,6 +279,10 @@ export default function CustomerMarketplace() {
                 <div className="form-group">
                   <label className="form-label">Notes (Optional)</label>
                   <textarea className="form-input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Delivery instructions" />
+                </div>
+                
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.4, textAlign: 'center' }}>
+                  By placing this order, you agree to our <Link to="/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms and Conditions</Link> and <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>.
                 </div>
 
                 <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} disabled={submitting}>
