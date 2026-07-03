@@ -112,6 +112,22 @@ export default function CustomerMarketplace() {
     }
   }
 
+  // Turn { lat, lon } into a human street address using OpenStreetMap's
+  // Nominatim reverse geocoder. Free, no API key required; the driver will
+  // read this text so it's worth having a real address rather than raw coords.
+  const reverseGeocode = async (latitude, longitude) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      if (!res.ok) return null
+      const data = await res.json()
+      // display_name is the fully-qualified string; fall back to nothing if empty
+      return typeof data?.display_name === 'string' ? data.display_name : null
+    } catch {
+      return null
+    }
+  }
+
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert('Location is not supported by this browser.')
@@ -120,11 +136,17 @@ export default function CustomerMarketplace() {
 
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        })
+      async (pos) => {
+        const latitude = pos.coords.latitude
+        const longitude = pos.coords.longitude
+        setCoords({ latitude, longitude })
+
+        // Only overwrite the address field if the user hasn't typed anything
+        // — respect any custom instructions they've already entered.
+        if (!address.trim()) {
+          const readable = await reverseGeocode(latitude, longitude)
+          if (readable) setAddress(readable)
+        }
         setLocating(false)
       },
       () => {

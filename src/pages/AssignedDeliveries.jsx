@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Truck, CheckCircle2, Package, MapPin, Clock, Phone, AlertCircle, MessageCircle, Navigation } from 'lucide-react'
 import api from '../api/axios'
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import icon from 'leaflet/dist/images/marker-icon.png'
 import iconShadow from 'leaflet/dist/images/marker-shadow.png'
+import { haversineKm, formatDistance } from '../utils/distance'
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -14,6 +15,42 @@ const DefaultIcon = L.icon({
   popupAnchor: [1, -34],
 })
 L.Marker.prototype.options.icon = DefaultIcon
+
+// Colour-coded pin icons so the driver can tell their own position from the
+// customer destination at a glance. Using divIcon keeps the visuals crisp
+// without extra image assets.
+function coloredPin(fill) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34">
+      <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 21 13 21s13-11.25 13-21C26 5.82 20.18 0 13 0z"
+            fill="${fill}" stroke="#fff" stroke-width="2"/>
+      <circle cx="13" cy="13" r="4.5" fill="#fff"/>
+    </svg>`
+  return L.divIcon({
+    className: '',
+    html: svg,
+    iconSize: [26, 34],
+    iconAnchor: [13, 34],
+    popupAnchor: [0, -30],
+  })
+}
+const driverIcon = coloredPin('#3b82f6')      // blue — driver / me
+const destinationIcon = coloredPin('#237227') // green — customer destination
+
+// Small helper that centres/zooms the map so every meaningful marker fits.
+function FitBounds({ points }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!points || points.length === 0) return
+    if (points.length === 1) {
+      map.setView(points[0], 15)
+      return
+    }
+    const bounds = L.latLngBounds(points)
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 })
+  }, [map, points?.map(p => p.join(',')).join('|')]) // stable stringified dep
+  return null
+}
 
 function StatCard({ label, value, icon: Icon, iconColor, accent }) {
   return (
@@ -212,27 +249,63 @@ export default function AssignedDeliveries() {
                     <div style={{ lineHeight: 1.4 }}>{o.address}</div>
                   </div>
 
-                  {o.deliveryLatitude && o.deliveryLongitude && (
-                    <div style={{ height: 180, marginTop: 12, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                      <MapContainer center={[o.deliveryLatitude, o.deliveryLongitude]} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                        <TileLayer
-                          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                          attribution="&copy; OpenStreetMap contributors"
-                        />
-                        <Marker position={[o.deliveryLatitude, o.deliveryLongitude]}>
-                          <Popup>Customer destination</Popup>
-                        </Marker>
-                        {o.driverLatitude && o.driverLongitude && (
-                          <>
-                            <Marker position={[o.driverLatitude, o.driverLongitude]}>
-                              <Popup>Your live location</Popup>
+                  {o.deliveryLatitude && o.deliveryLongitude && (() => {
+                    const destPoint = [o.deliveryLatitude, o.deliveryLongitude]
+                    const driverPoint = (o.driverLatitude && o.driverLongitude)
+                      ? [o.driverLatitude, o.driverLongitude]
+                      : null
+                    const points = driverPoint ? [driverPoint, destPoint] : [destPoint]
+                    const distKm = driverPoint
+                      ? haversineKm(
+                          { lat: driverPoint[0], lon: driverPoint[1] },
+                          { lat: destPoint[0], lon: destPoint[1] },
+                        )
+                      : null
+                    return (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ height: 220, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                          <MapContainer center={destPoint} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+                            <TileLayer
+                              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                              attribution="&copy; OpenStreetMap contributors"
+                            />
+                            <FitBounds points={points} />
+                            <Marker position={destPoint} icon={destinationIcon}>
+                              <Popup>Customer destination</Popup>
                             </Marker>
-                            <Polyline positions={[[o.driverLatitude, o.driverLongitude], [o.deliveryLatitude, o.deliveryLongitude]]} color="#237227" />
-                          </>
-                        )}
-                      </MapContainer>
-                    </div>
-                  )}
+                            {driverPoint && (
+                              <>
+                                <Marker position={driverPoint} icon={driverIcon}>
+                                  <Popup>Your live location</Popup>
+                                </Marker>
+                                <Polyline positions={points} color="#237227" weight={3} opacity={0.8} />
+                              </>
+                            )}
+                          </MapContainer>
+                        </div>
+                        {/* Legend + distance chip */}
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          marginTop: 6, fontSize: '0.72rem', color: 'var(--text-subtle)',
+                          gap: 10, flexWrap: 'wrap',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} /> You
+                            </span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#237227' }} /> Customer
+                            </span>
+                          </div>
+                          {distKm != null && (
+                            <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>
+                              ~{formatDistance(distKm)} away
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {o.notes && (
                     <div style={{ display: 'flex', gap: 8, fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8, background: '#fff', padding: 8, borderRadius: 6, border: '1px dashed var(--border)' }}>

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { ShoppingBag, Clock, Truck, CheckCircle2, Package, MapPin, Eye, Phone, MessageCircle, Car, User as UserIcon } from 'lucide-react'
 import api from '../api/axios'
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import icon from 'leaflet/dist/images/marker-icon.png'
 import iconShadow from 'leaflet/dist/images/marker-shadow.png'
+import { haversineKm, formatDistance } from '../utils/distance'
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -14,6 +15,41 @@ const DefaultIcon = L.icon({
   popupAnchor: [1, -34],
 })
 L.Marker.prototype.options.icon = DefaultIcon
+
+// Colour-coded pin markers matching AssignedDeliveries.jsx so the customer sees
+// the same visual language as their driver — green = destination, blue = driver.
+function coloredPin(fill) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34">
+      <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 21 13 21s13-11.25 13-21C26 5.82 20.18 0 13 0z"
+            fill="${fill}" stroke="#fff" stroke-width="2"/>
+      <circle cx="13" cy="13" r="4.5" fill="#fff"/>
+    </svg>`
+  return L.divIcon({
+    className: '',
+    html: svg,
+    iconSize: [26, 34],
+    iconAnchor: [13, 34],
+    popupAnchor: [0, -30],
+  })
+}
+const driverIcon = coloredPin('#3b82f6')
+const destinationIcon = coloredPin('#237227')
+
+// Fit the map to include every meaningful marker.
+function FitBounds({ points }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!points || points.length === 0) return
+    if (points.length === 1) {
+      map.setView(points[0], 15)
+      return
+    }
+    const bounds = L.latLngBounds(points)
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 })
+  }, [map, points?.map(p => p.join(',')).join('|')])
+  return null
+}
 
 function StatCard({ label, value, icon: Icon, iconColor, accent }) {
   return (
@@ -405,50 +441,113 @@ export default function CustomerOrders() {
               )}
             </div>
 
-            {(selectedOrder.driverLatitude && selectedOrder.driverLongitude) || (selectedOrder.deliveryLatitude && selectedOrder.deliveryLongitude) ? (
-              <>
-                <div className="section-header">
-                  <div className="section-title">Live Delivery Location</div>
-                </div>
-                <div style={{ height: 240, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)', marginBottom: 24 }}>
-                  <MapContainer
-                    center={[
-                      selectedOrder.driverLatitude || selectedOrder.deliveryLatitude,
-                      selectedOrder.driverLongitude || selectedOrder.deliveryLongitude,
-                    ]}
-                    zoom={13}
-                    style={{ height: '100%', width: '100%' }}
-                    zoomControl={false}
-                  >
-                    <TileLayer
-                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                      attribution="&copy; OpenStreetMap contributors"
-                    />
-                    {selectedOrder.deliveryLatitude && selectedOrder.deliveryLongitude && (
-                      <Marker position={[selectedOrder.deliveryLatitude, selectedOrder.deliveryLongitude]}>
-                        <Popup>Your delivery address</Popup>
-                      </Marker>
+            {(() => {
+              const status = selectedOrder.status
+              // Privacy rule: don't render a live map for terminal statuses.
+              // Show a small summary card instead so the customer still sees
+              // an outcome, not a stale-looking blank map.
+              const isTerminal = status === 'DELIVERED' || status === 'CANCELLED'
+              if (isTerminal) {
+                return (
+                  <>
+                    <div className="section-header">
+                      <div className="section-title">Delivery Summary</div>
+                    </div>
+                    <div style={{
+                      background: status === 'DELIVERED' ? 'rgba(35,114,39,0.06)' : 'var(--clr-danger-bg)',
+                      border: `1px solid ${status === 'DELIVERED' ? 'rgba(35,114,39,0.25)' : 'var(--clr-danger-txt)'}`,
+                      borderRadius: 10, padding: '14px 16px', marginBottom: 24,
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      color: status === 'DELIVERED' ? '#0d1f0e' : 'var(--clr-danger-txt)',
+                      fontSize: '0.86rem',
+                    }}>
+                      {status === 'DELIVERED'
+                        ? <CheckCircle2 size={20} color="#237227" />
+                        : <Package size={20} color="var(--clr-danger-txt)" />}
+                      <div style={{ lineHeight: 1.45 }}>
+                        {status === 'DELIVERED'
+                          ? 'Order delivered. Live driver tracking has ended.'
+                          : 'Order cancelled. No live tracking available.'}
+                      </div>
+                    </div>
+                  </>
+                )
+              }
+
+              const destPoint = (selectedOrder.deliveryLatitude && selectedOrder.deliveryLongitude)
+                ? [selectedOrder.deliveryLatitude, selectedOrder.deliveryLongitude]
+                : null
+              const driverPoint = (selectedOrder.driverLatitude && selectedOrder.driverLongitude)
+                ? [selectedOrder.driverLatitude, selectedOrder.driverLongitude]
+                : null
+              if (!destPoint && !driverPoint) return null
+
+              const points = [driverPoint, destPoint].filter(Boolean)
+              const distKm = (driverPoint && destPoint)
+                ? haversineKm(
+                    { lat: driverPoint[0], lon: driverPoint[1] },
+                    { lat: destPoint[0], lon: destPoint[1] },
+                  )
+                : null
+
+              return (
+                <>
+                  <div className="section-header">
+                    <div className="section-title">Live Delivery Location</div>
+                    {distKm != null && (
+                      <span className="badge badge-blue">~{formatDistance(distKm)} away</span>
                     )}
-                    {selectedOrder.driverLatitude && selectedOrder.driverLongitude && (
-                      <Marker position={[selectedOrder.driverLatitude, selectedOrder.driverLongitude]}>
-                        <Popup>Delivery staff live location</Popup>
-                      </Marker>
-                    )}
-                    {selectedOrder.driverLatitude && selectedOrder.driverLongitude && selectedOrder.deliveryLatitude && selectedOrder.deliveryLongitude && (
-                      <Polyline
-                        positions={[[selectedOrder.driverLatitude, selectedOrder.driverLongitude], [selectedOrder.deliveryLatitude, selectedOrder.deliveryLongitude]]}
-                        color="#237227"
-                      />
-                    )}
-                  </MapContainer>
-                </div>
-                {selectedOrder.driverLocationUpdatedAt && (
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', marginTop: -16, marginBottom: 20 }}>
-                    Last location update: {new Date(selectedOrder.driverLocationUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                )}
-              </>
-            ) : null}
+                  <div style={{ height: 260, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)', marginBottom: 8 }}>
+                    <MapContainer
+                      center={points[0]}
+                      zoom={13}
+                      style={{ height: '100%', width: '100%' }}
+                      zoomControl={false}
+                    >
+                      <TileLayer
+                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                        attribution="&copy; OpenStreetMap contributors"
+                      />
+                      <FitBounds points={points} />
+                      {destPoint && (
+                        <Marker position={destPoint} icon={destinationIcon}>
+                          <Popup>Your delivery address</Popup>
+                        </Marker>
+                      )}
+                      {driverPoint && (
+                        <Marker position={driverPoint} icon={driverIcon}>
+                          <Popup>Driver's current location</Popup>
+                        </Marker>
+                      )}
+                      {driverPoint && destPoint && (
+                        <Polyline positions={[driverPoint, destPoint]} color="#237227" weight={3} opacity={0.8} />
+                      )}
+                    </MapContainer>
+                  </div>
+                  {/* Legend + last-updated stamp */}
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginBottom: 20, fontSize: '0.72rem', color: 'var(--text-subtle)',
+                    gap: 10, flexWrap: 'wrap',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} /> Driver
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#237227' }} /> Destination
+                      </span>
+                    </div>
+                    {selectedOrder.driverLocationUpdatedAt && (
+                      <span>
+                        Updated {new Date(selectedOrder.driverLocationUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
 
             <div className="section-header">
               <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
