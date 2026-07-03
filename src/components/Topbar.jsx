@@ -1,4 +1,4 @@
-import { Bell, Search, RefreshCw } from 'lucide-react'
+import { Bell, Search, RefreshCw, Menu } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
@@ -18,7 +18,7 @@ const pageTitles = {
   '/customer/orders': 'My Orders',
 }
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick }) {
   const location = useLocation()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -59,9 +59,14 @@ export default function Topbar() {
 
   return (
     <div className="topbar">
-      <div>
-        <div className="topbar-title">{title}</div>
-        <div className="topbar-date">{dateStr}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button className="topbar-btn mobile-menu-btn" onClick={onMenuClick}>
+          <Menu size={16} />
+        </button>
+        <div>
+          <div className="topbar-title">{title}</div>
+          <div className="topbar-date">{dateStr}</div>
+        </div>
       </div>
 
       <div className="topbar-right">

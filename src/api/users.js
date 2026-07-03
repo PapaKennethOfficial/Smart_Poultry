@@ -35,3 +35,6 @@ export const updatePassword = (payload) =>
  */
 export const listUsers = () =>
   api.get('/api/users').then((res) => res.data)
+
+export const toggle2FA = (enabled) =>
+  api.patch('/api/users/me/2fa', { enabled }).then((res) => res.data)

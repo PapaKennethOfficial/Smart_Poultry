@@ -20,10 +20,13 @@ function formatApiError(err, fallback) {
   return err.response?.data?.message || fallback
 }
 
+const CATEGORIES = ['All', 'Eggs', 'Poultry Meat', 'Live Birds', 'Farm Inputs']
+
 export default function CustomerMarketplace() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeCategory, setActiveCategory] = useState('All')
   
   // Cart state
   const [cart, setCart] = useState({}) // { productId: quantity }
@@ -135,7 +138,11 @@ export default function CustomerMarketplace() {
     )
   }
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = activeCategory === 'All' || p.category === activeCategory
+    return matchesSearch && matchesCategory
+  })
   
   const cartItems = Object.keys(cart).map(id => {
     const p = products.find(prod => prod.id === id)
@@ -145,7 +152,7 @@ export default function CustomerMarketplace() {
   const cartTotal = cartItems.reduce((sum, item) => sum + item.total, 0)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, minHeight: '100%' }}>
+    <div className="marketplace-layout">
       {/* Products Catalog */}
       <div>
         <div className="page-header" style={{ marginBottom: 20 }}>
@@ -153,16 +160,41 @@ export default function CustomerMarketplace() {
           <div className="page-desc">Browse fresh products directly from our poultry farm</div>
         </div>
 
-        <div style={{ position: 'relative', marginBottom: 24 }}>
+        <div style={{ position: 'relative', marginBottom: 16 }}>
           <Search size={18} color="var(--text-subtle)" style={{ position: 'absolute', left: 14, top: 11 }} />
           <input 
             type="text" 
             className="form-input" 
-            placeholder="Search products..." 
+            placeholder="e.g., Fresh Large Eggs" 
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{ paddingLeft: 40 }}
           />
+        </div>
+
+        {/* Category Filter Tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                padding: '7px 16px',
+                borderRadius: 20,
+                border: activeCategory === cat ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                background: activeCategory === cat ? 'var(--primary-subtle)' : 'var(--bg-card)',
+                color: activeCategory === cat ? 'var(--primary)' : 'var(--text-muted)',
+                fontSize: '0.78rem',
+                fontWeight: activeCategory === cat ? 600 : 400,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                transition: 'all 0.15s',
+              }}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -173,28 +205,37 @@ export default function CustomerMarketplace() {
             <div style={{ color: 'var(--text-muted)' }}>No products found.</div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+          <div className="marketplace-products-grid">
             {filteredProducts.map(p => (
               <div key={p.id} className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
                 <div style={{ height: 140, background: 'linear-gradient(135deg, var(--primary-muted), var(--sage-light))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Package size={48} color="var(--primary)" opacity={0.5} />
                 </div>
                 <div style={{ padding: 16, display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                     <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem' }}>{p.name}</div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>GHS {p.price}</div>
                   </div>
+                  {p.category && (
+                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>{p.category}</span>
+                  )}
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, flex: 1 }}>
                     {p.description || 'Premium farm product.'}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>Per {p.unit}</div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>Per {p.unit}</div>
+                      <div style={{ fontSize: '0.7rem', color: p.stock > 5 ? 'var(--primary)' : p.stock > 0 ? '#d97706' : '#ef4444', fontWeight: 600, marginTop: 2 }}>
+                        {p.stock > 5 ? `${p.stock} in stock` : p.stock > 0 ? `Only ${p.stock} left` : 'Out of stock'}
+                      </div>
+                    </div>
                     <button 
                       className="btn-outline" 
-                      style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                      style={{ padding: '6px 12px', fontSize: '0.75rem', opacity: p.stock === 0 ? 0.4 : 1 }}
                       onClick={() => addToCart(p.id)}
+                      disabled={p.stock === 0}
                     >
-                      <Plus size={14} /> Add
+                      <Plus size={14} /> {p.stock === 0 ? 'Unavailable' : 'Add'}
                     </button>
                   </div>
                 </div>
@@ -205,7 +246,7 @@ export default function CustomerMarketplace() {
       </div>
 
       {/* Cart Sidebar */}
-      <div style={{ background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', margin: '-24px -28px -24px 0', padding: '24px 28px', display: 'flex', flexDirection: 'column' }}>
+      <div className="cart-sidebar" style={{ background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: '24px 28px', display: 'flex', flexDirection: 'column' }}>
         <div className="section-header">
           <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ShoppingCart size={18} color="var(--primary)" /> Your Cart
@@ -265,7 +306,7 @@ export default function CustomerMarketplace() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Contact Number *</label>
-                  <input required type="tel" className="form-input" value={contactNumber} onChange={e => setContactNumber(e.target.value)} placeholder="e.g. 0241234567" />
+                  <input required type="tel" className="form-input" value={contactNumber} onChange={e => setContactNumber(e.target.value)} placeholder="+233 XX XXX XXXX" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Payment Option *</label>

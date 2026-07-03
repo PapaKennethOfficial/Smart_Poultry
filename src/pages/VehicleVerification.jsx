@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { ShieldCheck, CheckCircle2, XCircle, Truck, Clock, Eye, AlertCircle, Edit2, UserX } from 'lucide-react'
 import api from '../api/axios'
+import Pagination from '../components/Pagination'
+import TableFilter from '../components/TableFilter'
 
 function StatCard({ label, value, hint, icon: Icon, iconColor, accent }) {
   return (
@@ -58,6 +60,9 @@ export default function VehicleVerification() {
   const [vehicles, setVehicles] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchValue, setSearchValue] = useState('')
+  const itemsPerPage = 10
   
   // Modals
   const [selectedVehicle, setSelectedVehicle] = useState(null)
@@ -164,8 +169,30 @@ export default function VehicleVerification() {
     setChangesRequested('')
   }
 
-  const filteredVehicles = vehicles.filter(v => filter === 'ALL' || v.verification_status === filter)
+  const filteredVehicles = vehicles.filter(v => {
+    const matchesFilter = filter === 'ALL' || v.verification_status === filter
+    if (!matchesFilter) return false
+    if (!searchValue) return true
+    const s = searchValue.toLowerCase()
+    return (
+      (v.driver_name || '').toLowerCase().includes(s) ||
+      (v.driver_email || '').toLowerCase().includes(s) ||
+      (v.license_plate || '').toLowerCase().includes(s) ||
+      (v.vehicle_make || '').toLowerCase().includes(s) ||
+      (v.vehicle_model || '').toLowerCase().includes(s)
+    )
+  })
   
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filter, searchValue])
+
+  const paginatedVehicles = filteredVehicles.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   const total = vehicles.length
   const pending = vehicles.filter(v => v.verification_status === 'PENDING').length
   const approved = vehicles.filter(v => v.verification_status === 'APPROVED').length
@@ -200,6 +227,13 @@ export default function VehicleVerification() {
           </div>
         </div>
 
+        <TableFilter
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          searchPlaceholder="Search driver, plate, vehicle…"
+          resultCount={filteredVehicles.length}
+        />
+
         <div className="table-wrapper">
           <table className="data-table">
             <thead>
@@ -217,7 +251,7 @@ export default function VehicleVerification() {
             <tbody>
               {loading ? (
                 <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-subtle)' }}>Loading...</td></tr>
-              ) : filteredVehicles.length === 0 ? (
+              ) : paginatedVehicles.length === 0 ? (
                 <tr>
                   <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
                     <Truck size={32} color="var(--border)" style={{ margin: '0 auto 10px' }} />
@@ -225,7 +259,7 @@ export default function VehicleVerification() {
                   </td>
                 </tr>
               ) : (
-                filteredVehicles.map(v => {
+                paginatedVehicles.map(v => {
                   const activeOrders = v.user?.assignedDeliveries || []
                   return (
                     <tr key={v.id}>
@@ -287,11 +321,21 @@ export default function VehicleVerification() {
             </tbody>
           </table>
         </div>
+        {!loading && filteredVehicles.length > itemsPerPage && (
+          <div style={{ padding: '0 16px' }}>
+            <Pagination 
+              currentPage={currentPage}
+              totalItems={filteredVehicles.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
 
       {selectedVehicle && actionType && (
-        <div className="modal-overlay">
-          <div className="modal-box">
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">
               {actionType === 'APPROVED' ? 'Approve Vehicle' : actionType === 'REJECTED' ? 'Reject Vehicle' : actionType === 'EDIT' ? 'Edit Driver & Vehicle' : 'Vehicle Details'}
             </h2>
@@ -328,7 +372,7 @@ export default function VehicleVerification() {
                     <img
                       src={item.src}
                       alt={item.label}
-                      style={{ width: '100%', height: 190, objectFit: 'cover', borderRadius: 8, background: '#fff' }}
+                      style={{ width: '100%', height: 190, objectFit: 'contain', borderRadius: 8, background: '#f9f9f9' }}
                     />
                   ) : (
                     <div style={{ height: 190, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', background: '#fff', borderRadius: 8 }}>
@@ -346,16 +390,11 @@ export default function VehicleVerification() {
                 ['Driver Email', selectedVehicle.user?.email || 'N/A'],
                 ['Contact Number', selectedVehicle.driver_contact_number || selectedVehicle.user?.phone || 'N/A'],
                 ['Residential Address', selectedVehicle.driver_residential_address || 'N/A'],
-                ['Vehicle Type', selectedVehicle.vehicle_type],
-                ['Make / Model', `${selectedVehicle.year_of_manufacture} ${selectedVehicle.make} ${selectedVehicle.model}`],
+                ['Vehicle Type', selectedVehicle.vehicle_type || 'N/A'],
+                ['Make / Model', `${selectedVehicle.year_of_manufacture || ''} ${selectedVehicle.make || ''} ${selectedVehicle.model || ''}`.trim() || 'N/A'],
                 ['License Plate', selectedVehicle.license_plate || 'N/A'],
                 ['VIN', selectedVehicle.vin || 'N/A'],
-                ['Color', selectedVehicle.color],
-                ['Seating Capacity', selectedVehicle.seating_capacity || 'N/A'],
-                ['Mileage', selectedVehicle.mileage ?? 'N/A'],
-                ['Insurance Provider', selectedVehicle.insurance_provider || 'N/A'],
-                ['Insurance Policy', selectedVehicle.insurance_policy_number || 'N/A'],
-                ['Insurance Exp', formatDate(selectedVehicle.insurance_expiration)],
+                ['Color', selectedVehicle.color || 'N/A'],
                 ['Driver License', selectedVehicle.driver_license_number],
                 ['License Exp', formatDate(selectedVehicle.license_expiration)],
                 ['Registered On', formatDate(selectedVehicle.createdAt)],
@@ -434,8 +473,6 @@ export default function VehicleVerification() {
                     ['insurance_provider', 'Insurance Provider', 'text'],
                     ['insurance_policy_number', 'Insurance Policy Number', 'text'],
                     ['insurance_expiration', 'Insurance Expiration', 'date'],
-                    ['seating_capacity', 'Seating Capacity', 'number'],
-                    ['mileage', 'Mileage', 'number'],
                   ].map(([name, label, type]) => (
                     <div className="form-group" key={name}>
                       <label className="form-label">{label}</label>

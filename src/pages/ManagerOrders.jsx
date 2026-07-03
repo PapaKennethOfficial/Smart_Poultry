@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ShoppingBag, Truck, CheckCircle2, Clock, Package, MapPin, Eye, Phone, Edit2, Filter, X } from 'lucide-react'
 import api from '../api/axios'
+import Pagination from '../components/Pagination'
 
 // Payment-status options come from the seed flow: PENDING / AWAITING_CONFIRMATION
 // / PAID / FAILED. The backend matches on uppercase strings — anything we add
@@ -39,6 +40,8 @@ export default function ManagerOrders() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Advanced filter row state
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -153,6 +156,16 @@ export default function ManagerOrders() {
 
   const filteredOrders = orders.filter(o => filter === 'ALL' || o.status === filter)
   
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filter, dateFrom, dateTo, driverSearch, customerSearch, productSearch, paymentStatus])
+
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   const total = orders.length
   const pending = orders.filter(o => o.status === 'PENDING').length
   const inTransit = orders.filter(o => o.status === 'IN_TRANSIT').length
@@ -303,7 +316,7 @@ export default function ManagerOrders() {
             <tbody>
               {loading ? (
                 <tr><td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-subtle)' }}>Loading orders...</td></tr>
-              ) : filteredOrders.length === 0 ? (
+              ) : paginatedOrders.length === 0 ? (
                 <tr>
                   <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
                     <Package size={32} color="var(--border)" style={{ margin: '0 auto 10px' }} />
@@ -311,7 +324,7 @@ export default function ManagerOrders() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map(o => {
+                paginatedOrders.map(o => {
                   const statusConfig = STATUS_MAP[o.status] || STATUS_MAP.PENDING
                   return (
                     <tr key={o.id}>
@@ -361,6 +374,16 @@ export default function ManagerOrders() {
             </tbody>
           </table>
         </div>
+        {!loading && filteredOrders.length > itemsPerPage && (
+          <div style={{ padding: '0 16px' }}>
+            <Pagination 
+              currentPage={currentPage}
+              totalItems={filteredOrders.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
 
       {selectedOrder && (

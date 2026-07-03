@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import api from '../api/axios'
 
 const AuthContext = createContext(null)
 
@@ -15,6 +16,27 @@ export function AuthProvider({ children }) {
       return null
     }
   })
+
+  // Hydrate user profile from the backend on mount when a token exists.
+  // This ensures the real username is always available even after a page refresh.
+  useEffect(() => {
+    if (!token) return
+    api.get('/api/users/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => {
+        const userData = res.data?.user || res.data
+        if (userData) {
+          handleSetUser(userData)
+          if (userData.role) handleSetRole(userData.role)
+        }
+      })
+      .catch(() => {
+        // Token may be expired — clear session
+        logout()
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   const handleSetToken = (newToken) => {
     setToken(newToken)
@@ -74,3 +96,4 @@ export function useAuth() {
   }
   return context
 }
+
