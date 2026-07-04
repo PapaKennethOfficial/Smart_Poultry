@@ -23,6 +23,7 @@ export default function Register() {
   const [confirm, setConfirm] = useState('')
   const [role, setRole] = useState('customer')
   const [matchError, setMatchError] = useState(null)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   const { mutate: register, isPending, error, reset } = useRegister()
   const { setToken, setRole: setAuthRole, setUser } = useAuth()
@@ -58,6 +59,11 @@ export default function Register() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    if (!agreedToTerms) {
+      setMatchError('You must agree to the Terms and Conditions and Privacy Policy.')
+      return
+    }
 
     if (password !== confirm) {
       setMatchError('Passwords do not match')
@@ -231,7 +237,7 @@ export default function Register() {
               className="form-input"
               type="text"
               id="register-name"
-              placeholder="Dennis Akpalolo"
+              placeholder="e.g. John Doe"
               value={name}
               onChange={clearOnChange(setName)}
               disabled={isPending}
@@ -245,7 +251,7 @@ export default function Register() {
               className="form-input"
               type="email"
               id="register-email"
-              placeholder="dennis@smartpoultry.gh"
+              placeholder="name@example.com"
               value={email}
               onChange={clearOnChange(setEmail)}
               disabled={isPending}
@@ -329,6 +335,25 @@ export default function Register() {
               {inlineError}
             </div>
           )}
+
+          <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <input 
+              type="checkbox" 
+              id="agree-terms" 
+              checked={agreedToTerms}
+              onChange={(e) => {
+                setAgreedToTerms(e.target.checked)
+                if (matchError) setMatchError(null)
+              }}
+              style={{ marginTop: '3px', cursor: 'pointer' }}
+            />
+            <label htmlFor="agree-terms" style={{ fontSize: '0.85rem', color: '#5e7a61', lineHeight: '1.4' }}>
+              I agree to the{' '}
+              <Link to="/terms" style={{ color: '#237227', textDecoration: 'underline' }}>Terms and Conditions</Link>
+              {' '}and{' '}
+              <Link to="/privacy" style={{ color: '#237227', textDecoration: 'underline' }}>Privacy Policy</Link>.
+            </label>
+          </div>
 
           <button
             type="submit"

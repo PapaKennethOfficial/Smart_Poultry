@@ -6,7 +6,7 @@ const { getAuditLogs } = require("../controllers/report.controller");
 
 // ─── All audit routes require authentication ──────────────────────────────────
 router.use(authenticate);
-router.use(authorize(["ADMIN"]));
+router.use(authorize(["ADMIN", "MANAGER"]));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 router.get("/audit", getAuditLogs);

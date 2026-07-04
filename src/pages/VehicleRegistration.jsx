@@ -3,6 +3,7 @@ import {
   AlertCircle, CheckCircle2, RefreshCw, Car, Hash,
   Image as ImageIcon, Truck, User as UserIcon,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import api from '../api/axios'
 
 const defaultVehicleForm = (vehicleType = 'Truck') => ({
@@ -108,7 +109,7 @@ function PhotoTile({ label, src, fallbackIcon: FallbackIcon }) {
           <img
             src={src}
             alt={label}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
         ) : (
           <FallbackIcon size={36} color="var(--border)" />
@@ -172,7 +173,9 @@ export default function VehicleRegistration() {
   const [vehicle, setVehicle] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingField, setUploadingField] = useState(null)
   const [error, setError] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState(() => defaultVehicleForm())
@@ -232,7 +235,7 @@ export default function VehicleRegistration() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleFileChange = (field, { imageOnly = false, maxSizeMb = 2 } = {}) => (e) => {
+  const handleFileChange = (field, { imageOnly = false, maxSizeMb = 5 } = {}) => async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     const isImage = file.type.startsWith('image/')
@@ -246,17 +249,33 @@ export default function VehicleRegistration() {
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      setError('')
-      setFormData(prev => ({ ...prev, [field]: reader.result }))
+    setUploadingField(field)
+    setError('')
+    
+    try {
+      const formDataUpload = new FormData()
+      formDataUpload.append('file', file)
+      
+      const res = await api.post('/api/upload', formDataUpload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      
+      const fullUrl = `http://localhost:5000${res.data.url}`
+      setFormData(prev => ({ ...prev, [field]: fullUrl }))
+    } catch (err) {
+      setError(formatApiError(err, 'Failed to upload photo.'))
+    } finally {
+      setUploadingField(null)
     }
-    reader.onerror = () => setError('Could not read the selected photo.')
-    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms and Conditions and Privacy Policy.')
+      return
+    }
+    
     setSubmitting(true)
     setError('')
     try {
@@ -414,7 +433,7 @@ export default function VehicleRegistration() {
                     style={{
                       width: '100%',
                       height: 180,
-                      objectFit: 'cover',
+                      objectFit: 'contain',
                       borderRadius: 10,
                       marginBottom: 10,
                       background: '#fff',
@@ -437,14 +456,19 @@ export default function VehicleRegistration() {
                     {item.hint}
                   </div>
                 )}
-                <input
-                  required={!formData[item.key]}
-                  key={`${formData.vehicle_type}-${item.key}-${formData[item.key] ? 'loaded' : 'empty'}`}
-                  type="file"
-                  accept="image/*"
-                  className="form-input"
-                  onChange={handleFileChange(item.key, { imageOnly: true, maxSizeMb: 2 })}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    required={!formData[item.key]}
+                    key={`${formData.vehicle_type}-${item.key}-${formData[item.key] ? 'loaded' : 'empty'}`}
+                    type="file"
+                    accept="image/*"
+                    className="form-input"
+                    disabled={uploadingField === item.key || submitting}
+                    onChange={handleFileChange(item.key, { imageOnly: true, maxSizeMb: 5 })}
+                    style={{ flex: 1 }}
+                  />
+                  {uploadingField === item.key && <RefreshCw size={18} className="spin" color="var(--primary)" />}
+                </div>
               </div>
             </div>
           ))}
@@ -491,34 +515,63 @@ export default function VehicleRegistration() {
               background: 'var(--bg)',
             }}>
               {formData.registration_document ? (
-                formData.registration_document.startsWith('data:image/') ? (
+                formData.registration_document.endsWith('.pdf') ? (
+                  <div style={{ padding: '32px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                    PDF Document Uploaded
+                  </div>
+                ) : (
                   <img
                     src={formData.registration_document}
                     alt="Registration document"
-                    style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 10, marginBottom: 10, background: '#fff' }}
+                    style={{ width: '100%', height: 150, objectFit: 'contain', borderRadius: 10, marginBottom: 10, background: '#f9f9f9' }}
                   />
-                ) : (
-                  <div style={{ padding: '32px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                    PDF uploaded
-                  </div>
                 )
               ) : (
                 <div style={{ padding: '32px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.82rem' }}>
                   Upload vehicle registration document if available
                 </div>
               )}
-              <input
-                key={`${formData.vehicle_type}-registration_document-${formData.registration_document ? 'loaded' : 'empty'}`}
-                type="file"
-                accept="image/*,application/pdf"
-                className="form-input"
-                onChange={handleFileChange('registration_document', { maxSizeMb: 4 })}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  required={!formData.registration_document}
+                  key={`${formData.vehicle_type}-registration_document-${formData.registration_document ? 'loaded' : 'empty'}`}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="form-input"
+                  disabled={uploadingField === 'registration_document' || submitting}
+                  onChange={handleFileChange('registration_document', { maxSizeMb: 5 })}
+                  style={{ flex: 1 }}
+                />
+                {uploadingField === 'registration_document' && <RefreshCw size={18} className="spin" color="var(--primary)" />}
+              </div>
             </div>
+            {formData.registration_document && (
+              <a href={formData.registration_document} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: 8, fontSize: '0.8rem', color: 'var(--primary)' }}>
+                View Uploaded Document
+              </a>
+            )}
           </div>
         </div>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', justifyContent: 'flex-end' }}>
+            <input 
+              type="checkbox" 
+              id="agree-staff-terms" 
+              checked={agreedToTerms}
+              onChange={(e) => {
+                setAgreedToTerms(e.target.checked)
+                if (error) setError('')
+              }}
+              style={{ marginTop: '3px', cursor: 'pointer' }}
+            />
+            <label htmlFor="agree-staff-terms" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', maxWidth: '400px' }}>
+              I agree to the{' '}
+              <Link to="/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms and Conditions</Link>
+              {' '}and{' '}
+              <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>, and acknowledge that platform interactions contribute to AI analytics.
+            </label>
+          </div>
           <button type="submit" className="btn-primary" disabled={submitting} style={{ padding: '12px 24px' }}>
             {submitting ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
             {submitting ? 'Submitting...' : 'Submit Vehicle Details'}

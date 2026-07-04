@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
-import { User, Lock, Bell, Database, Users, Loader2 } from 'lucide-react'
+import { User, Lock, Bell, Database, Users, Loader2, FileText } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import { useMe } from '../hooks/users/useMe'
 import { useUsers } from '../hooks/users/useUsers'
+import { useAuditLogs } from '../hooks/audit/useAuditLogs'
 import { useUpdateMe } from '../hooks/users/useUpdateMe'
 import { useUpdateNotifications } from '../hooks/users/useUpdateNotifications'
 import { useUpdatePassword } from '../hooks/users/useUpdatePassword'
+import { useToggle2FA } from '../hooks/users/useToggle2FA'
+import TableFilter from '../components/TableFilter'
+import Pagination from '../components/Pagination'
 
 const sections = [
   { id: 'profile',       icon: User,     label: 'Profile'        },
@@ -14,6 +19,8 @@ const sections = [
   { id: 'notifications', icon: Bell,     label: 'Notifications'  },
   { id: 'farm',          icon: Database, label: 'Farm Settings'  },
   { id: 'users',         icon: Users,    label: 'Team & Roles'   },
+  { id: 'legal',         icon: FileText, label: 'Legal & Policies'},
+  { id: 'audit',         icon: Database, label: 'Audit Trail'    },
 ]
 
 const MANAGER_NOTIF_ITEMS = [
@@ -44,7 +51,7 @@ const DELIVERY_NOTIF_ITEMS = [
 
 function visibleSectionsForRole(role) {
   if (role === 'CUSTOMER' || role === 'DELIVERY') {
-    return sections.filter((s) => s.id !== 'farm' && s.id !== 'users')
+    return sections.filter((s) => s.id !== 'audit')
   }
   return sections
 }
@@ -138,7 +145,9 @@ export default function Settings() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword]         = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [twoFAEnabled, setTwoFAEnabled]       = useState(false)
+
+  const toggle2FAMutation = useToggle2FA()
+  const twoFAEnabled = me?.isTwoFactorEnabled || false
 
   const updatePassword = useUpdatePassword()
   const handleUpdatePassword = (e) => {
@@ -168,9 +177,33 @@ export default function Settings() {
     updateNotifications.mutate({ [key]: next })
   }
 
-  // ─── Team & Roles ─────────────────────────────────────────────────────────
+  // ─── Team & Roles (removed, handled by Audit) ─────────────────────────────
   const canViewTeam = authRole === 'ADMIN' || authRole === 'MANAGER'
-  const usersQuery  = useUsers({ enabled: canViewTeam && activeSection === 'users' })
+  const auditQuery  = useAuditLogs()
+
+  // ─── Audit Trail filtering + pagination ────────────────────────────────────
+  const [auditSearch, setAuditSearch] = useState('')
+  const [auditAction, setAuditAction] = useState('all')
+  const [auditPage, setAuditPage] = useState(1)
+  const AUDIT_PER_PAGE = 15
+
+  useEffect(() => { setAuditPage(1) }, [auditSearch, auditAction])
+
+  const auditLogs = auditQuery.data || []
+  const auditActions = [...new Set(auditLogs.map(l => l.action).filter(Boolean))]
+  const filteredAudit = auditLogs.filter(l => {
+    const s = auditSearch.toLowerCase()
+    const matchesSearch = !s ||
+      (l.user || '').toLowerCase().includes(s) ||
+      (l.entity || '').toLowerCase().includes(s) ||
+      (l.endpoint || '').toLowerCase().includes(s)
+    const matchesAction = auditAction === 'all' || l.action === auditAction
+    return matchesSearch && matchesAction
+  })
+  const paginatedAudit = filteredAudit.slice(
+    (auditPage - 1) * AUDIT_PER_PAGE,
+    auditPage * AUDIT_PER_PAGE
+  )
 
   return (
     <div>
@@ -179,7 +212,7 @@ export default function Settings() {
         <div className="page-desc">Manage your account security and notification preferences</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 18 }}>
+      <div className="settings-layout">
         {/* Settings nav */}
         <div style={{
           background: '#fff', borderRadius: 14, padding: '10px',
@@ -376,7 +409,11 @@ export default function Settings() {
                     <div style={{ fontSize: '0.84rem', fontWeight: 500, color: '#0d1f0e' }}>Enable 2FA via SMS</div>
                     <div style={{ fontSize: '0.74rem', color: '#5e7a61', marginTop: 2, lineHeight: 1.5 }}>Receive a code on your phone at each login</div>
                   </div>
-                  <Toggle enabled={twoFAEnabled} onChange={() => setTwoFAEnabled((v) => !v)} />
+                  <Toggle
+                    enabled={twoFAEnabled}
+                    onChange={() => toggle2FAMutation.mutate(!twoFAEnabled)}
+                    disabled={toggle2FAMutation.isPending}
+                  />
                 </div>
               </div>
             </div>
@@ -409,45 +446,14 @@ export default function Settings() {
             </div>
           )}
 
-          {/* ── Farm Settings (not in current API brief — left as static UI) ── */}
-          {activeSection === 'farm' && (
-            <div className="chart-card">
-              <div className="section-title" style={{ marginBottom: 3 }}>Farm Configuration</div>
-              <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginBottom: 22, lineHeight: 1.55 }}>
-                Set thresholds for IoT sensor alerts and farm parameters
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 540 }}>
-                {[
-                  { label: 'Max Temperature (°C)',      val: '32'   },
-                  { label: 'Min Temperature (°C)',      val: '18'   },
-                  { label: 'Max Humidity (%)',           val: '75'   },
-                  { label: 'Max Ammonia (ppm)',          val: '20'   },
-                  { label: 'Daily Egg Target',           val: '1200' },
-                  { label: 'Alert Mortality Threshold',  val: '3'    },
-                ].map((f, i) => (
-                  <div className="form-group" key={i} style={{ marginBottom: 0 }}>
-                    <label className="form-label">{f.label}</label>
-                    <input className="form-input" type="number" defaultValue={f.val} />
-                  </div>
-                ))}
-              </div>
-
-              <button className="btn-primary" style={{ marginTop: 22 }}>Save Farm Config</button>
-            </div>
-          )}
-
-          {/* ── Team & Roles ── */}
-          {activeSection === 'users' && (
+          {/* ── Audit Trail ── */}
+          {activeSection === 'audit' && (
             <div className="chart-card">
               <div className="section-header">
                 <div>
-                  <div className="section-title">Team & Roles</div>
-                  <div className="section-sub">Manage team member access and permissions</div>
+                  <div className="section-title">Audit Trail</div>
+                  <div className="section-sub">System activity logs and events</div>
                 </div>
-                <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '7px 14px' }} disabled>
-                  + Invite Member
-                </button>
               </div>
 
               {!canViewTeam ? (
@@ -457,67 +463,103 @@ export default function Settings() {
                   border: '1px solid rgba(239,68,68,0.25)',
                   color: '#b91c1c', fontSize: '0.85rem', lineHeight: 1.5,
                 }}>
-                  You don't have permission to view team members. Ask an admin or manager.
+                  You don't have permission to view audit logs. Ask an admin or manager.
                 </div>
               ) : (
-                <div className="table-wrapper">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Last Login</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usersQuery.isLoading && (
-                        <tr><td colSpan={6} style={{ color: '#8da58f', textAlign: 'center', padding: 18 }}>
-                          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', verticalAlign: 'middle' }} /> Loading team…
-                        </td></tr>
-                      )}
-                      {usersQuery.isError && (
-                        <tr><td colSpan={6} style={{ color: '#b91c1c', textAlign: 'center', padding: 18 }}>
-                          Could not load team members.
-                        </td></tr>
-                      )}
-                      {!usersQuery.isLoading && !usersQuery.isError && (usersQuery.data || []).map((u) => (
-                        <tr key={u.id}>
-                          <td style={{ fontWeight: 500 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                              <div style={{
-                                width: 30, height: 30, borderRadius: 8,
-                                background: 'linear-gradient(135deg, #237227, #84be88)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '0.68rem', color: '#fff'
-                              }}>
-                                {initials(u.name)}
-                              </div>
-                              {u.name}
-                            </div>
-                          </td>
-                          <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>{u.email}</td>
-                          <td><span className="badge badge-green">{roleBadgeLabel(u.role)}</span></td>
-                          <td><span className="badge badge-green">Active</span></td>
-                          <td style={{ color: '#8da58f', fontSize: '0.82rem' }}>{relativeLogin(u.lastLoginAt)}</td>
-                          <td>
-                            <button className="btn-outline" style={{ padding: '4px 11px', fontSize: '0.74rem' }} disabled>
-                              Edit
-                            </button>
-                          </td>
+                <>
+                  <TableFilter
+                    searchValue={auditSearch}
+                    onSearchChange={setAuditSearch}
+                    searchPlaceholder="Search user, entity, endpoint…"
+                    filters={[{
+                      key: 'action',
+                      label: 'All Actions',
+                      value: auditAction,
+                      options: auditActions.map(a => ({ label: a, value: a }))
+                    }]}
+                    onFilterChange={(key, val) => setAuditAction(val)}
+                    resultCount={filteredAudit.length}
+                  />
+                  <div className="table-wrapper">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Date & Time</th>
+                          <th>User</th>
+                          <th>Action</th>
+                          <th>Entity</th>
+                          <th>Endpoint</th>
                         </tr>
-                      ))}
-                      {!usersQuery.isLoading && !usersQuery.isError && (usersQuery.data || []).length === 0 && (
-                        <tr><td colSpan={6} style={{ color: '#8da58f', textAlign: 'center', padding: 18 }}>
-                          No team members yet.
-                        </td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {auditQuery.isLoading && (
+                          <tr><td colSpan={5} style={{ color: '#8da58f', textAlign: 'center', padding: 18 }}>
+                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', verticalAlign: 'middle' }} /> Loading audit trail…
+                          </td></tr>
+                        )}
+                        {auditQuery.isError && (
+                          <tr><td colSpan={5} style={{ color: '#b91c1c', textAlign: 'center', padding: 18 }}>
+                            Could not load audit logs.
+                          </td></tr>
+                        )}
+                        {!auditQuery.isLoading && !auditQuery.isError && paginatedAudit.map((l, i) => (
+                          <tr key={l.id || i}>
+                            <td style={{ color: '#8da58f', fontSize: '0.82rem' }}>
+                              {new Date(l.createdAt).toLocaleString()}
+                            </td>
+                            <td style={{ fontWeight: 500, color: '#0d1f0e' }}>{l.user}</td>
+                            <td><span className="badge badge-gold">{l.action}</span></td>
+                            <td>{l.entity}</td>
+                            <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>{l.endpoint}</td>
+                          </tr>
+                        ))}
+                        {!auditQuery.isLoading && !auditQuery.isError && filteredAudit.length === 0 && (
+                          <tr><td colSpan={5} style={{ color: '#8da58f', textAlign: 'center', padding: 18 }}>
+                            No audit logs found.
+                          </td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    currentPage={auditPage}
+                    totalItems={filteredAudit.length}
+                    itemsPerPage={AUDIT_PER_PAGE}
+                    onPageChange={setAuditPage}
+                  />
+                </>
               )}
+            </div>
+          )}
+
+          {/* ── Legal & Policies ── */}
+          {activeSection === 'legal' && (
+            <div className="chart-card">
+              <div className="section-title" style={{ marginBottom: 3 }}>Legal & Policies</div>
+              <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginBottom: 22, lineHeight: 1.55 }}>
+                Review our terms of service and privacy practices.
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ padding: '16px', border: '1px solid #edebd6', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0d1f0e' }}>Terms & Conditions</div>
+                    <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 2 }}>Rules and guidelines for using the Smart Poultry platform.</div>
+                  </div>
+                  <Link to="/terms" style={{ padding: '6px 12px', background: '#237227', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 500 }}>
+                    View
+                  </Link>
+                </div>
+                <div style={{ padding: '16px', border: '1px solid #edebd6', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0d1f0e' }}>Privacy Policy</div>
+                    <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 2 }}>How we collect, use, and protect your data and AI insights.</div>
+                  </div>
+                  <Link to="/privacy" style={{ padding: '6px 12px', background: '#237227', color: '#fff', borderRadius: '6px', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 500 }}>
+                    View
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
         </div>

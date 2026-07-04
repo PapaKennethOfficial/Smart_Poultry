@@ -37,11 +37,6 @@ function eligibleDriverWhere(driverId) {
       verification_status: "APPROVED",
       is_active: true,
     },
-    assignedDeliveries: {
-      none: {
-        status: { in: ACTIVE_DELIVERY_STATUSES },
-      },
-    },
   }
 
   if (driverId) where.id = driverId
@@ -100,17 +95,35 @@ async function selectAvailableDriver(options = {}) {
 
   const drivers = await db.user.findMany({
     where,
-    select: driverSelect(),
+    select: {
+      ...driverSelect(),
+      _count: {
+        select: {
+          assignedDeliveries: {
+            where: { status: { in: ACTIVE_DELIVERY_STATUSES } }
+          }
+        }
+      }
+    },
     orderBy: { createdAt: "asc" },
   })
 
   if (drivers.length === 0) return null
 
+  // Sort by fewest active deliveries first (Round-Robin / Load Balancing)
+  drivers.sort((a, b) => a._count.assignedDeliveries - b._count.assignedDeliveries)
+  
+  // Get all drivers who share the minimum delivery count
+  const minDeliveries = drivers[0]._count.assignedDeliveries
+  const leastLoadedDrivers = drivers.filter(d => d._count.assignedDeliveries === minDeliveries)
+
+  if (leastLoadedDrivers.length === 1) return leastLoadedDrivers[0]
+
   const customerLat = toNumberOrNull(deliveryLatitude)
   const customerLon = toNumberOrNull(deliveryLongitude)
-  if (!hasCoordinates(customerLat, customerLon)) return drivers[0]
+  if (!hasCoordinates(customerLat, customerLon)) return leastLoadedDrivers[0]
 
-  const driverIds = drivers.map((driver) => driver.id)
+  const driverIds = leastLoadedDrivers.map((driver) => driver.id)
   const locationRows = await db.deliveryOrder.findMany({
     where: {
       driverId: { in: driverIds },
@@ -136,7 +149,7 @@ async function selectAvailableDriver(options = {}) {
     latestLocationByDriver.set(row.driverId, row)
   }
 
-  return drivers
+  return leastLoadedDrivers
     .map((driver) => {
       const location = latestLocationByDriver.get(driver.id)
       const lat = toNumberOrNull(location?.driverLatitude)

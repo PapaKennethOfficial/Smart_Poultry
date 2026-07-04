@@ -75,11 +75,16 @@ export default function AssignedDeliveries() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchValue, setSearchValue] = useState('')
+  const itemsPerPage = 10
   const [actionLoading, setActionLoading] = useState(null) // store order ID being updated
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+
+  const { socket } = useSocket()
 
   const fetchOrders = async () => {
     try {
@@ -95,17 +100,27 @@ export default function AssignedDeliveries() {
 
   useEffect(() => {
     fetchOrders()
+    const interval = setInterval(fetchOrders, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
     const activeOrder = orders.find(o => o.status === 'IN_TRANSIT')
-    if (!activeOrder || !navigator.geolocation) return undefined
+    if (!activeOrder || !navigator.geolocation || !socket) return undefined
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        const { latitude, longitude } = pos.coords
+        // Emit via socket for instant map update
+        socket.emit('location_update', {
+          orderId: activeOrder.id,
+          latitude,
+          longitude
+        })
+        // Also persist to DB
         api.patch(`/api/orders/${activeOrder.id}/location`, {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+          latitude,
+          longitude,
         }).catch(() => {})
       },
       () => {},
@@ -113,21 +128,35 @@ export default function AssignedDeliveries() {
     )
 
     return () => navigator.geolocation.clearWatch(watchId)
-  }, [orders])
+  }, [orders, socket])
 
   useEffect(() => {
-    if (!selectedOrder) return undefined
+    if (!selectedOrder || !socket) return undefined
 
-    const loadMessages = () => {
-      api.get(`/api/orders/${selectedOrder.id}/messages`)
-        .then(res => setMessages(res.data.messages || []))
-        .catch(() => {})
+    // Join room for this specific order
+    socket.emit('join_order_room', selectedOrder.id)
+
+    // Load initial messages
+    const loadMessages = async () => {
+      try {
+        const res = await api.get(`/api/orders/${selectedOrder.id}/messages`)
+        setMessages(res.data.messages || [])
+      } catch (err) {
+        console.error("Failed to load messages", err)
+      }
+    }
+    loadMessages()
+
+    const handleNewMessage = (msg) => {
+      setMessages(prev => [...prev, msg])
     }
 
-    loadMessages()
-    const interval = setInterval(loadMessages, 5000)
-    return () => clearInterval(interval)
-  }, [selectedOrder])
+    socket.on('chat_message', handleNewMessage)
+
+    return () => {
+      socket.off('chat_message', handleNewMessage)
+    }
+  }, [selectedOrder?.id, socket])
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     setActionLoading(orderId)
@@ -145,13 +174,19 @@ export default function AssignedDeliveries() {
     e.preventDefault()
     if (!selectedOrder || !messageText.trim()) return
 
+    const messageContent = messageText.trim()
+    setMessageText('')
     setSendingMessage(true)
     try {
       const res = await api.post(`/api/orders/${selectedOrder.id}/messages`, {
-        message: messageText.trim(),
+        message: messageContent,
       })
-      setMessages(prev => [...prev, res.data.message])
-      setMessageText('')
+      // Emit via socket
+      socket.emit('chat_message', res.data.message)
+      setMessages(prev => {
+        if (prev.some(m => m.id === res.data.message.id)) return prev
+        return [...prev, res.data.message]
+      })
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to send message')
     } finally {
@@ -166,8 +201,28 @@ export default function AssignedDeliveries() {
     return `https://www.google.com/maps/dir/?api=1&destination=${destination}`
   }
 
-  const filteredOrders = orders.filter(o => filter === 'ALL' || o.status === filter)
+  const filteredOrders = orders.filter(o => {
+    const matchesFilter = filter === 'ALL' || o.status === filter
+    if (!matchesFilter) return false
+    if (!searchValue) return true
+    const s = searchValue.toLowerCase()
+    return (
+      (o.customer?.name || '').toLowerCase().includes(s) ||
+      (o.product?.name || '').toLowerCase().includes(s) ||
+      (o.orderId || '').toLowerCase().includes(s)
+    )
+  })
   
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filter, searchValue])
+
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   const total = orders.length
   const pending = orders.filter(o => o.status === 'PENDING').length
   const inTransit = orders.filter(o => o.status === 'IN_TRANSIT').length
@@ -201,16 +256,23 @@ export default function AssignedDeliveries() {
         </div>
       </div>
 
+      <TableFilter
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder="Search deliveries by customer, product, or ID…"
+        resultCount={filteredOrders.length}
+      />
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-subtle)' }}>Loading deliveries...</div>
-      ) : filteredOrders.length === 0 ? (
+      ) : paginatedOrders.length === 0 ? (
         <div className="chart-card" style={{ textAlign: 'center', padding: '60px 0' }}>
           <Truck size={48} color="var(--border)" style={{ margin: '0 auto 16px' }} />
           <div style={{ color: 'var(--text-muted)' }}>No assigned deliveries in this status.</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-          {filteredOrders.map(o => {
+          {paginatedOrders.map(o => {
             const statusConfig = STATUS_MAP[o.status] || STATUS_MAP.PENDING
             const StatusIcon = statusConfig.icon
             
@@ -358,6 +420,17 @@ export default function AssignedDeliveries() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {!loading && filteredOrders.length > itemsPerPage && (
+        <div style={{ marginTop: 24 }}>
+          <Pagination 
+            currentPage={currentPage}
+            totalItems={filteredOrders.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 

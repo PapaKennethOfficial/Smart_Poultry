@@ -18,3 +18,6 @@ export const registerUser = (payload) =>
 
 export const googleAuthUser = (payload) =>
   api.post('/api/auth/google', payload).then((res) => res.data)
+
+export const verifyOTP = (payload) =>
+  api.post('/api/auth/login/verify', payload).then((res) => res.data)

@@ -22,14 +22,21 @@ export function useLogin() {
   return useMutation({
     mutationFn: loginUser,
 
-    onSuccess: (data) => {
+    onSuccess: (data, variables, context) => {
+      if (data.requires2FA) {
+        showSuccess(data.message || 'OTP sent.')
+        // For testing purposes, alert the OTP code directly
+        if (data.mockOtp) {
+          setTimeout(() => alert(`MOCK SMS RECEIVED\n\nYour SmartPoultry OTP is: ${data.mockOtp}`), 500)
+        }
+        return
+      }
       setToken(data.token)
       if (data.role) setRole(data.role)
       if (data.user) setUser(data.user)
       showSuccess('Welcome back! Redirecting to dashboard…')
       if (data.role === 'DELIVERY') navigate('/delivery/vehicle')
       else if (data.role === 'CUSTOMER') navigate('/customer/marketplace')
-      else if (data.role === 'MANAGER' || data.role === 'ADMIN') navigate('/dashboard/verify-vehicles')
       else navigate('/dashboard')
     },
 

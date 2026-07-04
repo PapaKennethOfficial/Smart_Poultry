@@ -54,6 +54,27 @@ const login = async (req, res, next) => {
             })
         }
 
+        if (user.isTwoFactorEnabled) {
+            // Generate a 6 digit OTP
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
+            const otpExpiry = new Date(Date.now() + 10 * 60000) // 10 minutes from now
+
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { otpCode, otpExpiry }
+            })
+
+            // Mock sending email/SMS
+            console.log(`\n\n[MOCK EMAIL/SMS] OTP for ${user.email} is: ${otpCode}\n\n`)
+
+            return res.status(200).json({
+                message: "OTP sent to your email/phone",
+                requires2FA: true,
+                userId: user.id,
+                mockOtp: otpCode // Expose to frontend for testing
+            })
+        }
+
         const token = signToken(user)
 
         // Stamp last login — fire-and-forget; never block the response on this.
@@ -184,4 +205,35 @@ const googleAuth = async (req, res, next) => {
     }
 }
 
-module.exports = { login, register, googleAuth }
+const verifyOTP = async (req, res, next) => {
+    try {
+        const { userId, otpCode } = req.body
+
+        const user = await prisma.user.findUnique({ where: { id: userId } })
+        if (!user) return res.status(404).json({ message: "User not found" })
+
+        if (user.otpCode !== otpCode || !user.otpExpiry || user.otpExpiry < new Date()) {
+            return res.status(401).json({ message: "Invalid or expired OTP" })
+        }
+
+        // Clear OTP and login
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { otpCode: null, otpExpiry: null, lastLoginAt: new Date() }
+        })
+
+        const token = signToken(user)
+        const { password: _pw, ...safeUser } = user
+
+        res.status(200).json({
+            message: "Login successful",
+            token,
+            role: user.role,
+            user: safeUser,
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+module.exports = { login, register, googleAuth, verifyOTP }
