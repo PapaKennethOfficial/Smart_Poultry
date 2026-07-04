@@ -385,6 +385,16 @@ router.patch("/:id", requireAuth, requireRole(["MANAGER", "ADMIN", "DELIVERY"]),
     if (data.status && data.status !== existingOrder.status) {
       update.status = data.status
       statusHistory.push({ status: data.status, timestamp: new Date().toISOString(), by: req.user.id })
+
+      // Privacy: as soon as an order enters a terminal state, wipe the driver's
+      // last known location so the customer's live-tracking view stops showing
+      // stale coordinates. The address itself (deliveryLatitude/Longitude) is
+      // preserved — it belongs to the order, not the driver's live position.
+      if (data.status === "DELIVERED" || data.status === "CANCELLED") {
+        update.driverLatitude = null
+        update.driverLongitude = null
+        update.driverLocationUpdatedAt = null
+      }
     }
     if (data.driverId !== undefined) update.driverId = data.driverId
     if (assignedDriver && data.driverId === undefined) update.driverId = assignedDriver.id
@@ -433,6 +443,15 @@ router.patch("/:id/location", requireAuth, requireRole(["DELIVERY"]), async (req
     if (!existingOrder) return res.status(404).json({ message: "Order not found" })
     if (existingOrder.driverId !== req.user.id) {
       return res.status(403).json({ message: "You can only update your assigned deliveries" })
+    }
+    // Privacy: only accept location while the delivery is actively in transit.
+    // If a driver client keeps sending pings after the order was delivered or
+    // cancelled we quietly reject them; the driver's own UI also stops watching
+    // once the order is not IN_TRANSIT, so this is defence in depth.
+    if (existingOrder.status !== "IN_TRANSIT") {
+      return res.status(400).json({
+        message: "Location updates are only accepted while the delivery is in transit",
+      })
     }
 
     const order = await prisma.deliveryOrder.update({
