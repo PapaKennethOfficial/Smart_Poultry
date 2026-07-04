@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -12,6 +12,8 @@ import Analytics from './pages/Analytics'
 import Deliveries from './pages/Deliveries'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsAndConditions from './pages/TermsAndConditions'
 import ManagerInventory from './pages/ManagerInventory'
 
 // New Role-Specific Pages
@@ -48,6 +50,13 @@ function AppLayout({ children }) {
         <main className="page-content">
           {children}
         </main>
+        <footer style={{ padding: '20px', textAlign: 'center', fontSize: '0.85rem', color: '#8da58f', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          <p>© {new Date().getFullYear()} SmartPoultry. All rights reserved.</p>
+          <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'center', gap: '15px' }}>
+            <Link to="/privacy" style={{ color: '#237227', textDecoration: 'none' }}>Privacy Policy</Link>
+            <Link to="/terms" style={{ color: '#237227', textDecoration: 'none' }}>Terms & Conditions</Link>
+          </div>
+        </footer>
       </div>
     </div>
   )
@@ -60,6 +69,8 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Protected routes - Manager / Common */}
