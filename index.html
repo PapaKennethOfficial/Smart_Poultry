@@ -10,6 +10,19 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="error-log" style="color: red; padding: 20px; font-family: monospace; white-space: pre-wrap; position: absolute; z-index: 9999; top: 0; left: 0; background: white; width: 100%; min-height: 100vh; display: none;"></div>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var el = document.getElementById("error-log");
+        el.style.display = "block";
+        el.innerText += "Error: " + msg + "\nAt: " + url + ":" + line + ":" + col + "\nStack: " + (error ? error.stack : "") + "\n\n";
+      };
+      window.onunhandledrejection = function(event) {
+        var el = document.getElementById("error-log");
+        el.style.display = "block";
+        el.innerText += "Unhandled Promise Rejection: " + event.reason + "\n\n";
+      };
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -31,7 +31,8 @@ function PublicRoute({ children }) {
     if (role === 'MANAGER' || role === 'ADMIN') return <Navigate to="/dashboard" replace />
     if (role === 'DELIVERY') return <Navigate to="/delivery/vehicle" replace />
     if (role === 'CUSTOMER') return <Navigate to="/customer/marketplace" replace />
-    return <Navigate to="/dashboard" replace />
+    // If role is null or unknown, don't redirect to protected routes to avoid infinite loops.
+    // The AuthContext will verify the token and set the role, or logout if invalid.
   }
   return children
 }
