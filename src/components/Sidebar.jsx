@@ -1,11 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, BookOpen, BarChart2, Truck,
+  LayoutDashboard, BookOpen, BarChart2, Truck, Package,
   FileText, Settings, LogOut, Leaf, ShoppingCart, ShieldCheck
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { X } from 'lucide-react'
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
   const { logout, user, role } = useAuth()
 
@@ -20,6 +21,7 @@ export default function Sidebar() {
         { label: 'Dashboard',            icon: LayoutDashboard, to: '/dashboard' },
         { label: 'Vehicle Verification', icon: ShieldCheck,     to: '/dashboard/verify-vehicles' },
         { label: 'Customer Orders',      icon: ShoppingCart,    to: '/dashboard/orders' },
+        { label: 'Inventory',            icon: Package,         to: '/dashboard/inventory' },
         { label: 'Deliveries',           icon: Truck,           to: '/deliveries' },
         { label: 'Farm Logbook',         icon: BookOpen,        to: '/logbook' },
         { label: 'Analytics & AI',       icon: BarChart2,       to: '/analytics' },
@@ -43,10 +45,14 @@ export default function Sidebar() {
 
   const navItems = getNavItems()
 
+  const handleNavClick = () => {
+    if (onClose) onClose()
+  }
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       {/* Logo */}
-      <div className="sidebar-logo">
+      <div className="sidebar-logo" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="brand">
           <Leaf size={18} color="#FFAA00" />
           Smart<span style={{ color: '#84be88' }}>Poultry</span>
@@ -65,6 +71,7 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === '/dashboard'}
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             <Icon size={16} className="icon" />
@@ -75,6 +82,7 @@ export default function Sidebar() {
         <div className="nav-section-label" style={{ marginTop: 12 }}>System</div>
         <NavLink
           to="/settings"
+          onClick={handleNavClick}
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
         >
           <Settings size={16} className="icon" />

@@ -237,7 +237,7 @@ export default function Register() {
               className="form-input"
               type="text"
               id="register-name"
-              placeholder="Dennis Akpalolo"
+              placeholder="e.g. John Doe"
               value={name}
               onChange={clearOnChange(setName)}
               disabled={isPending}
@@ -251,7 +251,7 @@ export default function Register() {
               className="form-input"
               type="email"
               id="register-email"
-              placeholder="dennis@smartpoultry.gh"
+              placeholder="name@example.com"
               value={email}
               onChange={clearOnChange(setEmail)}
               disabled={isPending}

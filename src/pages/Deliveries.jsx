@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, MapPin, X, Truck, CheckCircle2 } from 'lucide-react'
 import { useToast } from '../components/Toast'
@@ -12,6 +12,8 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import TableFilter from '../components/TableFilter'
+import Pagination from '../components/Pagination'
 
 // Fix for Leaflet marker icons in Vite/React
 import icon from 'leaflet/dist/images/marker-icon.png'
@@ -232,6 +234,28 @@ export default function Deliveries() {
   const deliveries = data?.deliveries || []
   const counts = data?.counts || { all: 0, pending: 0, transit: 0, delivered: 0 }
 
+  // ─── Search + Pagination ──────────────────────────────────────────────────
+  const [searchValue, setSearchValue] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
+
+  useEffect(() => { setCurrentPage(1) }, [searchValue, activeStatus])
+
+  const filteredDeliveries = deliveries.filter(d => {
+    if (!searchValue) return true
+    const s = searchValue.toLowerCase()
+    return (
+      (d.customer || '').toLowerCase().includes(s) ||
+      (d.driver || '').toLowerCase().includes(s) ||
+      (d.product || '').toLowerCase().includes(s) ||
+      (d.orderId || '').toLowerCase().includes(s)
+    )
+  })
+  const paginatedDeliveries = filteredDeliveries.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
   // Find latest in-transit delivery for the active delivery card
   const activeDelivery = deliveries.find((d) => d.status === 'In Transit')
 
@@ -297,6 +321,12 @@ export default function Deliveries() {
             </div>
           </div>
 
+          <TableFilter
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            searchPlaceholder="Search customer, driver, product…"
+            resultCount={filteredDeliveries.length}
+          />
           <div className="table-wrapper">
             {isLoading ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#8da58f' }}>
@@ -306,7 +336,7 @@ export default function Deliveries() {
               <div style={{ padding: 40, textAlign: 'center', color: '#ef4444' }}>
                 <div style={{ fontSize: '0.85rem' }}>Failed to load deliveries. Please try again.</div>
               </div>
-            ) : deliveries.length === 0 ? (
+            ) : filteredDeliveries.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#8da58f' }}>
                 <div style={{ fontSize: '0.85rem' }}>No deliveries found.</div>
               </div>
@@ -326,7 +356,7 @@ export default function Deliveries() {
                   </tr>
                 </thead>
                 <tbody>
-                  {deliveries.map(d => (
+                  {paginatedDeliveries.map(d => (
                     <tr key={d.id}>
                       <td style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600, fontSize: '0.8rem', color: '#237227', whiteSpace: 'nowrap' }}>
                         {d.orderId}
@@ -374,6 +404,12 @@ export default function Deliveries() {
               </table>
             )}
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredDeliveries.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Map panel + Revenue */}

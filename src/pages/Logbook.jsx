@@ -3,6 +3,7 @@ import { Plus, X, Search, Download, Loader2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { useToast } from '../components/Toast'
+import Pagination from '../components/Pagination'
 
 function AddEntryModal({ onClose }) {
   const queryClient = useQueryClient()
@@ -458,45 +459,13 @@ export default function Logbook() {
 
         {/* Pagination */}
         {!isLoading && data?.meta && (
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '14px 0 2px', borderTop: '1px solid #edebd6', marginTop: 6
-          }}>
-            <span style={{ fontSize: '0.77rem', color: '#8da58f' }}>
-              Showing {logEntries.length} of {data.meta.total} entries
-            </span>
-            <div style={{ display: 'flex', gap: 5 }}>
-              <button 
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={{
-                  width: 30, height: 30, borderRadius: 7,
-                  border: '1px solid #dddabd',
-                  background: '#fff',
-                  color: '#5e7a61',
-                  fontSize: '0.77rem', cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif'
-                }}>←</button>
-              
-              <button style={{
-                  width: 30, height: 30, borderRadius: 7,
-                  border: '1.5px solid #237227',
-                  background: 'rgba(35,114,39,0.08)',
-                  color: '#237227',
-                  fontSize: '0.77rem', cursor: 'default', fontFamily: 'Inter, sans-serif',
-                  fontWeight: 600
-                }}>{page}</button>
-
-              <button 
-                onClick={() => setPage(p => p + 1)}
-                disabled={page >= (data.meta.totalPages || 1)}
-                style={{
-                  width: 30, height: 30, borderRadius: 7,
-                  border: '1px solid #dddabd',
-                  background: '#fff',
-                  color: '#5e7a61',
-                  fontSize: '0.77rem', cursor: page >= (data.meta.totalPages || 1) ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif'
-                }}>→</button>
-            </div>
+          <div style={{ padding: '0 16px' }}>
+            <Pagination 
+              currentPage={page}
+              totalItems={data.meta.total}
+              itemsPerPage={20}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

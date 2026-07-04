@@ -10,8 +10,11 @@ const VERIFICATION_STATUSES = ["PENDING", "APPROVED", "REJECTED"]
 const imageDataSchema = z
   .string()
   .trim()
-  .min(50, "Photo is required")
-  .refine((value) => value.startsWith("data:image/"), "Photo must be an uploaded image")
+  .min(1, "Photo is required")
+  .refine(
+    (value) => value.startsWith("data:image/") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/uploads/"),
+    "Photo must be an uploaded image"
+  )
 
 const optionalDocumentSchema = z
   .string()
@@ -19,7 +22,7 @@ const optionalDocumentSchema = z
   .optional()
   .nullable()
   .refine(
-    (value) => !value || value.startsWith("data:image/") || value.startsWith("data:application/pdf"),
+    (value) => !value || value.startsWith("data:image/") || value.startsWith("data:application/pdf") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/uploads/"),
     "Document must be an uploaded image or PDF"
   )
 

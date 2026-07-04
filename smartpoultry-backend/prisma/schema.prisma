@@ -64,6 +64,9 @@ model User {
   phone                   String?
   role                    Role     @default(WORKER)
   deliveryStaffStatus     DeliveryStaffStatus?
+  isTwoFactorEnabled      Boolean  @default(false)
+  otpCode                 String?
+  otpExpiry               DateTime?
   notificationPreferences Json     @default("{}")
   lastLoginAt             DateTime?
   createdAt               DateTime @default(now())
@@ -273,12 +276,14 @@ model DeliveryOrder {
 
 model Product {
   id          String   @id @default(cuid())
-  name        String
+  name        String   @unique
   description String?
   price       Float
   unit        String   @default("kg")
   stock       Int      @default(0)
+  category    String   @default("General")
   imageUrl    String?
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

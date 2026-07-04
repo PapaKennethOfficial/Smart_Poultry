@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import ProtectedRoute from './components/ProtectedRoute'
-import SplashScreen from './components/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -15,6 +14,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsAndConditions from './pages/TermsAndConditions'
+import ManagerInventory from './pages/ManagerInventory'
 
 // New Role-Specific Pages
 import VehicleVerification from './pages/VehicleVerification'
@@ -28,7 +28,7 @@ import CustomerOrders from './pages/CustomerOrders'
 function PublicRoute({ children }) {
   const { token, role } = useAuth()
   if (token) {
-    if (role === 'MANAGER' || role === 'ADMIN') return <Navigate to="/dashboard/verify-vehicles" replace />
+    if (role === 'MANAGER' || role === 'ADMIN') return <Navigate to="/dashboard" replace />
     if (role === 'DELIVERY') return <Navigate to="/delivery/vehicle" replace />
     if (role === 'CUSTOMER') return <Navigate to="/customer/marketplace" replace />
     return <Navigate to="/dashboard" replace />
@@ -37,12 +37,17 @@ function PublicRoute({ children }) {
 }
 
 function AppLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div style={{ display: 'flex' }}>
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
       <div className="main-layout">
-        <Topbar />
-        <main className="page-content" style={{ minHeight: 'calc(100vh - 120px)' }}>
+        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        <main className="page-content">
           {children}
         </main>
         <footer style={{ padding: '20px', textAlign: 'center', fontSize: '0.85rem', color: '#8da58f', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
@@ -58,20 +63,6 @@ function AppLayout({ children }) {
 }
 
 export default function App() {
-  // Show splash only once per browser session
-  const [splashDone, setSplashDone] = useState(
-    () => sessionStorage.getItem('sp_splash_done') === '1'
-  )
-
-  if (!splashDone) {
-    return (
-      <SplashScreen onComplete={() => {
-        sessionStorage.setItem('sp_splash_done', '1')
-        setSplashDone(true)
-      }} />
-    )
-  }
-
   return (
     <BrowserRouter>
       <Routes>
@@ -86,6 +77,7 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
         <Route path="/dashboard/verify-vehicles" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><VehicleVerification /></AppLayout></ProtectedRoute>} />
         <Route path="/dashboard/orders" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><ManagerOrders /></AppLayout></ProtectedRoute>} />
+        <Route path="/dashboard/inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><ManagerInventory /></AppLayout></ProtectedRoute>} />
         <Route path="/logbook" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><Logbook /></AppLayout></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><Analytics /></AppLayout></ProtectedRoute>} />
         <Route path="/deliveries" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><AppLayout><Deliveries /></AppLayout></ProtectedRoute>} />
