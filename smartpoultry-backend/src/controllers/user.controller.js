@@ -147,6 +147,45 @@ const toggle2FA = async (req, res, next) => {
   }
 };
 
+// ─── POST /users (Admin only) ───────────────────────────────────────────────
+// Lets an ADMIN create new privileged accounts (ADMIN, MANAGER).
+// Customers and Delivery staff self-register via /auth/register.
+const createUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: "name, email, password, and role are required" });
+    }
+
+    const allowedRoles = ["ADMIN", "MANAGER"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        message: `Only ${allowedRoles.join(", ")} accounts can be created here. Customers and delivery staff should self-register.`,
+      });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: { name, email, password: hashed, role },
+      select: USER_PUBLIC_SELECT,
+    });
+
+    res.status(201).json({
+      message: `${role} account created successfully`,
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMe,
   updateMe,
@@ -154,4 +193,5 @@ module.exports = {
   updatePassword,
   listUsers,
   toggle2FA,
+  createUser,
 };
