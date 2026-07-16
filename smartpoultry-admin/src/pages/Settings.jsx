@@ -177,8 +177,9 @@ export default function Settings() {
     updateNotifications.mutate({ [key]: next })
   }
 
-  // ─── Team & Roles (removed, handled by Audit) ─────────────────────────────
+  // ─── Team & Roles ────────────────────────────────────────────────────────
   const canViewTeam = authRole === 'ADMIN' || authRole === 'MANAGER'
+  const usersQuery  = useUsers({ enabled: canViewTeam && activeSection === 'users' })
   const auditQuery  = useAuditLogs()
 
   // ─── Audit Trail filtering + pagination ────────────────────────────────────
@@ -447,6 +448,118 @@ export default function Settings() {
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── Farm Settings (not in current API brief — left as static UI) ── */}
+          {activeSection === 'farm' && (
+            <div className="chart-card">
+              <div className="section-title" style={{ marginBottom: 3 }}>Farm Configuration</div>
+              <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginBottom: 22, lineHeight: 1.55 }}>
+                Set thresholds for IoT sensor alerts and farm parameters
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 540 }}>
+                {[
+                  { label: 'Max Temperature (°C)',      val: '32'   },
+                  { label: 'Min Temperature (°C)',      val: '18'   },
+                  { label: 'Max Humidity (%)',           val: '75'   },
+                  { label: 'Max Ammonia (ppm)',          val: '20'   },
+                  { label: 'Daily Egg Target',           val: '1200' },
+                  { label: 'Alert Mortality Threshold',  val: '3'    },
+                ].map((f, i) => (
+                  <div className="form-group" key={i} style={{ marginBottom: 0 }}>
+                    <label className="form-label">{f.label}</label>
+                    <input className="form-input" type="number" defaultValue={f.val} />
+                  </div>
+                ))}
+              </div>
+
+              <button className="btn-primary" style={{ marginTop: 22 }}>Save Farm Config</button>
+            </div>
+          )}
+
+          {/* ── Team & Roles ── */}
+          {activeSection === 'users' && (
+            <div className="chart-card">
+              <div className="section-header">
+                <div>
+                  <div className="section-title">Team & Roles</div>
+                  <div className="section-sub">Manage team member access and permissions</div>
+                </div>
+                <button className="btn-primary" style={{ fontSize: '0.8rem', padding: '7px 14px' }} disabled>
+                  + Invite Member
+                </button>
+              </div>
+
+              {!canViewTeam ? (
+                <div style={{
+                  marginTop: 14, padding: '14px 16px',
+                  background: 'rgba(239,68,68,0.08)', borderRadius: 10,
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: '#b91c1c', fontSize: '0.85rem', lineHeight: 1.5,
+                }}>
+                  You don't have permission to view team members. Ask an admin or manager.
+                </div>
+              ) : (
+                <div className="table-wrapper">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usersQuery.isLoading && (
+                        <tr><td colSpan={6} style={{ color: '#8da58f', textAlign: 'center', padding: 18 }}>
+                          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', verticalAlign: 'middle' }} /> Loading team…
+                        </td></tr>
+                      )}
+                      {usersQuery.isError && (
+                        <tr><td colSpan={6} style={{ color: '#b91c1c', textAlign: 'center', padding: 18 }}>
+                          Could not load team members.
+                        </td></tr>
+                      )}
+                      {!usersQuery.isLoading && !usersQuery.isError && (usersQuery.data || []).map((u) => (
+                        <tr key={u.id}>
+                          <td style={{ fontWeight: 500 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                              <div style={{
+                                width: 30, height: 30, borderRadius: 8,
+                                background: 'linear-gradient(135deg, #237227, #84be88)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '0.68rem', color: '#fff'
+                              }}>
+                                {initials(u.name)}
+                              </div>
+                              {u.name}
+                            </div>
+                          </td>
+                          <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>{u.email}</td>
+                          <td><span className="badge badge-green">{roleBadgeLabel(u.role)}</span></td>
+                          <td><span className="badge badge-green">Active</span></td>
+                          <td style={{ color: '#8da58f', fontSize: '0.82rem' }}>{relativeLogin(u.lastLoginAt)}</td>
+                          <td>
+                            <button className="btn-outline" style={{ padding: '4px 11px', fontSize: '0.74rem' }} disabled>
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!usersQuery.isLoading && !usersQuery.isError && (usersQuery.data || []).length === 0 && (
+                        <tr><td colSpan={6} style={{ color: '#8da58f', textAlign: 'center', padding: 18 }}>
+                          No team members yet.
+                        </td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
