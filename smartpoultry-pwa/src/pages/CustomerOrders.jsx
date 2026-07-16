@@ -291,7 +291,7 @@ export default function CustomerOrders() {
         <div className="page-desc">Track and manage your farm product deliveries</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 24 }}>
         <StatCard label="Total Orders" value={total} icon={ShoppingBag} iconColor="#84be88" accent="#84be88" />
         <StatCard label="Active Orders" value={active} icon={Truck} iconColor="#3b82f6" accent="#3b82f6" />
         <StatCard label="Completed" value={completed} icon={CheckCircle2} iconColor="#237227" accent="#237227" />

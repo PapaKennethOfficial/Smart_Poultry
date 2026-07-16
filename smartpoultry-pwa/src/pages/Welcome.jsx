@@ -112,7 +112,7 @@ export default function Welcome() {
             boxShadow: '0 8px 24px rgba(255,255,255,0.15)',
             transition: 'transform 0.2s'
           }}>
-            Access Portal <ArrowRight size={18} strokeWidth={2.5} />
+            Get Started <ArrowRight size={18} strokeWidth={2.5} />
           </button>
         </Link>
       </header>

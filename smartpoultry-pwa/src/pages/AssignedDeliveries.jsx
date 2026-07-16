@@ -223,7 +223,7 @@ export default function AssignedDeliveries() {
         <div className="page-desc">Manage your assigned orders and update delivery status</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14, marginBottom: 24 }}>
         <StatCard label="Total Assigned" value={total} icon={Package} iconColor="#84be88" accent="#84be88" />
         <StatCard label="Pending Startup" value={pending} icon={Clock} iconColor="#f59e0b" accent="#f59e0b" />
         <StatCard label="In Transit" value={inTransit} icon={Truck} iconColor="#3b82f6" accent="#3b82f6" />
