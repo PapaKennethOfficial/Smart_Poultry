@@ -16,6 +16,7 @@ const {
   updatePassword,
   listUsers,
   toggle2FA,
+  createUser,
 } = require("../controllers/user.controller");
 
 // All routes require an authenticated user.
@@ -32,5 +33,6 @@ router.patch("/me/2fa", toggle2FA);
 
 // ─── Admin / Manager only ────────────────────────────────────────────────────
 router.get("/", roleGuard(["ADMIN", "MANAGER"]), listUsers);
+router.post("/", roleGuard(["ADMIN"]), createUser);
 
 module.exports = router;

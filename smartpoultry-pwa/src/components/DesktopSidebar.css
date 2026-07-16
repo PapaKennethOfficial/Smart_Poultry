@@ -1,0 +1,113 @@
+.desktop-sidebar {
+  width: 250px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0f1c11 0%, #0b140d 45%, #070e08 100%);
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.desktop-sidebar-logo {
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.desktop-sidebar-logo .brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: #fff;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desktop-sidebar-logo .brand .dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 14px var(--accent);
+  }
+}
+
+.desktop-sidebar-nav {
+  flex: 1;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-nav-section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 16px 0 8px 12px;
+  font-weight: 600;
+}
+
+.desktop-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-bottom: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.desktop-nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.desktop-nav-item.active {
+  background: rgba(132, 190, 136, 0.12);
+  color: #84be88;
+  border: 1px solid rgba(132, 190, 136, 0.2);
+}
+
+.desktop-nav-item .icon {
+  color: inherit;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.desktop-nav-item.active .icon {
+  transform: scale(1.1);
+}
+
+.desktop-sidebar-footer {
+  margin-top: auto;
+  padding: 16px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.desktop-logout-btn {
+  background: transparent;
+  border: none;
+  width: 100%;
+}
+
