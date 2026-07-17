@@ -314,7 +314,7 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
                     <button
                       className="btn-primary"
                       style={{ padding: '10px 24px', opacity: updateMe.isPending ? 0.75 : 1, width: 'max-content' }}
@@ -383,7 +383,7 @@ export default function Settings() {
                     required
                   />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
                   <button
                     className="btn-primary"
                     style={{ padding: '10px 24px', opacity: updatePassword.isPending ? 0.75 : 1, width: 'max-content' }}

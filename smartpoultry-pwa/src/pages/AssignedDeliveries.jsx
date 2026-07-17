@@ -416,7 +416,7 @@ export default function AssignedDeliveries() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 12 }}>
                   {o.status === 'PENDING' && (
                     <button 
                       className="btn-primary" 

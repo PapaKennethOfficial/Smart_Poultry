@@ -688,7 +688,7 @@ export default function CustomerOrders() {
               </>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button className="btn-primary" onClick={() => setSelectedOrder(null)}>Close</button>
             </div>
           </div>
