@@ -233,7 +233,7 @@ export default function Welcome() {
       <footer style={{
         marginTop: 'auto',
         borderTop: '1px solid rgba(255,255,255,0.05)',
-        padding: '20px 5%',
+        padding: '20px 5% 8px',
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         position: 'relative', zIndex: 1
       }}>
