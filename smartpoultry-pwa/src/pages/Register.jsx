@@ -18,6 +18,7 @@ export default function Register() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [role, setRole] = useState('customer')
@@ -73,6 +74,7 @@ export default function Register() {
     register({
       name: name.trim(),
       email,
+      phone: phone.trim(),
       password,
       role: ROLE_MAP[role] || 'CUSTOMER',
     })
@@ -109,10 +111,10 @@ export default function Register() {
     : 'Continue with Google'
 
   const features = [
-    'AI-powered egg yield forecasting (10-day)',
-    'Real-time IoT environmental monitoring',
-    'Integrated delivery & logistics tracking',
-    'Automated farm logbook & analytics',
+    'Farm-fresh poultry delivered securely',
+    'Real-time GPS delivery tracking',
+    'Streamlined driver route management',
+    'Direct communication with delivery staff',
   ]
 
   return (
@@ -163,7 +165,7 @@ export default function Register() {
               marginTop: 14, color: 'rgba(255,255,255,0.58)',
               fontSize: '0.88rem', lineHeight: 1.65, maxWidth: 320
             }}>
-              Set up access for yourself or your team — pick the role that matches your responsibilities on the farm.
+              Join the ecosystem to order fresh products directly from the farm, or register as a delivery partner to start earning.
             </p>
           </div>
 
@@ -253,6 +255,20 @@ export default function Register() {
               onChange={clearOnChange(setEmail)}
               disabled={isPending}
               required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Phone Number (Required for Drivers)</label>
+            <input
+              className="form-input"
+              type="tel"
+              id="register-phone"
+              placeholder="e.g. +1234567890"
+              value={phone}
+              onChange={clearOnChange(setPhone)}
+              disabled={isPending}
+              required={role === 'delivery'}
             />
           </div>
 

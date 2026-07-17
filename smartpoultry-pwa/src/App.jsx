@@ -3,12 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 
-import Welcome from './pages/Welcome';
-import Register from './pages/Register';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsAndConditions from './pages/TermsAndConditions';
-import ClientLogin from './pages/ClientLogin';
-import ClientApp from './ClientApp';
+const Welcome = lazy(() => import('./pages/Welcome'));
+const Register = lazy(() => import('./pages/Register'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const ClientLogin = lazy(() => import('./pages/ClientLogin'));
+const ClientApp = lazy(() => import('./ClientApp'));
 
 function PublicRoute({ children }) {
   const { token, role } = useAuth();

@@ -120,7 +120,7 @@ export default function Welcome() {
       {/* Features Grid */}
       <section style={{
         position: 'relative', zIndex: 1,
-        padding: '20px 5% 60px',
+        padding: '20px 5% 40px',
         maxWidth: '1200px', margin: '0 auto', width: '100%'
       }}>
         <div style={{
@@ -233,7 +233,7 @@ export default function Welcome() {
       <footer style={{
         marginTop: 'auto',
         borderTop: '1px solid rgba(255,255,255,0.05)',
-        padding: '32px 5%',
+        padding: '20px 5% 8px',
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         position: 'relative', zIndex: 1
       }}>

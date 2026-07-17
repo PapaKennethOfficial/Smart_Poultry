@@ -553,8 +553,8 @@ export default function VehicleRegistration() {
           </div>
         </div>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', justifyContent: 'center' }}>
             <input 
               type="checkbox" 
               id="agree-staff-terms" 
@@ -572,7 +572,7 @@ export default function VehicleRegistration() {
               <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>, and acknowledge that platform interactions contribute to AI analytics.
             </label>
           </div>
-          <button type="submit" className="btn-primary" disabled={submitting} style={{ padding: '12px 24px' }}>
+          <button type="submit" className="btn-primary" disabled={submitting} style={{ padding: '12px 24px', width: '100%', maxWidth: '400px', display: 'flex', justifyContent: 'center' }}>
             {submitting ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
             {submitting ? 'Submitting...' : 'Submit Vehicle Details'}
           </button>

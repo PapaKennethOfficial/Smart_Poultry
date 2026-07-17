@@ -99,7 +99,7 @@ const login = async (req, res, next) => {
 
 const register = async (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body
+        const { name, email, password, phone, role } = req.body
         const requestedRole = role || "CUSTOMER"
 
         const roleRegistrationError = assertCanRegisterRole(requestedRole)
@@ -121,6 +121,7 @@ const register = async (req, res, next) => {
                 name,
                 email,
                 password: hashed,
+                phone: phone || null,
                 role: requestedRole,
                 deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
             },

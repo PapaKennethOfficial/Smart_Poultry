@@ -33,13 +33,13 @@ router.use("/orders", orderRoutes)
 router.use("/products", productRoutes)
 
 // ─── Namespaced v1 routes with strict RBAC (for future mobile apps) ───────────
-const adminRoutes = require("../routes/admin");
-const driverRoutes = require("../routes/driver");
-const customerRoutes = require("../routes/customer");
+// const adminRoutes = require("../routes/admin");
+// const driverRoutes = require("../routes/driver");
+// const customerRoutes = require("../routes/customer");
 
-router.use("/v1/admin", adminRoutes);
-router.use("/v1/driver", driverRoutes);
-router.use("/v1/customer", customerRoutes);
+// router.use("/v1/admin", adminRoutes);
+// router.use("/v1/driver", driverRoutes);
+// router.use("/v1/customer", customerRoutes);
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {

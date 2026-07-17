@@ -1079,29 +1079,30 @@ body {
 
 /* ── Marketplace Layout ────────────────────────────────────────── */
 .marketplace-layout {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 24px;
+  display: block;
   min-height: 100%;
-}
-
-@media (max-width: 1024px) {
-  .marketplace-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 .marketplace-products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 300px));
-  justify-content: center;
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.marketplace-products-grid > div {
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.marketplace-products-grid > div:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 24px -8px rgba(0,0,0,0.12), 0 4px 12px -4px rgba(35,114,39,0.08);
+  border-color: rgba(132, 190, 136, 0.4) !important;
 }
 
 @media (max-width: 640px) {
   .marketplace-products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 220px));
-    justify-content: center;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
   }
 }
 
