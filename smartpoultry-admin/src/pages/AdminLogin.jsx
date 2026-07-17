@@ -3,7 +3,7 @@ import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-rea
 import { useLogin } from '../hooks/auth/useLogin';
 import { useVerifyOTP } from '../hooks/auth/useVerifyOTP';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function AdminLogin() {
   const [showPass, setShowPass] = useState(false);
@@ -188,6 +188,15 @@ export default function AdminLogin() {
               </>
             )}
           </button>
+
+          {!loginData?.requires2FA && (
+            <div style={{ marginTop: 24, textAlign: 'center', fontSize: '0.85rem' }}>
+              <span style={{ color: '#5e7a61' }}>New to SmartPoultry Admin? </span>
+              <Link to="/admin/register" style={{ color: '#237227', fontWeight: 600, textDecoration: 'none' }}>
+                Create an account
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </form>

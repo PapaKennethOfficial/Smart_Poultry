@@ -86,10 +86,10 @@ export default function Login() {
     : 'Continue with Google'
 
   const features = [
-    'AI-powered egg yield forecasting (10-day)',
-    'Real-time IoT environmental monitoring',
-    'Integrated delivery & logistics tracking',
-    'Automated farm logbook & analytics',
+    'Farm-fresh poultry delivered securely',
+    'Real-time GPS delivery tracking',
+    'Streamlined driver route management',
+    'Direct communication with delivery staff',
   ]
 
   return (
@@ -124,7 +124,7 @@ export default function Login() {
               fontWeight: 600, letterSpacing: '0.07em',
               textTransform: 'uppercase', marginBottom: 14
             }}>
-              AI-Driven Farm Intelligence
+              Join the platform
             </div>
 
             <h1 style={{
@@ -132,15 +132,15 @@ export default function Login() {
               fontSize: '2.1rem', color: '#fff',
               lineHeight: 1.15, letterSpacing: '-0.03em'
             }}>
-              Smarter Poultry.<br />
-              <span style={{ color: '#84be88' }}>Better Yields.</span>
+              Welcome to<br />
+              <span style={{ color: '#84be88' }}>SmartPoultry.</span>
             </h1>
 
             <p style={{
               marginTop: 14, color: 'rgba(255,255,255,0.58)',
               fontSize: '0.88rem', lineHeight: 1.65, maxWidth: 320
             }}>
-              An integrated platform built for Ghanaian poultry farmers — from daily logging to AI-powered decision support.
+              Sign in to order fresh products directly from the farm or manage your deliveries.
             </p>
           </div>
 

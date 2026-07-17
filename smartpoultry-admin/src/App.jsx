@@ -2,11 +2,12 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsAndConditions from './pages/TermsAndConditions';
-import AdminLogin from './pages/AdminLogin';
-import Welcome from './pages/Welcome';
-import AdminApp from './AdminApp';
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminRegister = lazy(() => import('./pages/AdminRegister'));
+const Welcome = lazy(() => import('./pages/Welcome'));
+const AdminApp = lazy(() => import('./AdminApp'));
 
 function PublicRoute({ children }) {
   const { token, role } = useAuth();
@@ -28,6 +29,7 @@ export default function App() {
       }>
         <Routes>
           <Route path="/admin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+          <Route path="/admin/register" element={<PublicRoute><AdminRegister /></PublicRoute>} />
           <Route path="/login" element={<Navigate to="/admin/login" replace />} />
           
           <Route path="/privacy" element={<PrivacyPolicy />} />
