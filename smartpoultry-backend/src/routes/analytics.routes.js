@@ -7,6 +7,9 @@ const {
   getFCR,
   getInsights,
   getEnvironmental,
+  getFulfilmentFunnel,
+  getDriverEfficiency,
+  getOrderHeatmap,
 } = require("../controllers/analytics.controller");
 
 // ─── All analytics routes require authentication & high-level roles ──────────
@@ -18,5 +21,8 @@ router.get("/forecast", getForecast);
 router.get("/fcr", getFCR);
 router.get("/insights", getInsights);
 router.get("/environmental", getEnvironmental);
+router.get("/fulfilment-funnel", getFulfilmentFunnel);
+router.get("/driver-efficiency", getDriverEfficiency);
+router.get("/order-heatmap", getOrderHeatmap);
 
 module.exports = router;

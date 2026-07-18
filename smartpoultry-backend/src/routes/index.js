@@ -18,6 +18,7 @@ const logbookRoutes = require("../routes/logbook.routes")
 const vehicleRoutes = require("../routes/vehicle.routes")
 const orderRoutes = require("../routes/order.routes")
 const productRoutes = require("../routes/product.routes")
+const aiRoutes = require("../routes/ai.routes")
 
 router.use("/deliveries", deliveryRoutes)
 router.use("/dashboard", dashboardRoutes)
@@ -31,6 +32,7 @@ router.use("/logbook", logbookRoutes)
 router.use("/vehicles", vehicleRoutes)
 router.use("/orders", orderRoutes)
 router.use("/products", productRoutes)
+router.use("/ai", aiRoutes)
 
 // ─── Namespaced v1 routes with strict RBAC (for future mobile apps) ───────────
 // const adminRoutes = require("../routes/admin");
