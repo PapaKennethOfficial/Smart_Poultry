@@ -1,0 +1,88 @@
+# SmartPoultry — one-command local stack.
+#
+#   docker compose up --build
+#
+# Ports:
+#   5432   postgres            (internal only)
+#   5001   Node backend        (host + internal)
+#   8000   Python AI service   (internal only — the Node backend is the only caller)
+#   5173   Vite dev server     (run separately with `npm run dev` — not in compose)
+#
+# Env-var wiring is intentionally explicit so a defence panel can trace who talks
+# to whom without opening this file. Every secret has a `${VAR:-fallback}` shape
+# so the compose stack still boots with sensible defaults for demos.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-2230}
+      POSTGRES_DB: ${POSTGRES_DB:-smartpoultry_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ai:
+    build:
+      context: ./smartpoultry-ai
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-2230}@postgres:5432/${POSTGRES_DB:-smartpoultry_db}
+      HOST: 0.0.0.0
+      PORT: 8000
+      # Same shared secret used by the Node backend service below
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:-dev-only-share-with-ai-service}
+      NODE_BACKEND_ORIGIN: http://backend:5001
+      FORECAST_HISTORY_DAYS: 180
+      FORECAST_DEFAULT_HORIZON: 14
+      MODEL_CACHE_DIR: /app/app/models/cache
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: gemini-1.5-flash
+    volumes:
+      # Persist trained model between rebuilds so we don't retrain on every restart
+      - ai_models:/app/app/models/cache
+    # Not exposed to the host — only the Node backend talks to it
+    expose:
+      - "8000"
+
+  backend:
+    build:
+      context: ./smartpoultry-backend
+      # Assumes a Dockerfile exists in smartpoultry-backend/ (out of scope for
+      # this PR — add later). For now `docker compose up` will fail on this
+      # service until that Dockerfile is added; run node locally in the meantime.
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-2230}@postgres:5432/${POSTGRES_DB:-smartpoultry_db}
+      PORT: 5001
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:5173
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:-dev-only-share-with-ai-service}
+      AI_SERVICE_TIMEOUT: 45000
+      FARM_DEPOT_LAT: ${FARM_DEPOT_LAT:-5.6037}
+      FARM_DEPOT_LON: ${FARM_DEPOT_LON:--0.1870}
+    ports:
+      - "5001:5001"
+
+volumes:
+  pgdata:
+  ai_models:

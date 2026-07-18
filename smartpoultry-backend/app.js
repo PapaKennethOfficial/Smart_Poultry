@@ -34,4 +34,13 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+  // Register scheduled jobs after the HTTP server is up so a bad cron
+  // expression can't stop the API from booting.
+  try {
+    const { registerWeeklyRetrain } = require("./src/jobs/forecastRetrainer");
+    registerWeeklyRetrain();
+  } catch (err) {
+    console.warn("[boot] failed to register weekly retrain job:", err.message);
+  }
 });

@@ -33,3 +33,24 @@ export const fetchInsights = () =>
 export const fetchEnvironmental = () =>
   api.get('/api/analytics/environmental').then((res) => res.data)
 
+/**
+ * GET /api/analytics/fulfilment-funnel?days=30
+ * @returns {Promise<Array<{ stage: string, count: number }>>}
+ */
+export const fetchFulfilmentFunnel = (days = 30) =>
+  api.get('/api/analytics/fulfilment-funnel', { params: { days } }).then((r) => r.data)
+
+/**
+ * GET /api/analytics/driver-efficiency?days=30
+ * @returns {Promise<Array<{ driverName: string, deliveries: number, avgHoursPerDelivery: number }>>}
+ */
+export const fetchDriverEfficiency = (days = 30) =>
+  api.get('/api/analytics/driver-efficiency', { params: { days } }).then((r) => r.data)
+
+/**
+ * GET /api/analytics/order-heatmap?days=60
+ * @returns {Promise<{ grid: number[][], rows: Array<{ day, hour, count }>, maxCount: number }>}
+ */
+export const fetchOrderHeatmap = (days = 60) =>
+  api.get('/api/analytics/order-heatmap', { params: { days } }).then((r) => r.data)
+
