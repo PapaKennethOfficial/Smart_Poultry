@@ -14,6 +14,7 @@ const logbookRoutes = require("../routes/logbook.routes")
 const vehicleRoutes = require("../routes/vehicle.routes")
 const orderRoutes = require("../routes/order.routes")
 const productRoutes = require("../routes/product.routes")
+const aiRoutes = require("../routes/ai.routes")
 
 router.use("/auth", authRoutes)
 router.use("/deliveries", deliveryRoutes)
@@ -28,6 +29,7 @@ router.use("/logbook", logbookRoutes)
 router.use("/vehicles", vehicleRoutes)
 router.use("/orders", orderRoutes)
 router.use("/products", productRoutes)
+router.use("/ai", aiRoutes)
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });

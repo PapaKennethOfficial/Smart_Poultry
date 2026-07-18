@@ -204,5 +204,130 @@ const getEnvironmental = async (req, res, next) => {
   }
 };
 
-module.exports = { getForecast, getFCR, getInsights, getEnvironmental };
+// ─── GET /analytics/fulfilment-funnel ─────────────────────────────────────────
+// Count of delivery orders in each pipeline stage over the last 30 days —
+// drives the Recharts funnel chart on Analytics.
+const getFulfilmentFunnel = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 30, 365);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const rows = await prisma.deliveryOrder.groupBy({
+      by: ["status"],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+    });
+    const counts = { PENDING: 0, IN_TRANSIT: 0, DELIVERED: 0, CANCELLED: 0 };
+    rows.forEach((r) => { counts[r.status] = r._count._all; });
+
+    // Order matters — the funnel reads top→bottom in the same sequence.
+    res.json([
+      { stage: "Placed",    count: counts.PENDING + counts.IN_TRANSIT + counts.DELIVERED + counts.CANCELLED },
+      { stage: "Confirmed", count: counts.IN_TRANSIT + counts.DELIVERED + counts.CANCELLED }, // "moved past PENDING"
+      { stage: "Dispatched",count: counts.IN_TRANSIT + counts.DELIVERED },
+      { stage: "Delivered", count: counts.DELIVERED },
+    ]);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET /analytics/driver-efficiency ────────────────────────────────────────
+// Delivered orders per driver, average fulfilment time in hours, and total
+// distance approximated by the number of deliveries × depot distance. Enough
+// signal for a scatter plot; not a substitute for a real telematics feed.
+const getDriverEfficiency = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 30, 365);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const orders = await prisma.deliveryOrder.findMany({
+      where: {
+        createdAt: { gte: since },
+        status: "DELIVERED",
+        driverId: { not: null },
+      },
+      select: {
+        driverId: true,
+        createdAt: true,
+        updatedAt: true,
+        deliveryLatitude: true,
+        deliveryLongitude: true,
+        driver: { select: { name: true } },
+      },
+    });
+
+    // Group by driver + compute avg fulfilment time and delivery count.
+    const perDriver = new Map();
+    for (const o of orders) {
+      const hoursToDeliver =
+        (new Date(o.updatedAt).getTime() - new Date(o.createdAt).getTime()) / 3600_000;
+      const entry = perDriver.get(o.driverId) || {
+        driverId: o.driverId,
+        driverName: o.driver?.name || "Unknown",
+        deliveries: 0,
+        totalHours: 0,
+      };
+      entry.deliveries += 1;
+      entry.totalHours += Math.max(0, hoursToDeliver);
+      perDriver.set(o.driverId, entry);
+    }
+    const result = [...perDriver.values()].map((e) => ({
+      driverName: e.driverName,
+      deliveries: e.deliveries,
+      avgHoursPerDelivery: e.deliveries > 0 ? Number((e.totalHours / e.deliveries).toFixed(2)) : 0,
+    }));
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET /analytics/order-heatmap ────────────────────────────────────────────
+// 7×24 grid of order counts by weekday × hour-of-day over the last N days —
+// drives the heatmap. Weekday index: 0 = Sunday .. 6 = Saturday.
+const getOrderHeatmap = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 60, 365);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const orders = await prisma.deliveryOrder.findMany({
+      where: { createdAt: { gte: since } },
+      select: { createdAt: true },
+    });
+
+    // 7 rows (weekdays) × 24 cols (hours), zero-initialised.
+    const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
+    for (const o of orders) {
+      const d = new Date(o.createdAt);
+      grid[d.getDay()][d.getHours()] += 1;
+    }
+    // Flatten into a shape Recharts can consume easily.
+    const rows = [];
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        rows.push({ day, hour, count: grid[day][hour] });
+      }
+    }
+    res.json({ grid, rows, maxCount: rows.reduce((m, r) => Math.max(m, r.count), 0) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getForecast,
+  getFCR,
+  getInsights,
+  getEnvironmental,
+  getFulfilmentFunnel,
+  getDriverEfficiency,
+  getOrderHeatmap,
+};
 
