@@ -31,9 +31,12 @@ export function AuthProvider({ children }) {
           if (userData.role) handleSetRole(userData.role)
         }
       })
-      .catch(() => {
-        // Token may be expired — clear session
-        logout()
+      .catch((err) => {
+        // Only logout on 401 (expired/invalid token). Other errors (network, 500)
+        // should not wipe the session.
+        if (err?.response?.status === 401) {
+          logout()
+        }
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])

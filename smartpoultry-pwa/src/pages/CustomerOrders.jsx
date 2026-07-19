@@ -255,6 +255,7 @@ export default function CustomerOrders() {
   const completed = orders.filter(o => o.status === 'DELIVERED').length
 
   return (
+    <>
     <PullToRefresh onRefresh={fetchOrders}>
       <div>
         <div className="page-header">
@@ -368,9 +369,11 @@ export default function CustomerOrders() {
           />
         </div>
       )}
+      </div>
+    </PullToRefresh>
 
-      {selectedOrder && (
-        <div className="modal-overlay">
+    {selectedOrder && (
+      <div className="modal-overlay">
           <div className="modal-box">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
               <div>
@@ -740,7 +743,6 @@ export default function CustomerOrders() {
           setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, review } : o))
         }}
       />
-      </div>
-    </PullToRefresh>
+    </>
   )
 }
