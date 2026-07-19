@@ -11,6 +11,7 @@ const USER_PUBLIC_SELECT = {
   notificationPreferences: true,
   isTwoFactorEnabled: true,
   lastLoginAt: true,
+  avatarUrl: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -52,6 +53,7 @@ const updateMe = async (req, res, next) => {
     if (name !== undefined)  data.name = name;
     if (email !== undefined) data.email = email;
     if (phone !== undefined) data.phone = phone; // allow nullable
+    if (req.body.avatarUrl !== undefined) data.avatarUrl = req.body.avatarUrl; // allow nullable
 
     const user = await prisma.user.update({
       where: { id: req.user.id },

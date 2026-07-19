@@ -8,6 +8,7 @@ import { auth, isFirebaseConfigured } from '../firebase'
 import { googleAuthUser } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 const GOOGLE_ROLE_MAP = {
   delivery: 'DELIVERY',
@@ -25,6 +26,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otpCode, setOtpCode] = useState('')
+  const [showForgotModal, setShowForgotModal] = useState(false)
 
   const { mutate: login, data: loginData, isPending, error, reset } = useLogin()
   const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOTP()
@@ -274,9 +276,11 @@ export default function Login() {
                   <input type="checkbox" defaultChecked style={{ accentColor: '#237227', width: 14, height: 14 }} />
                   <span style={{ fontSize: '0.8rem', color: '#5e7a61' }}>Remember me</span>
                 </label>
-                <span style={{
-                  fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
-                }}>Forgot password?</span>
+                <span 
+                  onClick={() => setShowForgotModal(true)}
+                  style={{
+                    fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
+                  }}>Forgot password?</span>
               </div>
             </>
           )}
@@ -355,6 +359,12 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      <ForgotPasswordModal 
+        isOpen={showForgotModal} 
+        onClose={() => setShowForgotModal(false)} 
+        initialEmail={email}
+      />
     </form>
   )
 }

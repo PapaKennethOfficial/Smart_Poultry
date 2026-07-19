@@ -117,12 +117,14 @@ export default function Settings() {
   const [name, setName]   = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
 
   useEffect(() => {
     if (me) {
       setName(me.name || '')
       setEmail(me.email || '')
       setPhone(me.phone || '')
+      setAvatarUrl(me.avatarUrl || '')
     }
   }, [me])
 
@@ -138,7 +140,25 @@ export default function Settings() {
       name: name.trim(),
       email: email.trim(),
       phone: phone.trim() || null,
+      avatarUrl: avatarUrl || null
     })
+  }
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    // Quick validation (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showError("Image size should be less than 2MB")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result)
+    }
+    reader.readAsDataURL(file)
   }
 
   // ─── Security (password) ──────────────────────────────────────────────────
@@ -251,13 +271,30 @@ export default function Settings() {
 
               {/* Avatar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, paddingBottom: 22, borderBottom: '1px solid #edebd6' }}>
-                <div style={{
-                  width: 62, height: 62, borderRadius: 14,
-                  background: 'linear-gradient(135deg, #237227, #84be88)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1.35rem', color: '#fff'
-                }}>
-                  {initials(me?.name)}
+                <div style={{ position: 'relative' }}>
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="Avatar" 
+                      style={{ width: 62, height: 62, borderRadius: 14, objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 62, height: 62, borderRadius: 14,
+                      background: 'linear-gradient(135deg, #237227, #84be88)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1.35rem', color: '#fff'
+                    }}>
+                      {initials(me?.name)}
+                    </div>
+                  )}
+                  <label 
+                    style={{ position: 'absolute', bottom: -5, right: -5, background: '#fff', padding: 4, borderRadius: '50%', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', cursor: 'pointer', border: '1px solid #edebd6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Upload new avatar"
+                  >
+                    <User size={14} color="#5e7a61" />
+                    <input type="file" style={{ display: 'none' }} accept="image/*" onChange={handleAvatarUpload} disabled={updateMe.isPending} />
+                  </label>
                 </div>
                 <div>
                   <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '0.98rem', color: '#0d1f0e' }}>

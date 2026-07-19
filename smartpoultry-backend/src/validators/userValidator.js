@@ -6,6 +6,7 @@ const updateProfileSchema = z.object({
   name:  z.string().trim().min(1, "Name is required").optional(),
   email: z.string().email("Invalid email format").optional(),
   phone: z.string().trim().min(1).optional().nullable(),
+  avatarUrl: z.string().trim().optional().nullable(),
 }).strict();
 
 const updatePasswordSchema = z.object({

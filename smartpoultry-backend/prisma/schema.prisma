@@ -62,6 +62,7 @@ model User {
   email                   String   @unique
   password                String
   phone                   String?
+  avatarUrl               String?
   role                    Role     @default(WORKER)
   deliveryStaffStatus     DeliveryStaffStatus?
   isTwoFactorEnabled      Boolean  @default(false)
@@ -85,6 +86,8 @@ model User {
   assignedDeliveries DeliveryOrder[] @relation("DriverOrders")
   notifications UserNotification[]
   deliveryMessages DeliveryMessage[]
+  reviews   Review[]
+  wishlists Wishlist[]
 }
 
 model Farm {
@@ -264,6 +267,7 @@ model DeliveryOrder {
   product       Product  @relation(fields: [productId], references: [id])
   driver        User?    @relation("DriverOrders", fields: [driverId], references: [id])
   messages      DeliveryMessage[]
+  review        Review?
 
   @@index([customerId])
   @@index([driverId])
@@ -288,6 +292,8 @@ model Product {
   updatedAt   DateTime @updatedAt
 
   orders      DeliveryOrder[]
+  reviews     Review[]
+  wishlists   Wishlist[]
 }
 
 model Vehicle {
@@ -349,3 +355,33 @@ model DeliveryMessage {
 
   @@index([orderId, createdAt])
 }
+
+model Review {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  productId  String
+  customerId String
+  rating     Int      // 1 to 5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  order    DeliveryOrder @relation(fields: [orderId], references: [id])
+  product  Product       @relation(fields: [productId], references: [id])
+  customer User          @relation(fields: [customerId], references: [id])
+
+  @@index([productId])
+  @@index([customerId])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+

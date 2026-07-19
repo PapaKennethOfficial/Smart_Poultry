@@ -11,9 +11,11 @@ import VehicleRegistration from './pages/VehicleRegistration';
 import AssignedDeliveries from './pages/AssignedDeliveries';
 import CustomerMarketplace from './pages/CustomerMarketplace';
 import CustomerOrders from './pages/CustomerOrders';
+import CustomerWishlist from './pages/CustomerWishlist';
 import Settings from './pages/Settings';
 import DesktopSidebar from './components/DesktopSidebar';
 import CartDrawer from './components/CartDrawer';
+import OnboardingTour from './components/OnboardingTour';
 
 export default function ClientApp() {
   const { user, role, logout } = useAuth();
@@ -162,8 +164,12 @@ export default function ClientApp() {
                 className="client-user-btn"
                 onClick={() => setMenuOpen(!menuOpen)}
               >
-                <div className="client-avatar">
-                  <User size={14} />
+                <div className="client-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={14} />
+                  )}
                 </div>
                 <ChevronDown size={14} style={{
                   transition: 'transform 0.2s',
@@ -204,6 +210,7 @@ export default function ClientApp() {
             {/* Customer routes */}
             <Route path="customer/marketplace" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerMarketplace /></ProtectedRoute>} />
             <Route path="customer/orders" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerOrders /></ProtectedRoute>} />
+            <Route path="customer/wishlist" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerWishlist /></ProtectedRoute>} />
 
             {/* Shared settings */}
             <Route path="settings" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'DELIVERY']}><Settings /></ProtectedRoute>} />
@@ -218,6 +225,9 @@ export default function ClientApp() {
 
         {/* Global Cart Drawer Overlay */}
         {role === 'CUSTOMER' && <CartDrawer />}
+
+        {/* Onboarding Tour */}
+        {role === 'CUSTOMER' && <OnboardingTour />}
       </div>
     </div>
   );

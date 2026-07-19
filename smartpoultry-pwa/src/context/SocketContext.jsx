@@ -16,7 +16,7 @@ export function SocketProvider({ children }) {
       })
 
       newSocket.on('connect', () => {
-        console.log('Socket connected:', newSocket.id)
+        // Socket connected
       })
 
       newSocket.on('connect_error', (err) => {

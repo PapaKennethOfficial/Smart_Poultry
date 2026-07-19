@@ -21,3 +21,9 @@ export const googleAuthUser = (payload) =>
 
 export const verifyOTP = (payload) =>
   api.post('/api/auth/login/verify', payload).then((res) => res.data)
+
+export const forgotPassword = (payload) =>
+  api.post('/api/auth/forgot-password', payload).then((res) => res.data)
+
+export const resetPassword = (payload) =>
+  api.post('/api/auth/reset-password', payload).then((res) => res.data)

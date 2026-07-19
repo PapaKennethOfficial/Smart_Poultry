@@ -2,6 +2,8 @@ const prisma = require("../config/prisma")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 const admin = require("../config/firebaseAdmin")
+const { sendEmail } = require("../services/email.service")
+const { sendSMS } = require("../services/sms.service")
 
 const PUBLIC_REGISTRATION_ROLES = new Set(["CUSTOMER", "DELIVERY"])
 
@@ -64,14 +66,24 @@ const login = async (req, res, next) => {
                 data: { otpCode, otpExpiry }
             })
 
-            // Mock sending email/SMS
-            console.log(`\n\n[MOCK EMAIL/SMS] OTP for ${user.email} is: ${otpCode}\n\n`)
+            // Send real email or SMS
+            const messageBody = `Your SmartPoultry OTP code is: ${otpCode}. It expires in 10 minutes.`
+            try {
+                if (user.phone) {
+                    await sendSMS(user.phone, messageBody)
+                } else if (user.email) {
+                    await sendEmail(user.email, "Your Login OTP", `<p>${messageBody}</p>`)
+                }
+            } catch (err) {
+                console.error("Failed to send 2FA OTP:", err)
+                // Continue anyway so they can at least see the mock otp in response if dev mode
+            }
 
             return res.status(200).json({
                 message: "OTP sent to your email/phone",
                 requires2FA: true,
                 userId: user.id,
-                mockOtp: otpCode // Expose to frontend for testing
+                mockOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined // Only expose in dev
             })
         }
 
@@ -237,4 +249,70 @@ const verifyOTP = async (req, res, next) => {
     }
 }
 
-module.exports = { login, register, googleAuth, verifyOTP }
+const forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body
+        const user = await prisma.user.findUnique({ where: { email } })
+        
+        if (!user) {
+            // Return success even if user not found to prevent enumeration
+            return res.status(200).json({ message: "If an account exists, an OTP has been sent." })
+        }
+
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
+        const otpExpiry = new Date(Date.now() + 10 * 60000)
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { otpCode, otpExpiry }
+        })
+
+        const messageBody = `Your SmartPoultry password reset code is: ${otpCode}. It expires in 10 minutes.`
+        try {
+            if (user.phone) {
+                await sendSMS(user.phone, messageBody)
+            } else {
+                await sendEmail(user.email, "Password Reset OTP", `<p>${messageBody}</p>`)
+            }
+        } catch (err) {
+            console.error("Failed to send reset OTP:", err)
+        }
+
+        res.status(200).json({ 
+            message: "If an account exists, an OTP has been sent.",
+            mockOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined 
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+const resetPassword = async (req, res, next) => {
+    try {
+        const { email, otpCode, newPassword } = req.body
+
+        const user = await prisma.user.findUnique({ where: { email } })
+        if (!user) return res.status(404).json({ message: "Invalid request" })
+
+        if (user.otpCode !== otpCode || !user.otpExpiry || user.otpExpiry < new Date()) {
+            return res.status(401).json({ message: "Invalid or expired OTP" })
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { 
+                password: hashedPassword,
+                otpCode: null, 
+                otpExpiry: null 
+            }
+        })
+
+        res.status(200).json({ message: "Password updated successfully" })
+    } catch (error) {
+        next(error)
+    }
+}
+
+module.exports = { login, register, googleAuth, verifyOTP, forgotPassword, resetPassword }
