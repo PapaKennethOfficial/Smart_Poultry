@@ -83,6 +83,7 @@ function initials(name = '') {
 
 function roleBadgeLabel(role) {
   if (!role) return ''
+  if (role === 'DELIVERY') return 'Delivery Staff'
   return role.charAt(0) + role.slice(1).toLowerCase()
 }
 

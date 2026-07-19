@@ -31,9 +31,33 @@ export default function OrderReceipt({ order }) {
           <span className="text-gray-500">Date:</span>
           <span className="font-semibold text-gray-800">{new Date(order.createdAt).toLocaleDateString()}</span>
         </div>
+        {order.customer?.name && (
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-500">Customer Name:</span>
+            <span className="font-semibold text-gray-800">{order.customer.name}</span>
+          </div>
+        )}
+        {order.customer?.phone && (
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-500">Phone:</span>
+            <span className="font-semibold text-gray-800">{order.customer.phone}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm mb-2">
+          <span className="text-gray-500">Delivery Address:</span>
+          <span className="font-semibold text-gray-800 text-right max-w-[60%]">{order.address}</span>
+        </div>
+        <div className="flex justify-between text-sm mb-2">
+          <span className="text-gray-500">Delivery Date:</span>
+          <span className="font-semibold text-gray-800">{new Date(order.deliveryDate).toLocaleDateString()}</span>
+        </div>
+        <div className="flex justify-between text-sm mb-2">
+          <span className="text-gray-500">Payment Method:</span>
+          <span className="font-semibold text-gray-800">{order.paymentMethod ? order.paymentMethod.replace('_', ' ') : 'N/A'}</span>
+        </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Payment Status:</span>
-          <span className="font-semibold text-gray-800">{order.paymentStatus}</span>
+          <span className="font-semibold text-gray-800">{order.paymentStatus ? order.paymentStatus.replace('_', ' ') : 'PENDING'}</span>
         </div>
       </div>
 
