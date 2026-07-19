@@ -30,16 +30,54 @@ function parseBody(schema, req, res) {
 // Public: get all active products visible in the marketplace.
 router.get("/", async (req, res, next) => {
   try {
-    const { category } = req.query
+    const { category, search } = req.query
     const where = { isActive: true }
     if (category && category !== 'All') {
       where.category = category
+    }
+    if (search && search.trim() !== '') {
+      where.name = { contains: search, mode: 'insensitive' }
     }
     const products = await prisma.product.findMany({
       where,
       orderBy: { name: "asc" },
     })
     res.status(200).json({ products })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Customer: get wishlist
+router.get("/wishlist", requireAuth, async (req, res, next) => {
+  try {
+    const wishlists = await prisma.wishlist.findMany({
+      where: { userId: req.user.id },
+      include: { product: true },
+    })
+    const products = wishlists.map(w => w.product).filter(p => p.isActive)
+    res.status(200).json({ products })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Customer: toggle wishlist
+router.post("/:id/wishlist", requireAuth, async (req, res, next) => {
+  try {
+    const productId = req.params.id
+    const userId = req.user.id
+    const existing = await prisma.wishlist.findUnique({
+      where: { userId_productId: { userId, productId } },
+    })
+    
+    if (existing) {
+      await prisma.wishlist.delete({ where: { id: existing.id } })
+      res.status(200).json({ message: "Removed from wishlist", wishlisted: false })
+    } else {
+      await prisma.wishlist.create({ data: { userId, productId } })
+      res.status(201).json({ message: "Added to wishlist", wishlisted: true })
+    }
   } catch (error) {
     next(error)
   }

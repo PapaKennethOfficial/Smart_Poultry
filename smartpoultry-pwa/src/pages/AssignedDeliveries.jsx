@@ -376,7 +376,11 @@ export default function AssignedDeliveries() {
                           </div>
                           {distKm != null && (
                             <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>
-                              ~{formatDistance(distKm)} away
+                              ~{formatDistance(distKm)}
+                              {(() => {
+                                const etaMins = Math.ceil(distKm * 2.4)
+                                return ` • ETA: ${etaMins} min`
+                              })()}
                             </span>
                           )}
                         </div>

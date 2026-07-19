@@ -4,12 +4,14 @@ import { useLogin } from '../hooks/auth/useLogin';
 import { useVerifyOTP } from '../hooks/auth/useVerifyOTP';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 export default function AdminLogin() {
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const { mutate: login, data: loginData, isPending, error, reset } = useLogin();
   const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOTP();
@@ -152,6 +154,17 @@ export default function AdminLogin() {
                   </button>
                 </div>
               </div>
+
+              <div style={{
+                display: 'flex', justifyContent: 'flex-end',
+                alignItems: 'center', marginBottom: 22
+              }}>
+                <span 
+                  onClick={() => setShowForgotModal(true)}
+                  style={{
+                    fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
+                  }}>Forgot password?</span>
+              </div>
             </>
           )}
 
@@ -199,6 +212,12 @@ export default function AdminLogin() {
           )}
         </div>
       </div>
+      
+      <ForgotPasswordModal 
+        isOpen={showForgotModal} 
+        onClose={() => setShowForgotModal(false)} 
+        initialEmail={email}
+      />
     </form>
   );
 }

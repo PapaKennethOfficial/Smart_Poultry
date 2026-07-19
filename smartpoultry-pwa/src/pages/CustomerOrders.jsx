@@ -7,6 +7,12 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import TableFilter from '../components/TableFilter'
 import Pagination from '../components/Pagination'
+import ReviewModal from '../components/ReviewModal'
+import Skeleton from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import PullToRefresh from '../components/PullToRefresh'
+import OrderReceipt from '../components/OrderReceipt'
+import { Star } from 'lucide-react'
 
 // Google Maps libraries
 const GOOGLE_MAPS_LIBRARIES = ['places']
@@ -60,75 +66,38 @@ const PAYMENT_LABELS = {
   PAY_ON_DELIVERY: 'Pay on Delivery',
 }
 
-// ─── Delivery progress (estimated) ───────────────────────────────────────────
-// Maps the four order statuses to a four-step indicator. CANCELLED orders
-// short-circuit to a single "Cancelled" step rendered in red.
-const PROGRESS_STEPS = [
-  { key: 'PLACED',     label: 'Placed' },
-  { key: 'PENDING',    label: 'Confirmed' },
-  { key: 'IN_TRANSIT', label: 'In Transit' },
-  { key: 'DELIVERED',  label: 'Delivered' },
-]
+function OrderTimeline({ statusHistory }) {
+  if (!statusHistory || statusHistory.length === 0) return null;
 
-function progressIndexFor(status) {
-  // 'Placed' is always reached as soon as the order exists.
-  if (!status || status === 'PENDING') return 1
-  if (status === 'IN_TRANSIT') return 2
-  if (status === 'DELIVERED') return 3
-  return 0
-}
-
-function DeliveryProgress({ status }) {
-  if (status === 'CANCELLED') {
-    return (
-      <div style={{
-        padding: '14px 16px', borderRadius: 10, marginBottom: 20,
-        background: 'var(--clr-danger-bg)', color: 'var(--clr-danger-txt)',
-        fontSize: '0.85rem', fontWeight: 600, textAlign: 'center',
-      }}>
-        Order cancelled
-      </div>
-    )
-  }
-
-  const currentIndex = progressIndexFor(status)
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
-        {/* connecting line behind dots */}
-        <div style={{
-          position: 'absolute', top: 11, left: '8%', right: '8%', height: 2,
-          background: 'var(--border-light)', zIndex: 0,
-        }} />
-        <div style={{
-          position: 'absolute', top: 11, left: '8%',
-          width: `${(currentIndex / (PROGRESS_STEPS.length - 1)) * 84}%`,
-          height: 2, background: 'var(--primary)', zIndex: 0,
-          transition: 'width 0.3s',
-        }} />
-
-        {PROGRESS_STEPS.map((step, i) => {
-          const done = i <= currentIndex
+    <div style={{ marginBottom: 24, padding: '16px 20px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-light)' }}>
+      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-heading)', marginBottom: 16 }}>Order Timeline</div>
+      <div style={{ position: 'relative', paddingLeft: 12 }}>
+        {/* Vertical line connecting steps */}
+        <div style={{ position: 'absolute', left: 16, top: 12, bottom: 12, width: 2, background: 'var(--border-light)' }} />
+        
+        {statusHistory.map((step, i) => {
+          const isLast = i === statusHistory.length - 1;
+          const config = STATUS_MAP[step.status] || STATUS_MAP.PENDING;
+          const Icon = config.icon;
+          
           return (
-            <div key={step.key} style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              flex: 1, position: 'relative', zIndex: 1,
-            }}>
-              <div style={{
-                width: 24, height: 24, borderRadius: '50%',
-                background: done ? 'var(--primary)' : '#fff',
-                border: `2px solid ${done ? 'var(--primary)' : 'var(--border)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontSize: '0.7rem', fontWeight: 700,
-              }}>
-                {done && <CheckCircle2 size={14} />}
-              </div>
-              <div style={{
-                fontSize: '0.72rem', marginTop: 6, textAlign: 'center',
-                fontWeight: i === currentIndex ? 600 : 400,
-                color: done ? 'var(--text-heading)' : 'var(--text-subtle)',
-              }}>
-                {step.label}
+            <div key={i} style={{ display: 'flex', gap: 16, marginBottom: isLast ? 0 : 20, position: 'relative', zIndex: 1 }}>
+              <div style={{ 
+                width: 10, height: 10, borderRadius: '50%', background: isLast ? 'var(--primary)' : '#fff',
+                border: `2px solid ${isLast ? 'var(--primary)' : 'var(--border)'}`,
+                marginTop: 6, zIndex: 2
+              }} />
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-heading)' }}>
+                  {config.label}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: 2 }}>
+                  {new Date(step.timestamp).toLocaleString()}
+                </div>
+                {step.by && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Updated by user {step.by.slice(0, 5)}...</div>
+                )}
               </div>
             </div>
           )
@@ -146,6 +115,7 @@ export default function CustomerOrders() {
   const [searchValue, setSearchValue] = useState('')
   const itemsPerPage = 10
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
@@ -285,8 +255,9 @@ export default function CustomerOrders() {
   const completed = orders.filter(o => o.status === 'DELIVERED').length
 
   return (
-    <div>
-      <div className="page-header">
+    <PullToRefresh onRefresh={fetchOrders}>
+      <div>
+        <div className="page-header">
         <div className="page-title">My Orders</div>
         <div className="page-desc">Track and manage your farm product deliveries</div>
       </div>
@@ -319,12 +290,23 @@ export default function CustomerOrders() {
       />
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-subtle)' }}>Loading your orders...</div>
-      ) : paginatedOrders.length === 0 ? (
-        <div className="chart-card" style={{ textAlign: 'center', padding: '60px 0' }}>
-          <Package size={48} color="var(--border)" style={{ margin: '0 auto 16px' }} />
-          <div style={{ color: 'var(--text-muted)' }}>No orders found for this status.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} style={{ padding: 20, display: 'flex', flexDirection: 'column', height: 180, background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 12 }}>
+               <Skeleton variant="text" style={{ width: '40%', height: 18, marginBottom: 8 }} />
+               <Skeleton variant="text" style={{ width: '60%', height: 24, marginBottom: 16 }} />
+               <Skeleton variant="rectangular" style={{ width: '100%', flex: 1, borderRadius: 8 }} />
+            </div>
+          ))}
         </div>
+      ) : paginatedOrders.length === 0 ? (
+        <EmptyState 
+          icon={Package}
+          title="No orders found"
+          description={searchValue ? `No orders matching "${searchValue}" for this status.` : "You don't have any orders with this status."}
+          actionText={searchValue ? "Clear Search" : null}
+          onAction={() => setSearchValue('')}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
           {paginatedOrders.map(o => {
@@ -398,10 +380,10 @@ export default function CustomerOrders() {
               <span className={`badge ${STATUS_MAP[selectedOrder.status]?.color || 'badge-gray'}`}>{selectedOrder.status}</span>
             </div>
 
-            {/* Estimated delivery progress */}
-            <DeliveryProgress status={selectedOrder.status} />
+            {/* Visual Order Timeline */}
+            <OrderTimeline statusHistory={selectedOrder.statusHistory} />
 
-            <div className="section-header">
+            <div className="section-header" style={{ marginTop: 24 }}>
               <div className="section-title">Order Items</div>
             </div>
             <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, padding: 16, marginBottom: 24 }}>
@@ -427,6 +409,11 @@ export default function CustomerOrders() {
                   <div style={{ fontWeight: 600 }}>{(selectedOrder.paymentStatus || 'PENDING').replaceAll('_', ' ')}</div>
                 </div>
               </div>
+            </div>
+
+            {/* Receipt Component */}
+            <div style={{ marginBottom: 24 }}>
+              <OrderReceipt order={selectedOrder} />
             </div>
 
             <div className="section-header">
@@ -519,6 +506,44 @@ export default function CustomerOrders() {
               )}
             </div>
 
+            {/* Ratings & Reviews */}
+            {selectedOrder.status === 'DELIVERED' && (
+              <>
+                <div className="section-header">
+                  <div className="section-title">Ratings & Reviews</div>
+                </div>
+                <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 16, marginBottom: 24, border: '1px solid var(--border-light)' }}>
+                  {selectedOrder.review ? (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={16} fill={i < selectedOrder.review.rating ? '#FFAA00' : 'none'} color={i < selectedOrder.review.rating ? '#FFAA00' : '#dddabd'} />
+                        ))}
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginLeft: 8 }}>
+                          {new Date(selectedOrder.review.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {selectedOrder.review.comment && (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          "{selectedOrder.review.comment}"
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', marginBottom: 12 }}>You haven't reviewed this order yet.</p>
+                      <button 
+                        onClick={() => setShowReviewModal(true)}
+                        style={{ padding: '8px 16px', background: '#237227', color: '#fff', borderRadius: 8, border: 'none', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Leave a Review
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             {(() => {
               const status = selectedOrder.status
               // Privacy rule: don't render a live map for terminal statuses.
@@ -568,12 +593,23 @@ export default function CustomerOrders() {
                   )
                 : null
 
+              let etaMins = null
+              if (distKm != null) {
+                // assume ~25 km/h avg speed in city traffic => ~2.4 mins per km
+                etaMins = Math.ceil(distKm * 2.4)
+              }
+
               return (
                 <>
                   <div className="section-header">
                     <div className="section-title">Live Delivery Location</div>
                     {distKm != null && (
-                      <span className="badge badge-blue">~{formatDistance(distKm)} away</span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span className="badge badge-blue">~{formatDistance(distKm)}</span>
+                        {etaMins != null && (
+                          <span className="badge badge-amber">ETA: {etaMins} min</span>
+                        )}
+                      </div>
                     )}
                   </div>
                   {isLoaded ? (
@@ -694,6 +730,17 @@ export default function CustomerOrders() {
           </div>
         </div>
       )}
-    </div>
+
+      <ReviewModal 
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        orderId={selectedOrder?.id}
+        onReviewSubmitted={(review) => {
+          setSelectedOrder({ ...selectedOrder, review })
+          setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, review } : o))
+        }}
+      />
+      </div>
+    </PullToRefresh>
   )
 }
