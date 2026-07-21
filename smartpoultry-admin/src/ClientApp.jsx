@@ -12,7 +12,7 @@ import AssignedDeliveries from './pages/AssignedDeliveries';
 import CustomerMarketplace from './pages/CustomerMarketplace';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerWishlist from './pages/CustomerWishlist';
-import Settings from './pages/Settings';
+import Settings from './pages/ClientSettings';
 import DesktopSidebar from './components/DesktopSidebar';
 import CartDrawer from './components/CartDrawer';
 import OnboardingTour from './components/OnboardingTour';

@@ -7,10 +7,11 @@ import { auth, isFirebaseConfigured } from '../firebase'
 import { googleAuthUser } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 
-// UI label → Prisma Role enum
+// UI slug -> Prisma Role enum.
 const ROLE_MAP = {
-  delivery: 'DELIVERY',
+  manager: 'MANAGER',
   customer: 'CUSTOMER',
+  delivery: 'DELIVERY',
 }
 
 export default function Register() {
@@ -29,9 +30,11 @@ export default function Register() {
   const { setToken, setRole: setAuthRole, setUser } = useAuth()
   const navigate = useNavigate()
 
+  const isManager = role === 'manager'
+
   const handleGoogleLogin = async () => {
     try {
-      if (role === 'manager') {
+      if (isManager) {
         alert('Managers must sign up with email and password.')
         return
       }
@@ -49,10 +52,10 @@ export default function Register() {
       navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
     } catch (err) {
       console.error(err)
-      if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
-        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign Up.")
+      if (err?.code === 'auth/invalid-api-key' || err?.message?.includes('dummy')) {
+        alert('Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign Up.')
       } else {
-        alert("Google Sign-Up failed: " + (err?.message || 'Please try again.'))
+        alert('Google Sign-Up failed: ' + (err?.message || 'Please try again.'))
       }
     }
   }
@@ -80,23 +83,19 @@ export default function Register() {
     })
   }
 
-  // Surface server-side errors inline
   const serverStatus = error?.response?.status
   const serverData = error?.response?.data
-
   let serverError = null
   if (serverStatus === 409) {
     serverError = serverData?.message || 'Email already registered'
   } else if (serverStatus === 400 && serverData?.errors) {
-    // Zod field errors → flatten to one-line message
     const first = Object.values(serverData.errors).flat()[0]
     serverError = first || 'Please check your details and try again'
   } else if (serverStatus === 403) {
-    serverError = serverData?.message || 'This account type cannot be self-registered.'
+    serverError = serverData?.message || 'This account type cannot be self-registered — please contact an existing manager.'
   } else if (error) {
     serverError = serverData?.message || 'Sign up failed. Please try again.'
   }
-
   const inlineError = matchError || serverError
 
   const clearOnChange = (setter) => (e) => {
@@ -105,21 +104,30 @@ export default function Register() {
     setter(e.target.value)
   }
 
-  const googleDisabled = !isFirebaseConfigured
-  const googleButtonLabel = !isFirebaseConfigured
-    ? 'Google Sign-Up unavailable'
-    : 'Continue with Google'
+  const googleDisabled = !isFirebaseConfigured || isManager
+  const googleButtonLabel = isManager
+    ? 'Managers must use email & password'
+    : !isFirebaseConfigured
+      ? 'Google Sign-Up unavailable'
+      : 'Continue with Google'
 
-  const features = [
-    'Farm-fresh poultry delivered securely',
-    'Real-time GPS delivery tracking',
-    'Streamlined driver route management',
-    'Direct communication with delivery staff',
-  ]
+  const marketing = isManager
+    ? {
+        title: <>Create your<br /><span style={{ color: '#84be88' }}>Manager account</span></>,
+        blurb: 'Register for administrative access to the SmartPoultry command centre. Manager approval may be required before activation.',
+      }
+    : role === 'delivery'
+      ? {
+          title: <>Join as a<br /><span style={{ color: '#84be88' }}>Delivery Partner</span></>,
+          blurb: 'Sign up to receive assigned runs, share live location with customers, and manage your vehicle profile.',
+        }
+      : {
+          title: <>Create your<br /><span style={{ color: '#84be88' }}>SmartPoultry account</span></>,
+          blurb: 'Join the ecosystem to order fresh products directly from the farm.',
+        }
 
   return (
     <form className="login-page" onSubmit={handleSubmit} noValidate>
-      {/* Left panel — mirrors Login.jsx for visual consistency */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <Link to="/" className="login-logo-container" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
@@ -157,20 +165,24 @@ export default function Register() {
               fontSize: '2.1rem', color: '#fff',
               lineHeight: 1.15, letterSpacing: '-0.03em'
             }}>
-              Create your<br />
-              <span style={{ color: '#84be88' }}>SmartPoultry account</span>
+              {marketing.title}
             </h1>
 
             <p style={{
               marginTop: 14, color: 'rgba(255,255,255,0.58)',
               fontSize: '0.88rem', lineHeight: 1.65, maxWidth: 320
             }}>
-              Join the ecosystem to order fresh products directly from the farm, or register as a delivery partner to start earning.
+              {marketing.blurb}
             </p>
           </div>
 
           <div className="login-features" style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-            {features.map((f, i) => (
+            {[
+              'Farm-fresh poultry delivered securely',
+              'Real-time GPS delivery tracking',
+              'Streamlined driver route management',
+              'Role-based access & 2FA where enabled',
+            ].map((f, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <CheckCircle2 size={15} color="#FFAA00" />
                 <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.72)' }}>{f}</span>
@@ -187,44 +199,42 @@ export default function Register() {
         </div>
       </div>
 
-      {/* Right panel */}
       <div className="login-right">
         <div className="login-card">
           <div style={{ marginBottom: 22 }}>
             <h2 style={{
               fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.45rem',
               fontWeight: 700, color: '#0d1f0e', letterSpacing: '-0.02em',
-              marginBottom: 6
+              marginBottom: 6,
             }}>Create account</h2>
             <p style={{ fontSize: '0.875rem', color: '#5e7a61', lineHeight: 1.55 }}>
               Sign up to access your farm dashboard
             </p>
           </div>
 
-          {/* Role selector */}
           <div className="form-group">
             <label className="form-label">Sign up as</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: 8 }}>
-              {['customer', 'delivery'].map(r => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {['manager', 'customer', 'delivery'].map((r) => (
                 <button
                   type="button"
                   key={r}
                   onClick={() => setRole(r)}
                   style={{
-                    padding: '9px 14px',
+                    padding: '9px 10px',
                     borderRadius: 9,
                     border: role === r ? '1.5px solid #237227' : '1.5px solid #dddabd',
                     background: role === r ? 'rgba(35,114,39,0.07)' : '#fff',
                     color: role === r ? '#237227' : '#8da58f',
-                    fontSize: '0.82rem',
+                    fontSize: '0.80rem',
                     fontWeight: role === r ? 600 : 400,
                     cursor: 'pointer',
                     textTransform: 'capitalize',
                     fontFamily: 'Inter, sans-serif',
-                    transition: 'all 0.15s'
+                    transition: 'all 0.15s',
                   }}
                 >
-                  {r === 'delivery' ? 'Delivery Staff' : r.charAt(0).toUpperCase() + r.slice(1)}
+                  {r === 'delivery' ? 'Delivery' : r.charAt(0).toUpperCase() + r.slice(1)}
                 </button>
               ))}
             </div>
@@ -235,7 +245,6 @@ export default function Register() {
             <input
               className="form-input"
               type="text"
-              id="register-name"
               placeholder="e.g. John Doe"
               value={name}
               onChange={clearOnChange(setName)}
@@ -249,8 +258,7 @@ export default function Register() {
             <input
               className="form-input"
               type="email"
-              id="register-email"
-              placeholder="name@example.com"
+              placeholder={isManager ? 'manager@smartpoultry.com' : 'name@example.com'}
               value={email}
               onChange={clearOnChange(setEmail)}
               disabled={isPending}
@@ -259,11 +267,12 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Phone Number (Required for Drivers)</label>
+            <label className="form-label">
+              Phone Number {role === 'delivery' && <span style={{ color: '#b91c1c' }}>*</span>}
+            </label>
             <input
               className="form-input"
               type="tel"
-              id="register-phone"
               placeholder="e.g. +1234567890"
               value={phone}
               onChange={clearOnChange(setPhone)}
@@ -278,7 +287,6 @@ export default function Register() {
               <input
                 className="form-input"
                 type={showPass ? 'text' : 'password'}
-                id="register-password"
                 placeholder="At least 6 characters"
                 value={password}
                 onChange={clearOnChange(setPassword)}
@@ -294,7 +302,7 @@ export default function Register() {
                   position: 'absolute', right: 13, top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#8da58f'
+                  color: '#8da58f',
                 }}
               >
                 {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -308,7 +316,6 @@ export default function Register() {
               <input
                 className="form-input"
                 type={showConfirm ? 'text' : 'password'}
-                id="register-confirm"
                 placeholder="Re-enter your password"
                 value={confirm}
                 onChange={clearOnChange(setConfirm)}
@@ -323,7 +330,7 @@ export default function Register() {
                   position: 'absolute', right: 13, top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#8da58f'
+                  color: '#8da58f',
                 }}
               >
                 {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -349,18 +356,18 @@ export default function Register() {
             </div>
           )}
 
-          <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <input 
-              type="checkbox" 
-              id="agree-terms" 
+          <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <input
+              type="checkbox"
+              id="agree-terms"
               checked={agreedToTerms}
               onChange={(e) => {
                 setAgreedToTerms(e.target.checked)
                 if (matchError) setMatchError(null)
               }}
-              style={{ marginTop: '3px', cursor: 'pointer' }}
+              style={{ marginTop: 3, cursor: 'pointer' }}
             />
-            <label htmlFor="agree-terms" style={{ fontSize: '0.85rem', color: '#5e7a61', lineHeight: '1.4' }}>
+            <label htmlFor="agree-terms" style={{ fontSize: '0.85rem', color: '#5e7a61', lineHeight: 1.4 }}>
               I agree to the{' '}
               <Link to="/terms" style={{ color: '#237227', textDecoration: 'underline' }}>Terms and Conditions</Link>
               {' '}and{' '}
@@ -387,35 +394,37 @@ export default function Register() {
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={googleDisabled}
-            style={{ 
-              width: '100%', 
-              justifyContent: 'center', 
-              padding: '12px', 
-              marginTop: '12px',
-              background: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              color: '#333',
-              opacity: googleDisabled ? 0.6 : 1,
-              cursor: googleDisabled ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
-            {googleButtonLabel}
-          </button>
+          {!isManager && (
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={googleDisabled}
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '12px',
+                marginTop: '12px',
+                background: '#fff',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 600,
+                color: '#333',
+                opacity: googleDisabled ? 0.6 : 1,
+                cursor: googleDisabled ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
+              {googleButtonLabel}
+            </button>
+          )}
 
           <p style={{
             marginTop: 18, textAlign: 'center',
-            fontSize: '0.82rem', color: '#5e7a61'
+            fontSize: '0.82rem', color: '#5e7a61',
           }}>
             Already have an account?{' '}
             <Link to="/login" style={{ color: '#237227', fontWeight: 600, textDecoration: 'none' }}>

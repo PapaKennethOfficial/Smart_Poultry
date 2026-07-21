@@ -10,19 +10,27 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
-const GOOGLE_ROLE_MAP = {
-  delivery: 'DELIVERY',
+// UI role slug -> Prisma Role enum. Manager is submitted as MANAGER; the
+// backend already handles ADMIN authenticate transparently, so both slot in
+// under the same tab.
+const ROLE_MAP = {
+  manager: 'MANAGER',
   customer: 'CUSTOMER',
+  delivery: 'DELIVERY',
 }
 
-const PASSWORD_ROLE_MAP = {
-  delivery: 'DELIVERY',
-  customer: 'CUSTOMER',
+// Role -> post-login destination. Kept in sync with useLogin's on-success
+// navigate() so anyone reading either file gets the same picture.
+const ROLE_HOME = {
+  MANAGER: '/admin/dashboard',
+  ADMIN: '/admin/dashboard',
+  CUSTOMER: '/customer/marketplace',
+  DELIVERY: '/delivery/vehicle',
 }
 
 export default function Login() {
   const [showPass, setShowPass] = useState(false)
-  const [role, setRole] = useState('delivery')
+  const [role, setRole] = useState('customer')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otpCode, setOtpCode] = useState('')
@@ -33,9 +41,13 @@ export default function Login() {
   const { setToken, setRole: setAuthRole, setUser } = useAuth()
   const navigate = useNavigate()
 
+  const isManager = role === 'manager'
+
+  // Google sign-in is disabled for the Manager tab: managers must use their
+  // approved account credentials (also enforced by the Firebase profile).
   const handleGoogleLogin = async () => {
     try {
-      if (role === 'manager') {
+      if (isManager) {
         alert('Managers and admins must sign in with their approved account credentials.')
         return
       }
@@ -46,17 +58,17 @@ export default function Login() {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
       const idToken = await result.user.getIdToken()
-      const data = await googleAuthUser({ token: idToken, role: GOOGLE_ROLE_MAP[role] || 'CUSTOMER' })
+      const data = await googleAuthUser({ token: idToken, role: ROLE_MAP[role] || 'CUSTOMER' })
       setToken(data.token)
       if (data.role) setAuthRole(data.role)
       if (data.user) setUser(data.user)
-      navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
+      navigate(ROLE_HOME[data.role] || '/')
     } catch (err) {
       console.error(err)
-      if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
-        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.")
+      if (err?.code === 'auth/invalid-api-key' || err?.message?.includes('dummy')) {
+        alert('Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.')
       } else {
-        alert("Google Sign-In failed: " + (err?.message || 'Please try again.'))
+        alert('Google Sign-In failed: ' + (err?.message || 'Please try again.'))
       }
     }
   }
@@ -66,7 +78,7 @@ export default function Login() {
     if (loginData?.requires2FA) {
       verifyOtp({ userId: loginData.userId, otpCode })
     } else {
-      login({ email, password, role: PASSWORD_ROLE_MAP[role] })
+      login({ email, password, role: ROLE_MAP[role] })
     }
   }
 
@@ -82,21 +94,53 @@ export default function Login() {
     setter(e.target.value)
   }
 
-  const googleDisabled = !isFirebaseConfigured
-  const googleButtonLabel = !isFirebaseConfigured
-    ? 'Google Sign-In unavailable'
-    : 'Continue with Google'
+  const googleDisabled = !isFirebaseConfigured || isManager
+  const googleButtonLabel = isManager
+    ? 'Managers must use email & password'
+    : !isFirebaseConfigured
+      ? 'Google Sign-In unavailable'
+      : 'Continue with Google'
 
-  const features = [
-    'Farm-fresh poultry delivered securely',
-    'Real-time GPS delivery tracking',
-    'Streamlined driver route management',
-    'Direct communication with delivery staff',
-  ]
+  // Marketing copy is swapped based on the selected role so the left panel
+  // never feels like it belongs to a different persona than the form.
+  const marketing = isManager
+    ? {
+        title: <>Admin<br /><span style={{ color: '#84be88' }}>Portal.</span></>,
+        blurb: 'Secure access to farm management, inventory, live-tracking oversight, and AI analytics.',
+        chip: 'Manager access',
+        features: [
+          'Real-time dashboard and KPIs',
+          'AI-driven demand forecasting',
+          'Fleet verification & compliance',
+          'Full audit trail across roles',
+        ],
+      }
+    : role === 'delivery'
+      ? {
+          title: <>Delivery<br /><span style={{ color: '#84be88' }}>Command.</span></>,
+          blurb: 'Sign in to view assigned runs, share live location, and update customers as you go.',
+          chip: 'Driver access',
+          features: [
+            'One-tap status updates',
+            'Turn-by-turn assigned runs',
+            'Live GPS shared with customers',
+            'Digital vehicle logbooks',
+          ],
+        }
+      : {
+          title: <>Welcome to<br /><span style={{ color: '#84be88' }}>SmartPoultry.</span></>,
+          blurb: 'Sign in to browse fresh produce, place secure orders, and follow your delivery in real time.',
+          chip: 'Customer access',
+          features: [
+            'Farm-fresh poultry delivered securely',
+            'Real-time GPS delivery tracking',
+            'Secure checkout and order history',
+            'Direct chat with delivery staff',
+          ],
+        }
 
   return (
     <form className="login-page" onSubmit={handleSubmit} noValidate>
-      {/* Left panel */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <Link to="/" className="login-logo-container" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
@@ -124,9 +168,9 @@ export default function Login() {
               borderRadius: 20, padding: '4px 14px',
               fontSize: '0.70rem', color: '#FFAA00',
               fontWeight: 600, letterSpacing: '0.07em',
-              textTransform: 'uppercase', marginBottom: 14
+              textTransform: 'uppercase', marginBottom: 14,
             }}>
-              Join the platform
+              {marketing.chip}
             </div>
 
             <h1 style={{
@@ -134,20 +178,19 @@ export default function Login() {
               fontSize: '2.1rem', color: '#fff',
               lineHeight: 1.15, letterSpacing: '-0.03em'
             }}>
-              Welcome to<br />
-              <span style={{ color: '#84be88' }}>SmartPoultry.</span>
+              {marketing.title}
             </h1>
 
             <p style={{
               marginTop: 14, color: 'rgba(255,255,255,0.58)',
               fontSize: '0.88rem', lineHeight: 1.65, maxWidth: 320
             }}>
-              Sign in to order fresh products directly from the farm or manage your deliveries.
+              {marketing.blurb}
             </p>
           </div>
 
           <div className="login-features" style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-            {features.map((f, i) => (
+            {marketing.features.map((f, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <CheckCircle2 size={15} color="#FFAA00" />
                 <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.72)' }}>{f}</span>
@@ -164,44 +207,42 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right panel */}
       <div className="login-right">
         <div className="login-card">
           <div style={{ marginBottom: 28 }}>
             <h2 style={{
               fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.45rem',
               fontWeight: 700, color: '#0d1f0e', letterSpacing: '-0.02em',
-              marginBottom: 6
+              marginBottom: 6,
             }}>Welcome back</h2>
             <p style={{ fontSize: '0.875rem', color: '#5e7a61', lineHeight: 1.55 }}>
               Sign in to access your farm dashboard
             </p>
           </div>
 
-          {/* Role selector */}
           <div className="form-group">
             <label className="form-label">Sign in as</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: 8 }}>
-              {['delivery', 'customer'].map(r => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {['manager', 'customer', 'delivery'].map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setRole(r)}
                   style={{
-                    padding: '9px 14px',
+                    padding: '9px 10px',
                     borderRadius: 9,
                     border: role === r ? '1.5px solid #237227' : '1.5px solid #dddabd',
                     background: role === r ? 'rgba(35,114,39,0.07)' : '#fff',
                     color: role === r ? '#237227' : '#8da58f',
-                    fontSize: '0.82rem',
+                    fontSize: '0.80rem',
                     fontWeight: role === r ? 600 : 400,
                     cursor: 'pointer',
                     textTransform: 'capitalize',
                     fontFamily: 'Inter, sans-serif',
-                    transition: 'all 0.15s'
+                    transition: 'all 0.15s',
                   }}
                 >
-                  {r === 'delivery' ? 'Delivery Staff' : r.charAt(0).toUpperCase() + r.slice(1)}
+                  {r === 'delivery' ? 'Delivery' : r.charAt(0).toUpperCase() + r.slice(1)}
                 </button>
               ))}
             </div>
@@ -231,7 +272,7 @@ export default function Login() {
                   className="form-input"
                   type="email"
                   id="login-email"
-                  placeholder="name@example.com"
+                  placeholder={isManager ? 'manager@smartpoultry.com' : 'name@example.com'}
                   value={email}
                   onChange={clearErrorOnChange(setEmail)}
                   disabled={isPending}
@@ -260,7 +301,7 @@ export default function Login() {
                       position: 'absolute', right: 13, top: '50%',
                       transform: 'translateY(-50%)',
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: '#8da58f'
+                      color: '#8da58f',
                     }}
                   >
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -270,17 +311,16 @@ export default function Login() {
 
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: 22
+                alignItems: 'center', marginBottom: 22,
               }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input type="checkbox" defaultChecked style={{ accentColor: '#237227', width: 14, height: 14 }} />
                   <span style={{ fontSize: '0.8rem', color: '#5e7a61' }}>Remember me</span>
                 </label>
-                <span 
+                <span
                   onClick={() => setShowForgotModal(true)}
-                  style={{
-                    fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
-                  }}>Forgot password?</span>
+                  style={{ fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600 }}
+                >Forgot password?</span>
               </div>
             </>
           )}
@@ -322,35 +362,37 @@ export default function Login() {
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={googleDisabled}
-            style={{ 
-              width: '100%', 
-              justifyContent: 'center', 
-              padding: '12px', 
-              marginTop: '12px',
-              background: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              color: '#333',
-              opacity: googleDisabled ? 0.6 : 1,
-              cursor: googleDisabled ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
-            {googleButtonLabel}
-          </button>
+          {!isManager && (
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={googleDisabled}
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '12px',
+                marginTop: '12px',
+                background: '#fff',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 600,
+                color: '#333',
+                opacity: googleDisabled ? 0.6 : 1,
+                cursor: googleDisabled ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
+              {googleButtonLabel}
+            </button>
+          )}
 
           <p style={{
             marginTop: 18, textAlign: 'center',
-            fontSize: '0.82rem', color: '#5e7a61'
+            fontSize: '0.82rem', color: '#5e7a61',
           }}>
             Don't have an account?{' '}
             <Link to="/register" style={{ color: '#237227', fontWeight: 600, textDecoration: 'none' }}>
@@ -360,9 +402,9 @@ export default function Login() {
         </div>
       </div>
 
-      <ForgotPasswordModal 
-        isOpen={showForgotModal} 
-        onClose={() => setShowForgotModal(false)} 
+      <ForgotPasswordModal
+        isOpen={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
         initialEmail={email}
       />
     </form>
