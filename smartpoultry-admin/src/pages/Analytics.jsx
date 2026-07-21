@@ -5,7 +5,7 @@ import {
   ScatterChart, Scatter, ZAxis,
 } from 'recharts'
 import { Brain, TrendingUp, Zap, Target, Loader2, Sparkles, RefreshCw, AlertTriangle, MessageSquare, Send, User as UserIcon } from 'lucide-react'
-import { fetchForecast, fetchFCR, fetchInsights, fetchEnvironmental, fetchFulfilmentFunnel, fetchDriverEfficiency, fetchOrderHeatmap } from '../api/analytics'
+import { fetchForecast, fetchFCR, fetchInsights, fetchFulfilmentFunnel, fetchDriverEfficiency, fetchOrderHeatmap } from '../api/analytics'
 import { useDemandForecast, useRetrainDemandForecast } from '../hooks/analytics/useDemandForecast'
 import { useMorningBriefing, useAskInsight } from '../hooks/analytics/useInsights'
 
@@ -540,12 +540,10 @@ export default function Analytics() {
   const [forecast, setForecast] = useState([])
   const [fcrData, setFcrData] = useState([])
   const [insights, setInsights] = useState(null)
-  const [environmental, setEnvironmental] = useState([])
-  
+
   const [loadingForecast, setLoadingForecast] = useState(true)
   const [loadingFcr, setLoadingFcr] = useState(true)
   const [loadingInsights, setLoadingInsights] = useState(true)
-  const [loadingEnvironmental, setLoadingEnvironmental] = useState(true)
 
   useEffect(() => {
     // Fetch forecast
@@ -571,14 +569,6 @@ export default function Analytics() {
       })
       .catch(err => console.error('Failed to fetch insights:', err))
       .finally(() => setLoadingInsights(false))
-
-    // Fetch Environmental data
-    fetchEnvironmental()
-      .then(data => {
-        setEnvironmental(data)
-      })
-      .catch(err => console.error('Failed to fetch environmental data:', err))
-      .finally(() => setLoadingEnvironmental(false))
   }, [])
 
   // Derived statistics for forecast
@@ -734,42 +724,6 @@ export default function Analytics() {
             </ResponsiveContainer>
           )}
         </div>
-      </div>
-
-      {/* Environmental trend row */}
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Environmental Trends (Last 10 Days)</div>
-            <div className="chart-subtitle">Real daily temperature and humidity averages from log entries</div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <span className="badge badge-red">Temp</span>
-            <span className="badge badge-blue">Humidity</span>
-          </div>
-        </div>
-
-        {loadingEnvironmental ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-            <Loader2 size={30} color="#2e7d34" style={{ animation: 'spin 1s linear infinite' }} />
-          </div>
-        ) : environmental.length === 0 ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, fontSize: '0.85rem', color: '#5a7a5c' }}>
-            No environmental log data found.
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={environmental} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f5f0" />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#7a917b' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#7a917b' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: '0.75rem', paddingTop: 12 }} />
-              <Line type="monotone" dataKey="temp" stroke="#ef4444" strokeWidth={2} dot={false} name="Temperature (°C)" />
-              <Line type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Humidity (%)" />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
       </div>
 
       {/* Extra operational analytics — funnel + driver scatter + heatmap */}

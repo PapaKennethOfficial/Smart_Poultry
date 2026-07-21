@@ -26,14 +26,6 @@ export const fetchInsights = () =>
   api.get('/api/analytics/insights').then((res) => res.data)
 
 /**
- * GET /api/analytics/environmental
- * Fetch the 10-day temperature and humidity trends
- * @returns {Promise<Array<{ time: string, temp: number, humidity: number }>>}
- */
-export const fetchEnvironmental = () =>
-  api.get('/api/analytics/environmental').then((res) => res.data)
-
-/**
  * GET /api/analytics/fulfilment-funnel?days=30
  * @returns {Promise<Array<{ stage: string, count: number }>>}
  */

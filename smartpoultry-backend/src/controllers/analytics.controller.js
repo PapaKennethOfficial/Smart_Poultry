@@ -157,53 +157,6 @@ const getInsights = async (req, res, next) => {
   }
 };
 
-// ─── GET /analytics/environmental ─────────────────────────────────────────────
-// Returns the average temperature and humidity of the last 10 days grouped by day.
-const getEnvironmental = async (req, res, next) => {
-  try {
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-    tenDaysAgo.setHours(0, 0, 0, 0);
-
-    const entries = await prisma.logEntry.findMany({
-      where: { date: { gte: tenDaysAgo } },
-      select: { date: true, temperature: true, humidity: true },
-      orderBy: { date: "asc" },
-    });
-
-    // Group and average temperature/humidity per calendar day
-    const dayMap = new Map();
-    entries.forEach((e) => {
-      const dayKey = new Date(e.date).toISOString().slice(0, 10);
-      if (!dayMap.has(dayKey)) {
-        dayMap.set(dayKey, { tempSum: 0, tempCount: 0, humSum: 0, humCount: 0 });
-      }
-      const val = dayMap.get(dayKey);
-      if (e.temperature != null) {
-        val.tempSum += e.temperature;
-        val.tempCount++;
-      }
-      if (e.humidity != null) {
-        val.humSum += e.humidity;
-        val.humCount++;
-      }
-    });
-
-    const envData = Array.from(dayMap.entries()).map(([dateStr, val]) => {
-      const d = new Date(dateStr);
-      return {
-        time: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        temp: val.tempCount > 0 ? Math.round((val.tempSum / val.tempCount) * 10) / 10 : null,
-        humidity: val.humCount > 0 ? Math.round((val.humSum / val.humCount) * 10) / 10 : null,
-      };
-    });
-
-    res.json(envData);
-  } catch (error) {
-    next(error);
-  }
-};
-
 // ─── GET /analytics/fulfilment-funnel ─────────────────────────────────────────
 // Count of delivery orders in each pipeline stage over the last 30 days —
 // drives the Recharts funnel chart on Analytics.
@@ -325,7 +278,6 @@ module.exports = {
   getForecast,
   getFCR,
   getInsights,
-  getEnvironmental,
   getFulfilmentFunnel,
   getDriverEfficiency,
   getOrderHeatmap,
