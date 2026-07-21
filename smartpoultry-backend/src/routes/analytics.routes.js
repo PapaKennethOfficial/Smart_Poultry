@@ -6,7 +6,6 @@ const {
   getForecast,
   getFCR,
   getInsights,
-  getEnvironmental,
   getFulfilmentFunnel,
   getDriverEfficiency,
   getOrderHeatmap,
@@ -20,7 +19,6 @@ router.use(authorize(["ADMIN", "MANAGER"]));
 router.get("/forecast", getForecast);
 router.get("/fcr", getFCR);
 router.get("/insights", getInsights);
-router.get("/environmental", getEnvironmental);
 router.get("/fulfilment-funnel", getFulfilmentFunnel);
 router.get("/driver-efficiency", getDriverEfficiency);
 router.get("/order-heatmap", getOrderHeatmap);
