@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import {
   Egg, HeartPulse, PackageCheck, Wheat,
-  AlertTriangle, Loader2
+  Thermometer, Droplets, Wind, AlertTriangle, Loader2
 } from 'lucide-react'
 import { useDashboardSummary } from '../hooks/dashboard/useDashboardSummary'
 import { useEggChart } from '../hooks/dashboard/useEggChart'
@@ -237,10 +237,56 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bottom row — mortality trend gets the full width now that the
-          environmental-sensors block has been removed (no hardware to feed
-          it in this deployment). */}
-      <div>
+      {/* Bottom row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {/* Sensor cards — still on dummy data (not in this brief) */}
+        <div className="chart-card">
+          <div className="chart-header">
+            <div>
+              <div className="chart-title">Environmental Sensors — House A</div>
+              <div className="chart-subtitle">Today's readings over time</div>
+            </div>
+            <span className="badge badge-green">All sensors online</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+            {[
+              { label: 'Temperature', value: '0°C', icon: Thermometer, color: '#ef4444', ok: true },
+              { label: 'Humidity', value: '0%', icon: Droplets, color: '#3b82f6', ok: true },
+              { label: 'Ammonia', value: '0 ppm', icon: Wind, color: '#FFAA00', ok: true },
+            ].map((sn, i) => (
+              <div key={i} style={{
+                background: '#F7F6E5', borderRadius: 10,
+                padding: '11px 12px', border: '1px solid #dddabd',
+                display: 'flex', flexDirection: 'column', gap: 5
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <sn.icon size={14} color={sn.color} />
+                  <span className={`badge ${sn.ok ? 'badge-green' : 'badge-amber'}`} style={{ fontSize: '0.60rem', padding: '1px 6px' }}>
+                    {sn.ok ? 'OK' : 'HIGH'}
+                  </span>
+                </div>
+                <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.05rem', fontWeight: 700, color: '#0d1f0e' }}>
+                  {sn.value}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#8da58f' }}>{sn.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <ResponsiveContainer width="100%" height={110}>
+            <LineChart data={[]} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eceacc" />
+              <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#8da58f' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#8da58f' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Line type="monotone" dataKey="temp" stroke="#ef4444" strokeWidth={1.5} dot={false} name="Temp °C" />
+              <Line type="monotone" dataKey="humidity" stroke="#3b82f6" strokeWidth={1.5} dot={false} name="Humidity %" />
+              <Line type="monotone" dataKey="ammonia" stroke="#FFAA00" strokeWidth={1.5} dot={false} name="Ammonia ppm" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
         {/* Mortality trend — wired to GET /dashboard/mortality-chart?weeks=6 */}
         <div className="chart-card">
           <div className="chart-header">

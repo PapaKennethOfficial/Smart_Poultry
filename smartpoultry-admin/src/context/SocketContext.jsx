@@ -10,10 +10,8 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     if (token && user) {
-      // Connect to the backend with the token. The origin is derived from
-      // VITE_API_PROXY_TARGET so dev/prod both work without code changes.
-      const backendOrigin = import.meta.env.VITE_API_PROXY_TARGET || 'http://localhost:5001'
-      const newSocket = io(backendOrigin, {
+      // Connect to the backend with the token
+      const newSocket = io('http://localhost:5000', {
         auth: { token }
       })
 
