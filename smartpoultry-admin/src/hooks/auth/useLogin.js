@@ -37,7 +37,7 @@ export function useLogin() {
       showSuccess('Welcome back! Redirecting to dashboard…')
       if (data.role === 'DELIVERY') navigate('/delivery/vehicle')
       else if (data.role === 'CUSTOMER') navigate('/customer/marketplace')
-      else navigate('/dashboard')
+      else navigate('/admin/dashboard')
     },
 
     onError: (error) => {

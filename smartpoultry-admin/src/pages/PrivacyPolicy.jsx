@@ -50,7 +50,7 @@ export default function PrivacyPolicy() {
         <h2 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.5rem', marginTop: '30px', marginBottom: '15px', color: '#0d1f0e' }}>3. AI & Machine Learning Data Processing</h2>
         <p style={{ marginBottom: '15px' }}>Smart Poultry utilizes Artificial Intelligence (AI) and Machine Learning (ML) to enhance our platform's capabilities and provide actionable business insights.</p>
         <ul style={{ paddingLeft: '20px', marginBottom: '20px' }}>
-          <li style={{ marginBottom: '10px' }}><strong>Data Ingestion:</strong> Platform data—including sales volumes, order amounts, frequencies, delivery routes, and environmental sensor data—will be ingested by our proprietary or third-party ML algorithms.</li>
+          <li style={{ marginBottom: '10px' }}><strong>Data Ingestion:</strong> Platform data—including sales volumes, order amounts, frequencies, and delivery routes—will be ingested by our proprietary or third-party ML algorithms.</li>
           <li style={{ marginBottom: '10px' }}><strong>Business Intelligence:</strong> This data is used to generate predictive models (e.g., forecasting seasonal demand spikes, predicting egg yield), real-time graphical charts, and dashboards for stakeholders.</li>
           <li style={{ marginBottom: '10px' }}><strong>Anonymization:</strong> Personally Identifiable Information (PII) is strictly anonymized or aggregated where appropriate before being used for large-scale AI model training or predictive analytics.</li>
         </ul>
