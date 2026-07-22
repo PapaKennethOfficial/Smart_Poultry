@@ -24,6 +24,7 @@ const sections = [
 ]
 
 const MANAGER_NOTIF_ITEMS = [
+  { key: 'environmental', title: 'Environmental Alerts',  desc: 'Temp, humidity, ammonia threshold breaches'         },
   { key: 'mortality',     title: 'Mortality Alerts',      desc: 'Unusual death counts detected by AI'                },
   { key: 'delivery',      title: 'Delivery Updates',      desc: 'Order status changes and driver notifications'      },
   { key: 'forecast',      title: 'AI Forecast Ready',     desc: 'When new 10-day yield predictions are available'    },
@@ -451,16 +452,20 @@ export default function Settings() {
             </div>
           )}
 
-          {/* ── Farm Settings — operational thresholds only (no hardware) ── */}
+          {/* ── Farm Settings (not in current API brief — left as static UI) ── */}
           {activeSection === 'farm' && (
             <div className="chart-card">
               <div className="section-title" style={{ marginBottom: 3 }}>Farm Configuration</div>
               <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginBottom: 22, lineHeight: 1.55 }}>
-                Operational targets and mortality alert threshold
+                Set thresholds for IoT sensor alerts and farm parameters
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 540 }}>
                 {[
+                  { label: 'Max Temperature (°C)',      val: '32'   },
+                  { label: 'Min Temperature (°C)',      val: '18'   },
+                  { label: 'Max Humidity (%)',           val: '75'   },
+                  { label: 'Max Ammonia (ppm)',          val: '20'   },
                   { label: 'Daily Egg Target',           val: '1200' },
                   { label: 'Alert Mortality Threshold',  val: '3'    },
                 ].map((f, i) => (
