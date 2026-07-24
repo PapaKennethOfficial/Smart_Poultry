@@ -141,8 +141,12 @@ const register = async (req, res, next) => {
 
         const { password: _pw, ...safeUser } = user
 
+        const token = signToken(user)
+
         res.status(201).json({
             message: "Account created successfully",
+            token,
+            role: user.role,
             user: safeUser,
         })
 
