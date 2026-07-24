@@ -1,20 +1,32 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 
+const Welcome = lazy(() => import('./pages/Welcome'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
-const AdminLogin = lazy(() => import('./pages/AdminLogin'));
-const AdminRegister = lazy(() => import('./pages/AdminRegister'));
-const Welcome = lazy(() => import('./pages/Welcome'));
 const AdminApp = lazy(() => import('./AdminApp'));
+const ClientApp = lazy(() => import('./ClientApp'));
 
+// Post-login destination per role — kept in sync with useLogin.js and
+// pages/Login.jsx so the same map governs redirects everywhere.
+const ROLE_HOME = {
+  MANAGER: '/admin/dashboard',
+  ADMIN: '/admin/dashboard',
+  CUSTOMER: '/customer/marketplace',
+  DELIVERY: '/delivery/vehicle',
+};
+
+// If the user is already signed in, bounce them out of /login|/register|/
+// straight into their role's home. Prevents a logged-in manager from
+// accidentally landing on the customer marketplace.
 function PublicRoute({ children }) {
   const { token, role } = useAuth();
-  if (token) {
-    if (role === 'MANAGER' || role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
-    // Since this is admin only, if customer/delivery tries to login here, they shouldn't even be here.
-    // But we'll just redirect them out or show an error.
+  if (token && role && ROLE_HOME[role]) {
+    return <Navigate to={ROLE_HOME[role]} replace />;
   }
   return children;
 }
@@ -22,25 +34,33 @@ function PublicRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={
-        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: '#237227', fontFamily: 'Space Grotesk, sans-serif' }}>
-          Loading Smart Poultry Admin...
-        </div>
-      }>
-        <Routes>
-          <Route path="/admin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
-          <Route path="/admin/register" element={<PublicRoute><AdminRegister /></PublicRoute>} />
-          <Route path="/login" element={<Navigate to="/admin/login" replace />} />
-          
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<TermsAndConditions />} />
-          <Route path="/" element={<Welcome />} />
+      <CartProvider>
+        <Suspense fallback={
+          <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: '#237227', fontFamily: 'Space Grotesk, sans-serif' }}>
+            Loading SmartPoultry…
+          </div>
+        }>
+          <Routes>
+            {/* Public entry points */}
+            <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
 
-          {/* Role-specific separated bundles */}
-          <Route path="/admin/*" element={<AdminApp />} />
-          <Route path="/*" element={<Navigate to="/admin/login" replace />} />
-        </Routes>
-      </Suspense>
+            {/* Back-compat aliases from the pre-reunification split */}
+            <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+            <Route path="/admin/register" element={<Navigate to="/register" replace />} />
+
+            {/* Manager area — role-guarded inside AdminApp */}
+            <Route path="/admin/*" element={<AdminApp />} />
+
+            {/* Customer + Delivery area — role-guarded inside ClientApp.
+                Catches /customer/*, /delivery/*, /settings, and anything else. */}
+            <Route path="/*" element={<ClientApp />} />
+          </Routes>
+        </Suspense>
+      </CartProvider>
     </BrowserRouter>
   );
 }
