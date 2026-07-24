@@ -6,6 +6,18 @@ import { SocketProvider } from './context/SocketContext'
 import { ToastProvider } from './components/Toast'
 import App from './App.jsx'
 import './index.css'
+import { registerSW } from 'virtual:pwa-register'
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('New content available. Reload?')) {
+      updateSW(true)
+    }
+  },
+  onOfflineReady() {
+    console.log('App ready to work offline')
+  },
+})
 
 const queryClient = new QueryClient({
   defaultOptions: {

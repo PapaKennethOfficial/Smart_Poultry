@@ -94,7 +94,7 @@ export default function Register() {
   } else if (serverStatus === 403) {
     serverError = serverData?.message || 'This account type cannot be self-registered.'
   } else if (error) {
-    serverError = serverData?.message || 'Sign up failed. Please try again.'
+    serverError = !error.response ? 'Network error — is the server running?' : (serverData?.message || 'Sign up failed. Please try again.')
   }
 
   const inlineError = matchError || serverError
@@ -138,6 +138,9 @@ export default function Register() {
               Smart<span style={{ color: '#84be88' }}>Poultry</span>
             </span>
           </Link>
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginTop: 8, marginBottom: 8 }}>
+            Your premium farm-to-door poultry platform.
+          </div>
 
           <div className="login-marketing" style={{ marginBottom: 30 }}>
             <div style={{
@@ -259,7 +262,7 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Phone Number (Required for Drivers)</label>
+            <label className="form-label">Phone Number</label>
             <input
               className="form-input"
               type="tel"
@@ -268,7 +271,7 @@ export default function Register() {
               value={phone}
               onChange={clearOnChange(setPhone)}
               disabled={isPending}
-              required={role === 'delivery'}
+              required
             />
           </div>
 

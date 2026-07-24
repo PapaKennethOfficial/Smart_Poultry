@@ -56,7 +56,7 @@ const login = async (req, res, next) => {
             })
         }
 
-        if (user.isTwoFactorEnabled) {
+        if (false /* user.isTwoFactorEnabled - Disabled per user request */) {
             // Generate a 6 digit OTP
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
             const otpExpiry = new Date(Date.now() + 10 * 60000) // 10 minutes from now

@@ -22,11 +22,7 @@ function PublicRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={
-        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: '#237227', fontFamily: 'Space Grotesk, sans-serif' }}>
-          Loading Smart Poultry Admin...
-        </div>
-      }>
+      <Suspense fallback={null}>
         <Routes>
           <Route path="/admin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
           <Route path="/admin/register" element={<PublicRoute><AdminRegister /></PublicRoute>} />

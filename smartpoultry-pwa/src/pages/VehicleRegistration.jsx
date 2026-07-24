@@ -37,7 +37,7 @@ function formatApiError(err, fallback) {
 // Shown when verification_status === 'APPROVED'. Photos lead, then the
 // confirmation fields the brief calls out so the driver can see at a glance
 // that the correct vehicle was approved.
-function ApprovedVehicleCard({ vehicle }) {
+function ApprovedVehicleCard({ vehicle, onUpdateClick }) {
   const detailRows = [
     { label: 'Make',         value: vehicle.make },
     { label: 'Model',        value: vehicle.model },
@@ -89,6 +89,16 @@ function ApprovedVehicleCard({ vehicle }) {
             <div style={{ fontWeight: 600, marginTop: 2 }}>{row.value || '—'}</div>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: 24, textAlign: 'center' }}>
+        <button 
+          className="btn-outline" 
+          onClick={onUpdateClick}
+          style={{ padding: '10px 20px', fontSize: '0.85rem' }}
+        >
+          Update Vehicle Details
+        </button>
       </div>
     </div>
   )
@@ -176,6 +186,7 @@ export default function VehicleRegistration() {
   const [uploadingField, setUploadingField] = useState(null)
   const [error, setError] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [isEditingApproved, setIsEditingApproved] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState(() => defaultVehicleForm())
@@ -199,7 +210,7 @@ export default function VehicleRegistration() {
   }, [])
 
   useEffect(() => {
-    if (vehicle && vehicle.verification_status === 'REJECTED') {
+    if (vehicle && (vehicle.verification_status === 'REJECTED' || isEditingApproved)) {
       setFormData({
         vehicle_type: vehicle.vehicle_type || 'Truck',
         make: vehicle.make || '',
@@ -217,7 +228,7 @@ export default function VehicleRegistration() {
         registration_document: vehicle.registration_document || '',
       })
     }
-  }, [vehicle])
+  }, [vehicle, isEditingApproved])
 
   const requiresFullDetails = !['Bicycle', 'Motorcycle'].includes(formData.vehicle_type)
 
@@ -271,8 +282,8 @@ export default function VehicleRegistration() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!agreedToTerms) {
-      setError('You must agree to the Terms and Conditions and Privacy Policy.')
+    if (!isEditingApproved && !agreedToTerms) {
+      setError('You must agree to the terms.')
       return
     }
     
@@ -284,8 +295,10 @@ export default function VehicleRegistration() {
         year_of_manufacture: parseInt(formData.year_of_manufacture),
         license_expiration: new Date(formData.license_expiration).toISOString(),
       }
-      await api.post('/api/vehicles', payload)
-      await fetchVehicle()
+      const res = await api.post('/api/vehicles', payload)
+      setVehicle(res.data.vehicle)
+      setIsEditingApproved(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setError(formatApiError(err, 'Failed to submit vehicle details. Please check your inputs.'))
     } finally {
@@ -302,35 +315,32 @@ export default function VehicleRegistration() {
     )
   }
 
-  if (vehicle && vehicle.verification_status === 'APPROVED') {
-    return (
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <div className="page-header" style={{ textAlign: 'center' }}>
-          <div className="page-title">My Vehicle</div>
-          <div className="page-desc">Approved vehicle and driver details</div>
+  if (vehicle) {
+    if (vehicle.verification_status === 'PENDING') {
+      return (
+        <div style={{ paddingBottom: 80 }}>
+          <PendingVerificationCard vehicle={vehicle} />
         </div>
-        <ApprovedVehicleCard vehicle={vehicle} />
-      </div>
-    )
-  }
+      )
+    }
 
-  if (vehicle && vehicle.verification_status !== 'REJECTED') {
-    return (
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <div className="page-header" style={{ textAlign: 'center' }}>
-          <div className="page-title">Vehicle Status</div>
-          <div className="page-desc">Manage your delivery vehicle registration</div>
+    if (vehicle.verification_status === 'APPROVED' && !isEditingApproved) {
+      return (
+        <div style={{ paddingBottom: 80 }}>
+          <ApprovedVehicleCard 
+            vehicle={vehicle} 
+            onUpdateClick={() => setIsEditingApproved(true)} 
+          />
         </div>
-        <PendingVerificationCard vehicle={vehicle} />
-      </div>
-    )
+      )
+    }
   }
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div className="page-header">
-        <div className="page-title">Register Your Vehicle</div>
-        <div className="page-desc">Provide your vehicle details for manager verification before you can start deliveries.</div>
+        <div className="page-title">{isEditingApproved ? 'Update Vehicle' : 'Register Your Vehicle'}</div>
+        <div className="page-desc">{isEditingApproved ? 'Update your details for manager re-verification.' : 'Provide your vehicle details for manager verification before you can start deliveries.'}</div>
       </div>
 
       {vehicle && vehicle.verification_status === 'REJECTED' && (
@@ -351,12 +361,7 @@ export default function VehicleRegistration() {
       )}
 
       <form onSubmit={handleSubmit} className="chart-card">
-        {error && (
-          <div style={{ background: 'var(--clr-danger-bg)', color: 'var(--clr-danger-txt)', padding: 12, borderRadius: 8, marginBottom: 20, fontSize: '0.85rem' }}>
-            {error}
-          </div>
-        )}
-
+        
         <div className="section-header">
           <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Car size={18} color="var(--primary)" /> Vehicle Information
@@ -553,29 +558,62 @@ export default function VehicleRegistration() {
           </div>
         </div>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', justifyContent: 'center' }}>
-            <input 
-              type="checkbox" 
-              id="agree-staff-terms" 
-              checked={agreedToTerms}
-              onChange={(e) => {
-                setAgreedToTerms(e.target.checked)
-                if (error) setError('')
-              }}
-              style={{ marginTop: '3px', cursor: 'pointer' }}
-            />
-            <label htmlFor="agree-staff-terms" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', maxWidth: '400px' }}>
-              I agree to the{' '}
-              <Link to="/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms and Conditions</Link>
-              {' '}and{' '}
-              <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>, and acknowledge that platform interactions contribute to AI analytics.
-            </label>
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)' }}>
+          {/* Disclaimer & Submit */}
+          {!isEditingApproved && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24, padding: 16, background: 'rgba(255,170,0,0.08)', borderRadius: 12 }}>
+              <input 
+                type="checkbox" 
+                id="agree" 
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                style={{ marginTop: 4, accentColor: '#237227' }}
+              />
+              <label htmlFor="agree" style={{ fontSize: '0.8rem', color: 'var(--text-body)', lineHeight: 1.5, cursor: 'pointer' }}>
+                I certify that the information provided is accurate. I understand that false information may result in termination of my delivery contract.
+              </label>
+            </div>
+          )}
+
+          {isEditingApproved && (
+            <div style={{ marginBottom: 24, padding: 16, background: 'rgba(255,170,0,0.08)', borderRadius: 12 }}>
+              <p style={{ fontSize: '0.85rem', color: '#b45309', margin: 0 }}>
+                <strong>Note:</strong> Submitting updated vehicle details will place your account back into <strong>Pending Verification</strong> status, and you will not be able to accept deliveries until approved.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div role="alert" style={{ marginBottom: 20, padding: 12, background: 'rgba(239,68,68,0.1)', color: '#b91c1c', borderRadius: 8, fontSize: '0.85rem' }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            {isEditingApproved && (
+              <button 
+                type="button" 
+                className="btn-outline" 
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => setIsEditingApproved(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+            )}
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              style={{ flex: isEditingApproved ? 1 : 'none', width: isEditingApproved ? 'auto' : '100%', justifyContent: 'center', height: 48, fontSize: '0.95rem' }}
+              disabled={submitting || uploadingField}
+            >
+              {submitting ? (
+                <><RefreshCw size={18} className="spin" /> Submitting...</>
+              ) : (
+                isEditingApproved ? 'Submit Update Request' : 'Submit for Verification'
+              )}
+            </button>
           </div>
-          <button type="submit" className="btn-primary" disabled={submitting} style={{ padding: '12px 24px', width: '100%', maxWidth: '400px', display: 'flex', justifyContent: 'center' }}>
-            {submitting ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
-            {submitting ? 'Submitting...' : 'Submit Vehicle Details'}
-          </button>
         </div>
       </form>
     </div>

@@ -33,12 +33,12 @@ export function useRegister() {
         // Redirect based on role
         if (data.role === 'DELIVERY') navigate('/delivery/vehicle')
         else if (data.role === 'CUSTOMER') navigate('/customer/marketplace')
-        else if (data.role === 'MANAGER' || data.role === 'ADMIN') navigate('/dashboard')
-        else navigate('/dashboard')
+        else if (data.role === 'MANAGER' || data.role === 'ADMIN') navigate('/admin/dashboard')
+        else navigate('/admin/dashboard')
       } else {
         // Fallback: redirect to login if no token returned
         showSuccess('Account created — please sign in')
-        navigate('/login')
+        navigate('/admin/login')
       }
     },
 

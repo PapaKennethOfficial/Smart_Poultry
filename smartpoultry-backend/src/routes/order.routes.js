@@ -11,6 +11,7 @@ const {
   selectAvailableDriver,
 } = require("../services/deliveryAssignment.service")
 const { buildDeliveryOrderWhere } = require("../utils/deliveryFilters")
+const { calculateDeliveryFee } = require("../utils/distance")
 
 const STATUS_VALUES = ["PENDING", "IN_TRANSIT", "DELIVERED", "CANCELLED"]
 const PAYMENT_METHODS = ["MOBILE_MONEY", "PAY_ON_DELIVERY"]
@@ -153,6 +154,7 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
 
     const orderId = await generateOrderId()
     const amount = product.price * data.quantity
+    const deliveryFee = calculateDeliveryFee(data.deliveryLatitude, data.deliveryLongitude)
     let assignedDriver = null
 
     const order = await prisma.$transaction(async (tx) => {
@@ -177,6 +179,7 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
           address: data.address,
           contactNumber: data.contactNumber,
           amount,
+          deliveryFee,
           paymentMethod: data.paymentMethod,
           paymentStatus: data.paymentMethod === "PAY_ON_DELIVERY" ? "PENDING" : "AWAITING_CONFIRMATION",
           notes: data.notes || null,
@@ -280,6 +283,51 @@ router.get("/me", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next)
       orderBy: { createdAt: "desc" },
     })
     res.status(200).json({ orders })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Delivery staff: get their earnings
+router.get("/earnings/me", requireAuth, requireRole(["DELIVERY"]), async (req, res, next) => {
+  try {
+    const orders = await prisma.deliveryOrder.findMany({
+      where: {
+        driverId: req.user.id,
+        status: "DELIVERED"
+      },
+      orderBy: { deliveryDate: "desc" },
+    })
+
+    const earnings = {
+      total: 0,
+      cashCollected: 0,
+      owedByCompany: 0,
+      history: []
+    }
+
+    orders.forEach(order => {
+      const fee = order.deliveryFee || 0;
+      earnings.total += fee;
+      
+      if (order.paymentMethod === "PAY_ON_DELIVERY") {
+        earnings.cashCollected += fee;
+      } else {
+        if (order.driverPayoutStatus !== "PAID_OUT") {
+          earnings.owedByCompany += fee;
+        }
+      }
+
+      earnings.history.push({
+        orderId: order.orderId,
+        date: order.deliveryDate,
+        amount: fee,
+        paymentMethod: order.paymentMethod,
+        payoutStatus: order.driverPayoutStatus
+      })
+    })
+
+    res.status(200).json({ earnings })
   } catch (error) {
     next(error)
   }

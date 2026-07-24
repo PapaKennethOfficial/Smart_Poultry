@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { ShoppingCart, FileText, Settings, Truck, Store } from 'lucide-react';
+import { ShoppingCart, FileText, Settings, Truck, Store, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './BottomNav.css';
 
@@ -11,6 +11,7 @@ export default function BottomNav() {
       return [
         { label: 'Vehicle', icon: Truck, to: '/delivery/vehicle' },
         { label: 'Deliveries', icon: FileText, to: '/delivery/orders' },
+        { label: 'Earnings', icon: Wallet, to: '/delivery/earnings' },
         { label: 'Settings', icon: Settings, to: '/settings' }
       ];
     }

@@ -12,10 +12,12 @@ import AssignedDeliveries from './pages/AssignedDeliveries';
 import CustomerMarketplace from './pages/CustomerMarketplace';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerWishlist from './pages/CustomerWishlist';
+import DriverEarnings from './pages/DriverEarnings';
 import Settings from './pages/Settings';
 import DesktopSidebar from './components/DesktopSidebar';
 import CartDrawer from './components/CartDrawer';
 import OnboardingTour from './components/OnboardingTour';
+import InstallPWA from './components/InstallPWA';
 
 export default function ClientApp() {
   const { user, role, logout } = useAuth();
@@ -40,12 +42,14 @@ export default function ClientApp() {
         setMenuOpen(false);
       }
       if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setShowNotifications(false);
+        if (showNotifications) {
+          closeNotifications();
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [showNotifications, unreadCount]);
 
   // Poll notifications
   useEffect(() => {
@@ -63,16 +67,24 @@ export default function ClientApp() {
     return () => clearInterval(interval);
   }, [user]);
 
-  const handleNotificationClick = async () => {
-    const nextOpen = !showNotifications;
-    setShowNotifications(nextOpen);
-    if (!nextOpen || unreadCount === 0) return;
-    try {
-      await api.patch('/api/notifications/read-all');
-      setUnreadCount(0);
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    } catch {
-      // Ignore
+  const closeNotifications = async () => {
+    setShowNotifications(false);
+    if (unreadCount > 0) {
+      try {
+        await api.patch('/api/notifications/read-all');
+        setUnreadCount(0);
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      } catch {
+        // Ignore
+      }
+    }
+  };
+
+  const handleNotificationClick = () => {
+    if (showNotifications) {
+      closeNotifications();
+    } else {
+      setShowNotifications(true);
     }
   };
 
@@ -206,6 +218,7 @@ export default function ClientApp() {
             {/* Delivery routes */}
             <Route path="delivery/vehicle" element={<ProtectedRoute allowedRoles={['DELIVERY']}><VehicleRegistration /></ProtectedRoute>} />
             <Route path="delivery/orders" element={<ProtectedRoute allowedRoles={['DELIVERY']}><AssignedDeliveries /></ProtectedRoute>} />
+            <Route path="delivery/earnings" element={<ProtectedRoute allowedRoles={['DELIVERY']}><DriverEarnings /></ProtectedRoute>} />
 
             {/* Customer routes */}
             <Route path="customer/marketplace" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerMarketplace /></ProtectedRoute>} />
@@ -228,6 +241,9 @@ export default function ClientApp() {
 
         {/* Onboarding Tour */}
         {role === 'CUSTOMER' && <OnboardingTour />}
+
+        {/* Global PWA Install Prompt */}
+        <InstallPWA />
       </div>
     </div>
   );

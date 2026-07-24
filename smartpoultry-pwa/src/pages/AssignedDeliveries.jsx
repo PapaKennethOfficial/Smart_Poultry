@@ -216,6 +216,158 @@ export default function AssignedDeliveries() {
   const inTransit = orders.filter(o => o.status === 'IN_TRANSIT').length
   const delivered = orders.filter(o => o.status === 'DELIVERED').length
 
+  const activeOrder = orders.find(o => o.status === 'IN_TRANSIT')
+
+  if (activeOrder) {
+    const destPoint = activeOrder.deliveryLatitude && activeOrder.deliveryLongitude 
+      ? [activeOrder.deliveryLatitude, activeOrder.deliveryLongitude] 
+      : null;
+    const driverPoint = activeOrder.driverLatitude && activeOrder.driverLongitude 
+      ? [activeOrder.driverLatitude, activeOrder.driverLongitude] 
+      : null;
+    
+    const points = []
+    if (destPoint) points.push(destPoint)
+    if (driverPoint) points.push(driverPoint)
+
+    let distKm = null;
+    if (destPoint && driverPoint) {
+      distKm = haversineKm(
+        { lat: driverPoint[0], lon: driverPoint[1] },
+        { lat: destPoint[0], lon: destPoint[1] }
+      )
+    }
+
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000, display: 'flex', flexDirection: 'column', background: '#000' }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          {isLoaded && destPoint ? (
+            <GoogleMap
+              mapContainerStyle={{ width: '100%', height: '100%' }}
+              center={{ lat: driverPoint ? driverPoint[0] : destPoint[0], lng: driverPoint ? driverPoint[1] : destPoint[1] }}
+              zoom={14}
+              options={{ disableDefaultUI: true, zoomControl: false }}
+              onLoad={map => setMapInstances(prev => ({ ...prev, [activeOrder.id]: map }))}
+            >
+              <FitBounds points={points} map={mapInstances[activeOrder.id]} />
+              <Marker 
+                position={{ lat: destPoint[0], lng: destPoint[1] }} 
+                icon={{ path: window.google.maps.SymbolPath.CIRCLE, fillColor: '#237227', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 12 }}
+              />
+              {driverPoint && (
+                <>
+                  <Marker 
+                    position={{ lat: driverPoint[0], lng: driverPoint[1] }}
+                    icon={{ path: window.google.maps.SymbolPath.CIRCLE, fillColor: '#3b82f6', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 10 }}
+                  />
+                  <Polyline 
+                    path={[{ lat: driverPoint[0], lng: driverPoint[1] }, { lat: destPoint[0], lng: destPoint[1] }]}
+                    options={{ strokeColor: '#237227', strokeOpacity: 0.8, strokeWeight: 4 }}
+                  />
+                </>
+              )}
+            </GoogleMap>
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading Map...</div>
+          )}
+
+          {/* Floating Top Bar */}
+          <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', zIndex: 10 }}>
+             <div style={{ background: '#fff', padding: '10px 16px', borderRadius: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontWeight: 'bold' }}>
+               {distKm != null ? `~${formatDistance(distKm)} • ${Math.ceil(distKm * 2.4)} min away` : 'Calculating route...'}
+             </div>
+             <button onClick={() => setSelectedOrder(activeOrder)} style={{ background: '#fff', border: 'none', width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', cursor: 'pointer' }}>
+               <MessageCircle size={20} color="var(--primary)" />
+             </button>
+          </div>
+        </div>
+
+        {/* Bottom Drawer */}
+        <div style={{ background: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '24px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.1)', position: 'relative', zIndex: 20 }}>
+           <div style={{ width: 40, height: 4, background: '#e2e8f0', borderRadius: 2, margin: '0 auto 16px' }} />
+           
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+             <div>
+               <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeOrder.customer?.name}</div>
+               <div style={{ fontSize: '0.9rem', color: 'var(--text-subtle)', marginTop: 4 }}>{activeOrder.address}</div>
+             </div>
+             <a href={`tel:${activeOrder.contactNumber || activeOrder.customer?.phone}`} style={{ background: '#ecfdf5', color: '#10b981', width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+               <Phone size={20} />
+             </a>
+           </div>
+
+           <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, marginBottom: 20 }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+               <span style={{ color: 'var(--text-subtle)' }}>Order</span>
+               <span style={{ fontWeight: 600 }}>{activeOrder.quantity}x {activeOrder.product?.name}</span>
+             </div>
+             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+               <span style={{ color: 'var(--text-subtle)' }}>Collect Cash</span>
+               <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
+                 {activeOrder.paymentMethod === 'PAY_ON_DELIVERY' ? `GHS ${activeOrder.amount.toFixed(2)}` : 'PREPAID'}
+               </span>
+             </div>
+           </div>
+
+           <button 
+             className="btn-primary" 
+             style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: 12 }}
+             disabled={actionLoading === activeOrder.id}
+             onClick={() => handleUpdateStatus(activeOrder.id, 'DELIVERED')}
+           >
+             {actionLoading === activeOrder.id ? 'Completing...' : 'Slide to Complete Delivery ➔'}
+           </button>
+        </div>
+        
+        {/* Chat Modal specifically for active delivery */}
+        {selectedOrder && (
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setSelectedOrder(null) }}>
+            <div className="modal-box">
+              <div className="section-header">
+                <div>
+                  <div className="modal-title">Chat with Customer</div>
+                  <div className="modal-subtitle" style={{ marginBottom: 0 }}>
+                    {selectedOrder.customer?.name || 'Customer'}
+                  </div>
+                </div>
+                <button className="btn-outline" onClick={() => setSelectedOrder(null)}>Close</button>
+              </div>
+
+              <div style={{ height: 300, overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 10, padding: 12, background: 'var(--bg)', marginBottom: 14 }}>
+                {messages.length === 0 ? (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', fontSize: '0.84rem' }}>
+                    No messages yet.
+                  </div>
+                ) : messages.map(m => (
+                  <div key={m.id} style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', alignItems: m.sender?.role === 'DELIVERY' ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ maxWidth: '78%', background: m.sender?.role === 'DELIVERY' ? 'var(--primary)' : '#fff', color: m.sender?.role === 'DELIVERY' ? '#fff' : 'var(--text-body)', padding: '9px 12px', borderRadius: 10, fontSize: '0.84rem', lineHeight: 1.45 }}>
+                      {m.message}
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', marginTop: 3 }}>
+                      {m.sender?.name || 'User'} - {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="form-input"
+                  value={messageText}
+                  onChange={e => setMessageText(e.target.value)}
+                  placeholder="Type a message..."
+                />
+                <button type="submit" className="btn-primary" disabled={sendingMessage || !messageText.trim()}>
+                  Send
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -424,7 +576,7 @@ export default function AssignedDeliveries() {
                   {o.status === 'PENDING' && (
                     <button 
                       className="btn-primary" 
-                      style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--clr-info-txt)' }}
+                      style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                       disabled={actionLoading === o.id}
                       onClick={() => handleUpdateStatus(o.id, 'IN_TRANSIT')}
                     >

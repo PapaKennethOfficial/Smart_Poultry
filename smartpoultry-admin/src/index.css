@@ -74,6 +74,11 @@ body {
   background-attachment: fixed;
   color: var(--text-body);
   -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────── */
@@ -1176,9 +1181,13 @@ body {
   min-width: 1000px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .main-layout {
-    min-width: 0; /* Let mobile work */
+    min-width: 100vw;
+    overflow-x: auto;
+  }
+  .page-content {
+    min-width: 1000px; /* Keep content wide so it scrolls instead of squishing */
   }
 }
 
