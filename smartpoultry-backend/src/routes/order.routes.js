@@ -90,6 +90,7 @@ function orderInclude() {
         },
       },
     },
+    review: true,
   }
 }
 
@@ -515,6 +516,52 @@ router.post("/:id/messages", requireAuth, async (req, res, next) => {
     }
 
     res.status(201).json({ message: created })
+  } catch (error) {
+    next(error)
+  }
+})
+
+const reviewSchema = z.object({
+  rating: z.coerce.number().int().min(1, "Rating must be at least 1").max(5, "Rating cannot exceed 5"),
+  comment: z.string().trim().optional(),
+})
+
+router.post("/:id/review", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) => {
+  try {
+    const data = parseBody(reviewSchema, req, res)
+    if (!data) return
+
+    const order = await assertOrderAccess(req.params.id, req.user)
+
+    if (order.status !== "DELIVERED") {
+      return res.status(400).json({ message: "You can only review delivered orders" })
+    }
+
+    if (order.review) {
+      return res.status(400).json({ message: "You have already reviewed this order" })
+    }
+
+    const review = await prisma.review.create({
+      data: {
+        orderId: order.id,
+        productId: order.productId,
+        customerId: req.user.id,
+        rating: data.rating,
+        comment: data.comment,
+      },
+    })
+
+    if (order.driverId) {
+      await createNotification(
+        order.driverId,
+        "Order Reviewed",
+        `Order ${order.orderId} received a ${data.rating}-star review.`,
+        "ORDER_REVIEWED",
+        { orderId: order.id, rating: data.rating }
+      )
+    }
+
+    res.status(201).json({ message: "Review submitted successfully", review })
   } catch (error) {
     next(error)
   }
