@@ -13,6 +13,7 @@ import Settings from './pages/Settings';
 import ManagerInventory from './pages/ManagerInventory';
 import VehicleVerification from './pages/VehicleVerification';
 import ManagerOrders from './pages/ManagerOrders';
+import WithdrawalRequests from './pages/WithdrawalRequests';
 
 export default function AdminApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,6 +35,7 @@ export default function AdminApp() {
             <Route path="logbook" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Logbook /></ProtectedRoute>} />
             <Route path="analytics" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Analytics /></ProtectedRoute>} />
             <Route path="deliveries" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Deliveries /></ProtectedRoute>} />
+            <Route path="withdrawals" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><WithdrawalRequests /></ProtectedRoute>} />
             <Route path="reports" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Reports /></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Settings /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />

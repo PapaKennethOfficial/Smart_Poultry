@@ -7,6 +7,7 @@ export default function AdminRegister() {
   const [showPass, setShowPass] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
 
   const { mutate: register, isPending, error, reset } = useRegister();
@@ -15,10 +16,10 @@ export default function AdminRegister() {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Register the user with the MANAGER role
-    register({ name, email, password, role: 'MANAGER' });
+    register({ name, email, phone, password, role: 'MANAGER' });
   };
 
-  const inlineError = error ? (error?.response?.data?.message || 'Registration failed. Please try again.') : null;
+  const inlineError = error ? (!error.response ? 'Network error — is the server running?' : (error?.response?.data?.message || 'Registration failed. Please try again.')) : null;
 
   const clearErrorOnChange = (setter) => (e) => {
     if (error) reset();
@@ -26,7 +27,7 @@ export default function AdminRegister() {
   };
 
   return (
-    <form className="login-page desktop-only" onSubmit={handleSubmit} noValidate>
+    <form className="login-page" onSubmit={handleSubmit} noValidate>
       {/* Left panel */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -109,6 +110,19 @@ export default function AdminRegister() {
               placeholder="manager@smartpoultry.com"
               value={email}
               onChange={clearErrorOnChange(setEmail)}
+              disabled={isPending}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Phone Number</label>
+            <input
+              className="form-input"
+              type="tel"
+              placeholder="+1234567890"
+              value={phone}
+              onChange={clearErrorOnChange(setPhone)}
               disabled={isPending}
               required
             />

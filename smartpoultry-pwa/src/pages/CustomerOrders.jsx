@@ -54,6 +54,8 @@ function StatCard({ label, value, icon: Icon, iconColor, accent }) {
 
 const STATUS_MAP = {
   PENDING: { label: 'Pending', color: 'badge-amber', icon: Clock },
+  DRIVER_ASSIGNED: { label: 'Driver Assigned', color: 'badge-amber', icon: UserIcon },
+  ACCEPTED: { label: 'Accepted', color: 'badge-blue', icon: CheckCircle2 },
   IN_TRANSIT: { label: 'In Transit', color: 'badge-blue', icon: Truck },
   DELIVERED: { label: 'Delivered', color: 'badge-green', icon: CheckCircle2 },
   CANCELLED: { label: 'Cancelled', color: 'badge-red', icon: Package }
@@ -64,6 +66,15 @@ const PAYMENT_LABELS = {
   BANK_TRANSFER: 'Bank Transfer',
   CARD: 'Card',
   PAY_ON_DELIVERY: 'Pay on Delivery',
+}
+
+const TIMELINE_DOT_COLORS = {
+  PENDING: '#f59e0b',
+  DRIVER_ASSIGNED: '#8b5cf6',
+  ACCEPTED: '#3b82f6',
+  IN_TRANSIT: '#3b82f6',
+  DELIVERED: '#10b981',
+  CANCELLED: '#ef4444',
 }
 
 function OrderTimeline({ statusHistory }) {
@@ -79,13 +90,13 @@ function OrderTimeline({ statusHistory }) {
         {statusHistory.map((step, i) => {
           const isLast = i === statusHistory.length - 1;
           const config = STATUS_MAP[step.status] || STATUS_MAP.PENDING;
-          const Icon = config.icon;
+          const dotColor = TIMELINE_DOT_COLORS[step.status] || '#f59e0b';
           
           return (
             <div key={i} style={{ display: 'flex', gap: 16, marginBottom: isLast ? 0 : 20, position: 'relative', zIndex: 1 }}>
               <div style={{ 
-                width: 10, height: 10, borderRadius: '50%', background: isLast ? 'var(--primary)' : '#fff',
-                border: `2px solid ${isLast ? 'var(--primary)' : 'var(--border)'}`,
+                width: 10, height: 10, borderRadius: '50%', background: dotColor,
+                border: `2px solid ${dotColor}`,
                 marginTop: 6, zIndex: 2
               }} />
               <div>
@@ -95,6 +106,9 @@ function OrderTimeline({ statusHistory }) {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: 2 }}>
                   {new Date(step.timestamp).toLocaleString()}
                 </div>
+                {step.driverName && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Driver: {step.driverName}</div>
+                )}
                 {step.by && (
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Updated by user {step.by.slice(0, 5)}...</div>
                 )}

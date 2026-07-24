@@ -10,13 +10,18 @@ const PAYMENT_OPTIONS = [
 ];
 
 function formatApiError(err, fallback) {
-  const fieldErrors = err.response?.data?.errors;
-  if (fieldErrors) {
-    const messages = Object.entries(fieldErrors)
+  const data = err.response?.data;
+  if (!data) return fallback;
+  
+  // Handle Zod validation errors: { errors: { field: [messages] } }
+  if (data.errors) {
+    const messages = Object.entries(data.errors)
       .flatMap(([field, values]) => (values || []).map(message => `${field.replaceAll('_', ' ')}: ${message}`));
     if (messages.length) return messages.join(' ');
   }
-  return err.response?.data?.message || fallback;
+  
+  // Handle both { message: "..." } and { error: "..." } response shapes
+  return data.message || data.error || fallback;
 }
 
 export default function CartDrawer() {
@@ -123,7 +128,7 @@ export default function CartDrawer() {
           <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 24, fontSize: '0.85rem' }}>
             Reference ID: <strong>{orderSuccess}</strong>
           </div>
-          <button className="btn-primary" onClick={() => { setIsCartOpen(false); setOrderSuccess(null); navigate('/customer/orders'); }}>
+          <button className="btn-primary" style={{ width: '100%', padding: '14px', justifyContent: 'center', fontSize: '1rem' }} onClick={() => { setIsCartOpen(false); setOrderSuccess(null); navigate('/customer/orders'); }}>
             View My Orders
           </button>
         </div>
@@ -220,7 +225,7 @@ export default function CartDrawer() {
 
         {cartItems.length > 0 && (
           <div className="cart-drawer-footer">
-            <button type="submit" form="checkout-form" className="btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem' }} disabled={submitting}>
+            <button type="submit" form="checkout-form" className="btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem', justifyContent: 'center' }} disabled={submitting}>
               {submitting ? 'Processing...' : `Checkout (GHS ${cartTotal.toFixed(2)})`}
             </button>
           </div>
