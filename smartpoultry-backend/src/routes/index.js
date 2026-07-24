@@ -35,6 +35,7 @@ router.use("/products", productRoutes)
 router.use("/withdrawals", withdrawalRoutes)
 
 // ─── Namespaced v1 routes with strict RBAC (for future mobile apps) ───────────
+// TODO: create src/routes/admin.js, driver.js, customer.js before enabling
 // const adminRoutes = require("../routes/admin");
 // const driverRoutes = require("../routes/driver");
 // const customerRoutes = require("../routes/customer");

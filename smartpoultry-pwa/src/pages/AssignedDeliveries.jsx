@@ -556,11 +556,15 @@ export default function AssignedDeliveries() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button 
                       className="btn-outline" 
-                      style={{ padding: '6px 10px', fontSize: '0.75rem' }} 
+                      style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }} 
+                      title="Open turn-by-turn navigation in Google Maps"
                       onClick={() => {
-                        const mapEl = document.getElementById(`map-container-${o.id}`);
-                        if (mapEl) {
-                          mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (o.deliveryLatitude && o.deliveryLongitude) {
+                          window.open(`https://www.google.com/maps/dir/?api=1&destination=${o.deliveryLatitude},${o.deliveryLongitude}`, '_blank');
+                        } else if (o.address) {
+                          window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address)}`, '_blank');
+                        } else {
+                          alert('No location details provided for this customer order.');
                         }
                       }}
                     >

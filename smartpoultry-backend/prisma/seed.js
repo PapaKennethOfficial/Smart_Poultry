@@ -104,6 +104,85 @@ async function main() {
 
   console.log("✅ Default batches created");
 
+  await prisma.product.createMany({
+    data: [
+      {
+        name: "Fresh Large Eggs (Crate of 30)",
+        description: "Freshly collected grade-A large brown eggs direct from our layer farm.",
+        price: 45.00,
+        unit: "crate",
+        stock: 120,
+        category: "Eggs",
+        isActive: true,
+      },
+      {
+        name: "Whole Broiler Chicken (Dressed)",
+        description: "Hygenically processed, fully dressed frozen broiler chicken.",
+        price: 65.00,
+        unit: "kg",
+        stock: 75,
+        category: "Poultry Meat",
+        isActive: true,
+      },
+      {
+        name: "Live Layer Hen",
+        description: "Healthy mature live layer hen, ideal for home or farm stock.",
+        price: 50.00,
+        unit: "bird",
+        stock: 90,
+        category: "Live Birds",
+        isActive: true,
+      },
+      {
+        name: "Live Broiler Bird",
+        description: "Heavyweight mature broiler bird raised on premium organic feed.",
+        price: 70.00,
+        unit: "bird",
+        stock: 50,
+        category: "Live Birds",
+        isActive: true,
+      },
+      {
+        name: "Layer Mash Premium Feed (50kg)",
+        description: "Balanced nutrient feed formulation for high egg production layers.",
+        price: 220.00,
+        unit: "bag",
+        stock: 40,
+        category: "Farm Inputs",
+        isActive: true,
+      },
+      {
+        name: "Organic Farm Eggs (Pack of 12)",
+        description: "Farm fresh organic eggs packaged in eco-friendly protective cartons.",
+        price: 20.00,
+        unit: "pack",
+        stock: 150,
+        category: "Eggs",
+        isActive: true,
+      },
+      {
+        name: "Smoked Seasoned Chicken",
+        description: "Traditionally smoked poultry meat infused with local natural spices.",
+        price: 75.00,
+        unit: "kg",
+        stock: 35,
+        category: "Poultry Meat",
+        isActive: true,
+      },
+      {
+        name: "Day-Old Broiler Chicks (Pack of 50)",
+        description: "Vaccinated, high-yield day-old broiler chicks ready for brooding.",
+        price: 350.00,
+        unit: "pack",
+        stock: 20,
+        category: "Live Birds",
+        isActive: true,
+      },
+    ]
+  });
+
+  console.log("✅ Default marketplace products created");
+
   // ─── Seed Delivery Orders ──────────────────────────────────────────────────
   // Removed dummy delivery orders for production readiness.
   // The system will start with 0 deliveries, allowing you to create them manually.
