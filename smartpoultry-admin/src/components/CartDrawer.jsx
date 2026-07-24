@@ -70,25 +70,45 @@ export default function CartDrawer() {
     }
   };
 
-  const reverseGeocodeGoogle = async (latitude, longitude) => {
+  const reverseGeocode = async (latitude, longitude) => {
+    // 1. Try Google Maps Geocoding if API key exists
     try {
       const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) return null;
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status === 'OK' && data.results.length > 0) {
-        return data.results[0].formatted_address;
+      if (apiKey) {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === 'OK' && data.results && data.results.length > 0) {
+          return data.results[0].formatted_address;
+        }
       }
-      return null;
-    } catch {
-      return null;
+    } catch (err) {
+      console.warn('Google reverse geocode failed, attempting fallback', err);
     }
+
+    // 2. Fallback to OpenStreetMap Nominatim (free, no API key required)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.display_name) {
+          return data.display_name;
+        }
+      }
+    } catch (err) {
+      console.warn('OSM Nominatim reverse geocode failed', err);
+    }
+
+    // 3. Fallback to formatted coordinates string so input is never left blank
+    return `Location (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
   };
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Location is not supported by this browser.');
+      alert('Location is not supported by your browser.');
       return;
     }
 
@@ -99,17 +119,18 @@ export default function CartDrawer() {
         const longitude = pos.coords.longitude;
         setCoords({ latitude, longitude });
 
-        if (!address.trim()) {
-          const readable = await reverseGeocodeGoogle(latitude, longitude);
-          if (readable) setAddress(readable);
+        const readableAddress = await reverseGeocode(latitude, longitude);
+        if (readableAddress) {
+          setAddress(readableAddress);
         }
         setLocating(false);
       },
-      () => {
+      (err) => {
         setLocating(false);
-        alert('Could not get your current location. Please allow location access or enter your address.');
+        console.error('Geolocation error:', err);
+        alert('Could not retrieve location. Please check browser location permissions or type your address manually.');
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
   };
 

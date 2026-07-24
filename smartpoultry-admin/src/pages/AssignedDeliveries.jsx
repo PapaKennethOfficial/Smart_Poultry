@@ -32,41 +32,7 @@ function FitBounds({ points, map }) {
   return null;
 }
 
-// Colour-coded pin icons so the driver can tell their own position from the
-// customer destination at a glance. Using divIcon keeps the visuals crisp
-// without extra image assets.
-function coloredPin(fill) {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34">
-      <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 21 13 21s13-11.25 13-21C26 5.82 20.18 0 13 0z"
-            fill="${fill}" stroke="#fff" stroke-width="2"/>
-      <circle cx="13" cy="13" r="4.5" fill="#fff"/>
-    </svg>`
-  return L.divIcon({
-    className: '',
-    html: svg,
-    iconSize: [26, 34],
-    iconAnchor: [13, 34],
-    popupAnchor: [0, -30],
-  })
-}
-const driverIcon = coloredPin('#3b82f6')      // blue — driver / me
-const destinationIcon = coloredPin('#237227') // green — customer destination
 
-// Small helper that centres/zooms the map so every meaningful marker fits.
-function FitBounds({ points }) {
-  const map = useMap()
-  useEffect(() => {
-    if (!points || points.length === 0) return
-    if (points.length === 1) {
-      map.setView(points[0], 15)
-      return
-    }
-    const bounds = L.latLngBounds(points)
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 })
-  }, [map, points?.map(p => p.join(',')).join('|')]) // stable stringified dep
-  return null
-}
 
 function StatCard({ label, value, icon: Icon, iconColor, accent }) {
   return (
