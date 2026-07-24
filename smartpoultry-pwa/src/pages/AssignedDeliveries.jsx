@@ -564,7 +564,7 @@ export default function AssignedDeliveries() {
                         } else if (o.address) {
                           window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address)}`, '_blank');
                         } else {
-                          alert('No location details provided for this customer order.');
+                          alert('No location details provided for this delivery.');
                         }
                       }}
                     >

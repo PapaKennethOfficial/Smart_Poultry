@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
-import { ShoppingCart, ShoppingBag, MapPin, X, Minus, Plus, CheckCircle2 } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { ShoppingCart, ShoppingBag, MapPin, X, Minus, Plus, CheckCircle2, Search, Crosshair } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 
 const PAYMENT_OPTIONS = [
   { value: 'MOBILE_MONEY', label: 'Mobile Money' },
   { value: 'PAY_ON_DELIVERY', label: 'Payment on Delivery' },
 ];
+
+const GOOGLE_MAPS_LIBRARIES = ['places'];
+
+// Default center — Accra, Ghana
+const DEFAULT_CENTER = { lat: 5.6037, lng: -0.1870 };
 
 function formatApiError(err, fallback) {
   const data = err.response?.data;
@@ -24,6 +30,117 @@ function formatApiError(err, fallback) {
   return data.message || data.error || fallback;
 }
 
+// ─── Places Autocomplete Input ─────────────────────────────────────────────────
+function PlacesAutocomplete({ value, onChange, onSelect, isLoaded }) {
+  const inputRef = useRef(null);
+  const autocompleteRef = useRef(null);
+
+  useEffect(() => {
+    if (!isLoaded || !inputRef.current || autocompleteRef.current) return;
+
+    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+      componentRestrictions: { country: 'gh' },
+      fields: ['formatted_address', 'geometry'],
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry) return;
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const addr = place.formatted_address || '';
+
+      onSelect({ latitude: lat, longitude: lng, address: addr });
+    });
+
+    autocompleteRef.current = autocomplete;
+  }, [isLoaded, onSelect]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+      <input
+        ref={inputRef}
+        type="text"
+        className="form-input"
+        style={{ paddingLeft: 34 }}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Search address or place name..."
+      />
+    </div>
+  );
+}
+
+// ─── Location Map Preview ──────────────────────────────────────────────────────
+function LocationMapPreview({ coords, onMarkerDragEnd, isLoaded }) {
+  const [map, setMap] = useState(null);
+  const center = coords
+    ? { lat: coords.latitude, lng: coords.longitude }
+    : DEFAULT_CENTER;
+
+  const onLoad = useCallback((mapInstance) => {
+    setMap(mapInstance);
+  }, []);
+
+  // Re-center map when coords change
+  useEffect(() => {
+    if (map && coords) {
+      map.panTo({ lat: coords.latitude, lng: coords.longitude });
+    }
+  }, [map, coords]);
+
+  if (!isLoaded) {
+    return (
+      <div style={{
+        height: 180, background: 'var(--bg)', borderRadius: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        border: '1px solid var(--border-light)', fontSize: '0.8rem', color: 'var(--text-subtle)',
+      }}>
+        Loading map...
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height: 180, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+      <GoogleMap
+        mapContainerStyle={{ height: '100%', width: '100%' }}
+        center={center}
+        zoom={coords ? 16 : 12}
+        onLoad={onLoad}
+        options={{
+          disableDefaultUI: true,
+          zoomControl: true,
+          gestureHandling: 'greedy',
+        }}
+      >
+        {coords && (
+          <Marker
+            position={{ lat: coords.latitude, lng: coords.longitude }}
+            draggable
+            onDragEnd={(e) => {
+              const lat = e.latLng.lat();
+              const lng = e.latLng.lng();
+              onMarkerDragEnd(lat, lng);
+            }}
+            icon={{
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: '#237227',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 2.5,
+              scale: 12,
+            }}
+          />
+        )}
+      </GoogleMap>
+    </div>
+  );
+}
+
+// ─── Main CartDrawer Component ─────────────────────────────────────────────────
 export default function CartDrawer() {
   const navigate = useNavigate();
   const { cartItems, cartTotal, addToCart, removeFromCart, clearCart, isCartOpen, setIsCartOpen } = useCart();
@@ -37,6 +154,12 @@ export default function CartDrawer() {
   const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
 
   const handleCheckout = async (e) => {
     e.preventDefault();
@@ -104,10 +227,8 @@ export default function CartDrawer() {
         const longitude = pos.coords.longitude;
         setCoords({ latitude, longitude });
 
-        if (!address.trim()) {
-          const readable = await reverseGeocodeGoogle(latitude, longitude);
-          if (readable) setAddress(readable);
-        }
+        const readable = await reverseGeocodeGoogle(latitude, longitude);
+        if (readable) setAddress(readable);
         setLocating(false);
       },
       () => {
@@ -117,6 +238,17 @@ export default function CartDrawer() {
       { enableHighAccuracy: true, timeout: 15000 }
     );
   };
+
+  const handleMarkerDragEnd = async (lat, lng) => {
+    setCoords({ latitude: lat, longitude: lng });
+    const readable = await reverseGeocodeGoogle(lat, lng);
+    if (readable) setAddress(readable);
+  };
+
+  const handlePlaceSelect = useCallback(({ latitude, longitude, address: addr }) => {
+    setCoords({ latitude, longitude });
+    setAddress(addr);
+  }, []);
 
   if (orderSuccess) {
     return (
@@ -186,21 +318,69 @@ export default function CartDrawer() {
                     <label className="form-label">Delivery Date *</label>
                     <input required type="date" className="form-input" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
                   </div>
+
+                  {/* ── Delivery Location Section ────────────────────────── */}
                   <div className="form-group">
-                    <label className="form-label">Delivery Address *</label>
-                    <textarea required className="form-input" rows={2} value={address} onChange={e => setAddress(e.target.value)} placeholder="Full street address" />
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <MapPin size={14} color="var(--primary)" />
+                      Delivery Location *
+                    </label>
+
+                    {/* Google Places Autocomplete */}
+                    <PlacesAutocomplete
+                      value={address}
+                      onChange={setAddress}
+                      onSelect={handlePlaceSelect}
+                      isLoaded={isLoaded}
+                    />
                   </div>
+
                   <div className="form-group">
-                    <button type="button" className="btn-outline" style={{ width: '100%', justifyContent: 'center' }} onClick={useCurrentLocation} disabled={locating}>
-                      <MapPin size={14} />
-                      {locating ? 'Getting accurate location...' : coords ? 'Location attached' : 'Use my current location'}
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        gap: 8,
+                        padding: '10px 16px',
+                        borderRadius: 8,
+                      }}
+                      onClick={useCurrentLocation}
+                      disabled={locating}
+                    >
+                      <Crosshair size={14} />
+                      {locating
+                        ? 'Getting accurate location...'
+                        : coords
+                          ? '✓ Location attached — tap to refresh'
+                          : 'Use my current location'}
                     </button>
-                    {coords && (
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', marginTop: 6, textAlign: 'center' }}>
-                        {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
-                      </div>
-                    )}
                   </div>
+
+                  {/* Interactive Map Preview */}
+                  {coords && (
+                    <div className="form-group">
+                      <LocationMapPreview
+                        coords={coords}
+                        onMarkerDragEnd={handleMarkerDragEnd}
+                        isLoaded={isLoaded}
+                      />
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        marginTop: 6, fontSize: '0.72rem', color: 'var(--text-subtle)',
+                      }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#237227' }} />
+                          Delivery pin — drag to adjust
+                        </span>
+                        <span>
+                          {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="form-group">
                     <label className="form-label">Contact Number *</label>
                     <input required type="tel" className="form-input" value={contactNumber} onChange={e => setContactNumber(e.target.value)} placeholder="+233 XX XXX XXXX" />
