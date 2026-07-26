@@ -157,52 +157,282 @@ const getInsights = async (req, res, next) => {
   }
 };
 
-// ─── GET /analytics/environmental ─────────────────────────────────────────────
-// Returns the average temperature and humidity of the last 10 days grouped by day.
-const getEnvironmental = async (req, res, next) => {
+// ─── GET /analytics/fulfilment-funnel ─────────────────────────────────────────
+// Count of delivery orders in each pipeline stage over the last 30 days —
+// drives the Recharts funnel chart on Analytics.
+const getFulfilmentFunnel = async (req, res, next) => {
   try {
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-    tenDaysAgo.setHours(0, 0, 0, 0);
+    const days = Math.min(parseInt(req.query.days) || 30, 365);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
 
-    const entries = await prisma.logEntry.findMany({
-      where: { date: { gte: tenDaysAgo } },
-      select: { date: true, temperature: true, humidity: true },
-      orderBy: { date: "asc" },
+    const rows = await prisma.deliveryOrder.groupBy({
+      by: ["status"],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
     });
+    const counts = { PENDING: 0, IN_TRANSIT: 0, DELIVERED: 0, CANCELLED: 0 };
+    rows.forEach((r) => { counts[r.status] = r._count._all; });
 
-    // Group and average temperature/humidity per calendar day
-    const dayMap = new Map();
-    entries.forEach((e) => {
-      const dayKey = new Date(e.date).toISOString().slice(0, 10);
-      if (!dayMap.has(dayKey)) {
-        dayMap.set(dayKey, { tempSum: 0, tempCount: 0, humSum: 0, humCount: 0 });
-      }
-      const val = dayMap.get(dayKey);
-      if (e.temperature != null) {
-        val.tempSum += e.temperature;
-        val.tempCount++;
-      }
-      if (e.humidity != null) {
-        val.humSum += e.humidity;
-        val.humCount++;
-      }
-    });
-
-    const envData = Array.from(dayMap.entries()).map(([dateStr, val]) => {
-      const d = new Date(dateStr);
-      return {
-        time: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        temp: val.tempCount > 0 ? Math.round((val.tempSum / val.tempCount) * 10) / 10 : null,
-        humidity: val.humCount > 0 ? Math.round((val.humSum / val.humCount) * 10) / 10 : null,
-      };
-    });
-
-    res.json(envData);
+    // Order matters — the funnel reads top→bottom in the same sequence.
+    res.json([
+      { stage: "Placed",    count: counts.PENDING + counts.IN_TRANSIT + counts.DELIVERED + counts.CANCELLED },
+      { stage: "Confirmed", count: counts.IN_TRANSIT + counts.DELIVERED + counts.CANCELLED }, // "moved past PENDING"
+      { stage: "Dispatched",count: counts.IN_TRANSIT + counts.DELIVERED },
+      { stage: "Delivered", count: counts.DELIVERED },
+    ]);
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { getForecast, getFCR, getInsights, getEnvironmental };
+// ─── GET /analytics/driver-efficiency ────────────────────────────────────────
+// Delivered orders per driver, average fulfilment time in hours, and total
+// distance approximated by the number of deliveries × depot distance. Enough
+// signal for a scatter plot; not a substitute for a real telematics feed.
+const getDriverEfficiency = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 30, 365);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const orders = await prisma.deliveryOrder.findMany({
+      where: {
+        createdAt: { gte: since },
+        status: "DELIVERED",
+        driverId: { not: null },
+      },
+      select: {
+        driverId: true,
+        createdAt: true,
+        updatedAt: true,
+        deliveryLatitude: true,
+        deliveryLongitude: true,
+        driver: { select: { name: true } },
+      },
+    });
+
+    // Group by driver + compute avg fulfilment time and delivery count.
+    const perDriver = new Map();
+    for (const o of orders) {
+      const hoursToDeliver =
+        (new Date(o.updatedAt).getTime() - new Date(o.createdAt).getTime()) / 3600_000;
+      const entry = perDriver.get(o.driverId) || {
+        driverId: o.driverId,
+        driverName: o.driver?.name || "Unknown",
+        deliveries: 0,
+        totalHours: 0,
+      };
+      entry.deliveries += 1;
+      entry.totalHours += Math.max(0, hoursToDeliver);
+      perDriver.set(o.driverId, entry);
+    }
+    const result = [...perDriver.values()].map((e) => ({
+      driverName: e.driverName,
+      deliveries: e.deliveries,
+      avgHoursPerDelivery: e.deliveries > 0 ? Number((e.totalHours / e.deliveries).toFixed(2)) : 0,
+    }));
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET /analytics/order-heatmap ────────────────────────────────────────────
+// 7×24 grid of order counts by weekday × hour-of-day over the last N days —
+// drives the heatmap. Weekday index: 0 = Sunday .. 6 = Saturday.
+const getOrderHeatmap = async (req, res, next) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 60, 365);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const orders = await prisma.deliveryOrder.findMany({
+      where: { createdAt: { gte: since } },
+      select: { createdAt: true },
+    });
+
+    // 7 rows (weekdays) × 24 cols (hours), zero-initialised.
+    const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
+    for (const o of orders) {
+      const d = new Date(o.createdAt);
+      grid[d.getDay()][d.getHours()] += 1;
+    }
+    // Flatten into a shape Recharts can consume easily.
+    const rows = [];
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        rows.push({ day, hour, count: grid[day][hour] });
+      }
+    }
+    res.json({ grid, rows, maxCount: rows.reduce((m, r) => Math.max(m, r.count), 0) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET /analytics/sales-tracker?days=30 ────────────────────────────────────
+// Full transaction-side view of the last N days: headline KPIs, revenue
+// timeseries, order-status breakdown, payment-status breakdown, top products,
+// and the most recent transactions. Every "transaction" in this system is a
+// DeliveryOrder row, so this is the single-source-of-truth aggregator.
+const getSalesTracker = async (req, res, next) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
+    const now = new Date();
+    const windowStart = new Date(now);
+    windowStart.setDate(windowStart.getDate() - days);
+    windowStart.setHours(0, 0, 0, 0);
+    // Same-length prior period for the WoW-style change indicator.
+    const priorStart = new Date(windowStart);
+    priorStart.setDate(priorStart.getDate() - days);
+
+    const [currentOrders, priorOrders] = await Promise.all([
+      prisma.deliveryOrder.findMany({
+        where: { createdAt: { gte: windowStart, lte: now } },
+        select: {
+          id: true, orderId: true, amount: true, status: true,
+          paymentStatus: true, paymentMethod: true, productId: true,
+          createdAt: true,
+          customer: { select: { name: true, email: true } },
+          product:  { select: { name: true, unit: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.deliveryOrder.aggregate({
+        where: {
+          createdAt: { gte: priorStart, lt: windowStart },
+          status: { not: "CANCELLED" },
+        },
+        _sum: { amount: true },
+        _count: true,
+      }),
+    ]);
+
+    // ── Headline KPIs ─────────────────────────────────────────────────────
+    const bucket = { PENDING: 0, IN_TRANSIT: 0, DELIVERED: 0, CANCELLED: 0 };
+    const paymentAmt = {};   // { PENDING: n, PAID: n, ... }
+    const paymentCnt = {};
+    const daily = new Map(); // dayISO -> { revenue, orders }
+    let unpaidBalance = 0;
+
+    for (const o of currentOrders) {
+      const amt = o.amount || 0;
+      bucket[o.status] = (bucket[o.status] || 0) + amt;
+      const ps = o.paymentStatus || "PENDING";
+      paymentAmt[ps] = (paymentAmt[ps] || 0) + amt;
+      paymentCnt[ps] = (paymentCnt[ps] || 0) + 1;
+      if (ps !== "PAID" && o.status !== "CANCELLED") unpaidBalance += amt;
+
+      const dayKey = new Date(o.createdAt).toISOString().slice(0, 10);
+      const day = daily.get(dayKey) || { revenue: 0, orders: 0 };
+      if (o.status !== "CANCELLED") day.revenue += amt;
+      day.orders += 1;
+      daily.set(dayKey, day);
+    }
+
+    const nonCancelled = currentOrders.filter((o) => o.status !== "CANCELLED");
+    const totalRevenue = nonCancelled.reduce((s, o) => s + (o.amount || 0), 0);
+    const totalOrders  = currentOrders.length;
+    const avgOrderValue = nonCancelled.length > 0
+      ? totalRevenue / nonCancelled.length
+      : 0;
+    const priorRevenue = priorOrders._sum.amount || 0;
+    const wowRevenueChange = priorRevenue > 0
+      ? ((totalRevenue - priorRevenue) / priorRevenue) * 100
+      : totalRevenue > 0 ? 100 : 0;
+
+    // ── Timeseries — fill missing days with zero so the chart is continuous
+    const revenueTimeseries = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const cell = daily.get(key) || { revenue: 0, orders: 0 };
+      revenueTimeseries.push({
+        date: key,
+        revenue: Math.round(cell.revenue * 100) / 100,
+        orders: cell.orders,
+      });
+    }
+
+    // ── Breakdowns ───────────────────────────────────────────────────────
+    const statusBreakdown = ["PENDING", "IN_TRANSIT", "DELIVERED", "CANCELLED"].map((s) => ({
+      status: s,
+      count: currentOrders.filter((o) => o.status === s).length,
+      amount: Math.round((bucket[s] || 0) * 100) / 100,
+    }));
+    const paymentBreakdown = Object.keys(paymentAmt).map((ps) => ({
+      status: ps,
+      count: paymentCnt[ps],
+      amount: Math.round(paymentAmt[ps] * 100) / 100,
+    })).sort((a, b) => b.amount - a.amount);
+
+    // ── Top products by revenue ──────────────────────────────────────────
+    const productAgg = new Map(); // productId -> { name, unit, count, revenue }
+    for (const o of currentOrders) {
+      if (o.status === "CANCELLED") continue;
+      const entry = productAgg.get(o.productId) || {
+        productName: o.product?.name || "Unknown",
+        unit: o.product?.unit || "",
+        count: 0,
+        revenue: 0,
+      };
+      entry.count += 1;
+      entry.revenue += o.amount || 0;
+      productAgg.set(o.productId, entry);
+    }
+    const topProducts = [...productAgg.values()]
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+      .map((p) => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }));
+
+    // ── Recent transactions (last 20) ────────────────────────────────────
+    const recentTransactions = currentOrders.slice(0, 20).map((o) => ({
+      orderId: o.orderId,
+      customer: o.customer?.name || o.customer?.email || "—",
+      product: o.product?.name || "—",
+      amount: Math.round((o.amount || 0) * 100) / 100,
+      status: o.status,
+      paymentStatus: o.paymentStatus,
+      paymentMethod: o.paymentMethod,
+      createdAt: o.createdAt,
+    }));
+
+    res.json({
+      windowDays: days,
+      headline: {
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        deliveredRevenue: Math.round((bucket.DELIVERED || 0) * 100) / 100,
+        pendingRevenue: Math.round(((bucket.PENDING || 0) + (bucket.IN_TRANSIT || 0)) * 100) / 100,
+        cancelledRevenue: Math.round((bucket.CANCELLED || 0) * 100) / 100,
+        totalOrders,
+        avgOrderValue: Math.round(avgOrderValue * 100) / 100,
+        unpaidBalance: Math.round(unpaidBalance * 100) / 100,
+        wowRevenueChange: Math.round(wowRevenueChange * 10) / 10,
+        priorRevenue: Math.round(priorRevenue * 100) / 100,
+      },
+      revenueTimeseries,
+      statusBreakdown,
+      paymentBreakdown,
+      topProducts,
+      recentTransactions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getForecast,
+  getFCR,
+  getInsights,
+  getFulfilmentFunnel,
+  getDriverEfficiency,
+  getOrderHeatmap,
+  getSalesTracker,
+};
 
