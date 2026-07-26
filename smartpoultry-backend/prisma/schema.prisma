@@ -54,6 +54,13 @@ enum ReportType {
   CUSTOM
 }
 
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -88,6 +95,7 @@ model User {
   deliveryMessages DeliveryMessage[]
   reviews   Review[]
   wishlists Wishlist[]
+  withdrawals WithdrawalRequest[]
 }
 
 model Farm {
@@ -260,6 +268,8 @@ model DeliveryOrder {
   driverLatitude    Float?
   driverLongitude   Float?
   driverLocationUpdatedAt DateTime?
+  deliveryFee     Float        @default(0)
+  driverPayoutStatus String    @default("PENDING")      // PENDING, CASH_COLLECTED, PAID_OUT
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -276,6 +286,7 @@ model DeliveryOrder {
   @@index([deliveryDate])
   @@index([paymentStatus])
   @@index([paymentMethod])
+  @@index([driverPayoutStatus])
 }
 
 model Product {
@@ -341,6 +352,22 @@ model UserNotification {
 
   @@index([userId, isRead])
   @@index([createdAt])
+}
+
+model WithdrawalRequest {
+  id            String           @id @default(cuid())
+  driverId      String
+  amount        Float
+  status        WithdrawalStatus @default(PENDING)
+  notes         String?
+  processedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  driver        User             @relation(fields: [driverId], references: [id])
+
+  @@index([driverId])
+  @@index([status])
 }
 
 model DeliveryMessage {

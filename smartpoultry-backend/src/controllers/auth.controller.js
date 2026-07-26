@@ -56,7 +56,7 @@ const login = async (req, res, next) => {
             })
         }
 
-        if (user.isTwoFactorEnabled) {
+        if (false /* user.isTwoFactorEnabled - Disabled per user request */) {
             // Generate a 6 digit OTP
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
             const otpExpiry = new Date(Date.now() + 10 * 60000) // 10 minutes from now
@@ -141,8 +141,12 @@ const register = async (req, res, next) => {
 
         const { password: _pw, ...safeUser } = user
 
+        const token = signToken(user)
+
         res.status(201).json({
             message: "Account created successfully",
+            token,
+            role: user.role,
             user: safeUser,
         })
 

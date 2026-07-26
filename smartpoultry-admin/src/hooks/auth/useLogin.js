@@ -4,6 +4,8 @@ import { loginUser } from '../../api/auth'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../components/Toast'
 
+import { useQueryClient } from '@tanstack/react-query'
+
 /**
  * useLogin — mutation hook for POST /api/auth/login
  *
@@ -18,6 +20,7 @@ export function useLogin() {
   const { setToken, setRole, setUser } = useAuth()
   const { showSuccess, showError } = useToast()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: loginUser,
@@ -31,13 +34,14 @@ export function useLogin() {
         }
         return
       }
+      queryClient.clear()
       setToken(data.token)
       if (data.role) setRole(data.role)
       if (data.user) setUser(data.user)
       showSuccess('Welcome back! Redirecting to dashboard…')
       if (data.role === 'DELIVERY') navigate('/delivery/vehicle')
       else if (data.role === 'CUSTOMER') navigate('/customer/marketplace')
-      else navigate('/dashboard')
+      else navigate('/admin/dashboard')
     },
 
     onError: (error) => {

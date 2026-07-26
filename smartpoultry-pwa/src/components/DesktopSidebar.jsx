@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { ShoppingCart, FileText, Settings, Truck, Leaf, LogOut, ShoppingBag } from 'lucide-react';
+import { ShoppingCart, FileText, Settings, Truck, Leaf, LogOut, ShoppingBag, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import './DesktopSidebar.css';
@@ -13,6 +13,7 @@ export default function DesktopSidebar() {
       return [
         { label: 'Vehicle Log', icon: Truck, to: '/delivery/vehicle' },
         { label: 'Assigned Orders', icon: FileText, to: '/delivery/orders' },
+        { label: 'Earnings', icon: Wallet, to: '/delivery/earnings' },
         { label: 'Settings', icon: Settings, to: '/settings' }
       ];
     }

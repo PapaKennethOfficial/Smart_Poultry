@@ -10,7 +10,7 @@ const jwt = require("jsonwebtoken");
  * On success  → attaches req.user = { id, role } and calls next()
  * On failure  → responds 401 { error: "Unauthorized" }
  */
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
@@ -26,10 +26,15 @@ function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = {
-      id:   payload.id,
-      role: payload.role,
-    };
+    const prisma = require("../config/prisma");
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { id: true, role: true }
+    });
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized: account no longer exists" });
+    }
+    req.user = user;
     next();
   } catch {
     return res.status(401).json({ error: "Unauthorized" });

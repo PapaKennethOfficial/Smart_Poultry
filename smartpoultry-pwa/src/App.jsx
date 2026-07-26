@@ -23,11 +23,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <CartProvider>
-        <Suspense fallback={
-          <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: '#237227', fontFamily: 'Space Grotesk, sans-serif' }}>
-            Loading Smart Poultry...
-          </div>
-        }>
+        <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<PublicRoute><Welcome /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><ClientLogin /></PublicRoute>} />
