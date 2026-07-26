@@ -46,3 +46,24 @@ export const fetchDriverEfficiency = (days = 30) =>
 export const fetchOrderHeatmap = (days = 60) =>
   api.get('/api/analytics/order-heatmap', { params: { days } }).then((r) => r.data)
 
+/**
+ * GET /api/analytics/sales-tracker?days=30
+ * Full transaction-side view: headline KPIs, revenue timeseries, status +
+ * payment breakdowns, top products by revenue, recent transactions.
+ * @param {number} days — window length in days (default 30, max 365)
+ * @returns {Promise<{
+ *   windowDays: number,
+ *   headline: { totalRevenue, deliveredRevenue, pendingRevenue, cancelledRevenue,
+ *               totalOrders, avgOrderValue, unpaidBalance, wowRevenueChange,
+ *               priorRevenue },
+ *   revenueTimeseries: Array<{ date, revenue, orders }>,
+ *   statusBreakdown:   Array<{ status, count, amount }>,
+ *   paymentBreakdown:  Array<{ status, count, amount }>,
+ *   topProducts:       Array<{ productName, unit, count, revenue }>,
+ *   recentTransactions: Array<{ orderId, customer, product, amount, status,
+ *                               paymentStatus, paymentMethod, createdAt }>,
+ * }>}
+ */
+export const fetchSalesTracker = (days = 30) =>
+  api.get('/api/analytics/sales-tracker', { params: { days } }).then((r) => r.data)
+

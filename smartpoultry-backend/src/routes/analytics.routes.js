@@ -9,6 +9,7 @@ const {
   getFulfilmentFunnel,
   getDriverEfficiency,
   getOrderHeatmap,
+  getSalesTracker,
 } = require("../controllers/analytics.controller");
 
 // ─── All analytics routes require authentication & high-level roles ──────────
@@ -22,5 +23,6 @@ router.get("/insights", getInsights);
 router.get("/fulfilment-funnel", getFulfilmentFunnel);
 router.get("/driver-efficiency", getDriverEfficiency);
 router.get("/order-heatmap", getOrderHeatmap);
+router.get("/sales-tracker", getSalesTracker);
 
 module.exports = router;
