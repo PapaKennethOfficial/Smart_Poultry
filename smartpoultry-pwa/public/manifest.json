@@ -3,15 +3,9 @@
   "name": "Smart Poultry Client Portal",
   "icons": [
     {
-      "src": "/pwa-192x192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/pwa-512x512.png",
-      "type": "image/png",
-      "sizes": "512x512",
+      "src": "/smartpoultry_icon.jpg",
+      "type": "image/jpeg",
+      "sizes": "1024x1024",
       "purpose": "any maskable"
     }
   ],

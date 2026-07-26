@@ -13,6 +13,7 @@ import EmptyState from '../components/EmptyState'
 import PullToRefresh from '../components/PullToRefresh'
 import OrderReceipt from '../components/OrderReceipt'
 import { Star } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 // Google Maps libraries
 const GOOGLE_MAPS_LIBRARIES = ['places']
@@ -145,6 +146,30 @@ export default function CustomerOrders() {
   const { user } = useAuth()
 
   useEffect(() => {
+    if (!socket) return;
+    const handleOrderUpdate = (updatedOrder) => {
+      setOrders(prev => {
+        const exists = prev.find(o => o.id === updatedOrder.id);
+        if (exists && exists.status !== updatedOrder.status) {
+          if (updatedOrder.status === 'IN_TRANSIT') {
+            toast.success(`Delivery started for order ${updatedOrder.orderId}!`, { icon: '🚚' });
+          } else if (updatedOrder.status === 'DELIVERED') {
+            toast.success(`Order ${updatedOrder.orderId} has been delivered!`, { icon: '✅' });
+          } else if (updatedOrder.status === 'CANCELLED') {
+            toast.error(`Order ${updatedOrder.orderId} was cancelled.`, { icon: '❌' });
+          } else if (updatedOrder.status === 'DRIVER_ASSIGNED') {
+            toast.success(`A driver was assigned to order ${updatedOrder.orderId}.`, { icon: '👤' });
+          }
+        }
+        return prev.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+      });
+      setSelectedOrder(prev => (prev?.id === updatedOrder.id ? updatedOrder : prev));
+    };
+    socket.on('order_update', handleOrderUpdate);
+    return () => socket.off('order_update', handleOrderUpdate);
+  }, [socket]);
+
+  useEffect(() => {
     fetchOrders()
     const interval = setInterval(fetchOrders, 30000) // 30s instead of 10s for general order updates
     return () => clearInterval(interval)
@@ -248,11 +273,31 @@ export default function CustomerOrders() {
     if (!matchesFilter) return false
     if (!searchValue) return true
     const s = searchValue.toLowerCase()
-    return (
-      (o.product?.name || '').toLowerCase().includes(s) ||
-      (o.orderId || '').toLowerCase().includes(s)
-    )
+    
+    const productNames = o.items?.length > 0 
+      ? o.items.map(i => i.product?.name).join(' ') 
+      : (o.product?.name || '');
+
+    return o.orderId.toLowerCase().includes(s) || 
+      productNames.toLowerCase().includes(s) ||
+      (o.address || '').toLowerCase().includes(s)
   })
+
+  const getOrderTitle = (o) => {
+    if (o.items && o.items.length > 0) {
+      if (o.items.length === 1) return o.items[0].product?.name;
+      return `${o.items[0].product?.name} + ${o.items.length - 1} more`;
+    }
+    return o.product?.name;
+  }
+
+  const getOrderQuantityDesc = (o) => {
+    if (o.items && o.items.length > 0) {
+      const totalQty = o.items.reduce((sum, i) => sum + i.quantity, 0);
+      return `${totalQty} items total`;
+    }
+    return `${o.quantity} ${o.product?.unit || ''}`;
+  }
   
   // Reset page when filter changes
   useEffect(() => {
@@ -332,16 +377,18 @@ export default function CustomerOrders() {
               <div key={o.id} style={{ padding: 20, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 12 }} onClick={() => setSelectedOrder(o)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                   <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', fontWeight: 600, letterSpacing: '0.05em' }}>{o.orderId}</div>
-                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem', marginTop: 2 }}>{o.product?.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', fontWeight: 600 }}>{o.orderId}</div>
+                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem', marginTop: 2 }}>
+                      {getOrderTitle(o)}
+                    </div>
                   </div>
                   <span className={`badge ${statusConfig.color}`} style={{ padding: '4px 10px', fontSize: '0.7rem' }}>{statusConfig.label}</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid var(--border-light)', paddingBottom: 12 }}>
-                  <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>Quantity</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{o.quantity} {o.product?.unit}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{getOrderQuantityDesc(o)}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>Total Amount</div>
@@ -409,12 +456,26 @@ export default function CustomerOrders() {
                   <div style={{ width: 40, height: 40, background: 'var(--primary-muted)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Package size={20} color="var(--primary)" />
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{selectedOrder.product?.name}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{selectedOrder.quantity} {selectedOrder.product?.unit}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>{getOrderTitle(selectedOrder)}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{getOrderQuantityDesc(selectedOrder)}</div>
+                  </div>
+                  <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                    GHS {selectedOrder.amount.toFixed(2)}
                   </div>
                 </div>
-                <div style={{ fontWeight: 700 }}>GHS {selectedOrder.amount.toFixed(2)}</div>
+
+                {selectedOrder.items && selectedOrder.items.length > 1 && (
+                  <div style={{ marginTop: 12, borderTop: '1px solid var(--border-light)', paddingTop: 12 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Included Items</div>
+                    {selectedOrder.items.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0' }}>
+                        <span>{item.quantity}x {item.product?.name}</span>
+                        <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.84rem' }}>
                 <div>
@@ -587,7 +648,7 @@ export default function CustomerOrders() {
                       <div style={{ lineHeight: 1.45 }}>
                         {status === 'DELIVERED'
                           ? 'Order delivered. Live driver tracking has ended.'
-                          : 'Order cancelled. No live tracking available.'}
+                          : 'Order cancelled. Map is not available for cancelled orders.'}
                       </div>
                     </div>
                   </>

@@ -167,23 +167,23 @@ export default function CartDrawer() {
     
     setSubmitting(true);
     try {
-      const orderPromises = cartItems.map(item => {
-        return api.post('/api/orders', {
-          productId: item.product.id,
-          quantity: item.quantity,
-          deliveryDate: new Date(deliveryDate).toISOString(),
-          address,
-          contactNumber,
-          paymentMethod,
-          notes,
-          deliveryLatitude: coords?.latitude,
-          deliveryLongitude: coords?.longitude,
-        });
+      const items = cartItems.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+      }));
+
+      const res = await api.post('/api/orders', {
+        items,
+        deliveryDate: new Date(deliveryDate).toISOString(),
+        address,
+        contactNumber,
+        paymentMethod,
+        notes,
+        deliveryLatitude: coords?.latitude,
+        deliveryLongitude: coords?.longitude,
       });
       
-      const results = await Promise.all(orderPromises);
-      
-      setOrderSuccess(results[0].data.order.orderId);
+      setOrderSuccess(res.data.order.orderId);
       clearCart();
       setDeliveryDate(new Date().toISOString().split('T')[0]);
       setAddress('');
@@ -200,6 +200,13 @@ export default function CartDrawer() {
 
   const reverseGeocodeGoogle = async (latitude, longitude) => {
     try {
+      if (window.google && window.google.maps && window.google.maps.Geocoder) {
+        const geocoder = new window.google.maps.Geocoder();
+        const response = await geocoder.geocode({ location: { lat: latitude, lng: longitude } });
+        if (response.results && response.results[0]) {
+          return response.results[0].formatted_address;
+        }
+      }
       const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
       if (!apiKey) return null;
       const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
