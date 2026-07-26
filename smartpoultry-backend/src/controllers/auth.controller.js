@@ -178,7 +178,8 @@ const googleAuth = async (req, res, next) => {
         try {
             decodedToken = await admin.auth().verifyIdToken(idToken)
         } catch (err) {
-            return res.status(401).json({ message: "Invalid Firebase token" })
+            console.error("[googleAuth] verifyIdToken failed:", err);
+            return res.status(401).json({ message: "Invalid Firebase token: " + err.message })
         }
 
         const email = decodedToken.email

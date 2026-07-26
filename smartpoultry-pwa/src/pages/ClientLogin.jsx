@@ -56,7 +56,8 @@ export default function Login() {
       if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
         alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.")
       } else {
-        alert("Google Sign-In failed: " + (err?.message || 'Please try again.'))
+        const msg = err?.response?.data?.message || err?.message || 'Please try again.'
+        alert("Google Sign-In failed: " + msg)
       }
     }
   }

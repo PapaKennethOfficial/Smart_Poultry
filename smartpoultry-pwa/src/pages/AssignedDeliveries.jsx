@@ -6,6 +6,7 @@ import { haversineKm, formatDistance } from '../utils/distance'
 import { useSocket } from '../context/SocketContext'
 import TableFilter from '../components/TableFilter'
 import Pagination from '../components/Pagination'
+import { useToast } from '../components/Toast'
 
 // Google Maps libraries
 const GOOGLE_MAPS_LIBRARIES = ['places']
@@ -15,12 +16,12 @@ function FitBounds({ points, map }) {
   useEffect(() => {
     if (!map || !points || points.length === 0) return;
     if (points.length === 1) {
-      map.setCenter({ lat: points[0][0], lng: points[0][1] });
+      map.setCenter({ lat: Number(points[0][0]), lng: Number(points[0][1]) });
       map.setZoom(15);
       return;
     }
     const bounds = new window.google.maps.LatLngBounds();
-    points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+    points.forEach(p => bounds.extend({ lat: Number(p[0]), lng: Number(p[1]) }));
     map.fitBounds(bounds);
     
     // Max zoom level logic after fitting bounds to prevent zooming in too much
@@ -63,15 +64,42 @@ export default function AssignedDeliveries() {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [showActiveMap, setShowActiveMap] = useState(true)
+  const [viewingRouteFor, setViewingRouteFor] = useState(null)
+  const [geocodedLocations, setGeocodedLocations] = useState({})
   
   // Track Map Instances to fit bounds
   const [mapInstances, setMapInstances] = useState({})
+  
+  const { showSuccess, showError } = useToast()
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: GOOGLE_MAPS_LIBRARIES
   })
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    // Check all orders to see if any need geocoding
+    orders.forEach(order => {
+      if (order.address && !order.deliveryLatitude && !geocodedLocations[order.id]) {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: order.address }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            setGeocodedLocations(prev => ({
+              ...prev,
+              [order.id]: {
+                lat: results[0].geometry.location.lat(),
+                lng: results[0].geometry.location.lng()
+              }
+            }))
+          }
+        });
+      }
+    });
+  }, [isLoaded, orders]);
 
   const { socket } = useSocket()
 
@@ -100,13 +128,11 @@ export default function AssignedDeliveries() {
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords
-        // Emit via socket for instant map update
         socket.emit('location_update', {
           orderId: activeOrder.id,
           latitude,
           longitude
         })
-        // Also persist to DB
         api.patch(`/api/orders/${activeOrder.id}/location`, {
           latitude,
           longitude,
@@ -122,10 +148,8 @@ export default function AssignedDeliveries() {
   useEffect(() => {
     if (!selectedOrder || !socket) return undefined
 
-    // Join room for this specific order
     socket.emit('join_order_room', selectedOrder.id)
 
-    // Load initial messages
     const loadMessages = async () => {
       try {
         const res = await api.get(`/api/orders/${selectedOrder.id}/messages`)
@@ -152,8 +176,13 @@ export default function AssignedDeliveries() {
     try {
       await api.patch(`/api/orders/${orderId}`, { status: newStatus })
       await fetchOrders()
+      if (newStatus === 'DELIVERED') {
+        showSuccess('Delivery completed successfully!')
+      } else if (newStatus === 'IN_TRANSIT') {
+        showSuccess('Delivery started!')
+      }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update status')
+      showError(err.response?.data?.message || 'Failed to update status')
     } finally {
       setActionLoading(null)
     }
@@ -170,7 +199,6 @@ export default function AssignedDeliveries() {
       const res = await api.post(`/api/orders/${selectedOrder.id}/messages`, {
         message: messageContent,
       })
-      // Emit via socket
       socket.emit('chat_message', res.data.message)
       setMessages(prev => {
         if (prev.some(m => m.id === res.data.message.id)) return prev
@@ -183,14 +211,35 @@ export default function AssignedDeliveries() {
     }
   }
 
+  const getOrderTitle = (o) => {
+    if (o.items && o.items.length > 0) {
+      if (o.items.length === 1) return o.items[0].product?.name;
+      return `${o.items[0].product?.name} + ${o.items.length - 1} more`;
+    }
+    return o.product?.name;
+  }
+
+  const getOrderQuantityDesc = (o) => {
+    if (o.items && o.items.length > 0) {
+      const totalQty = o.items.reduce((sum, i) => sum + i.quantity, 0);
+      return `${totalQty} items total`;
+    }
+    return `${o.quantity} ${o.product?.unit || ''}`;
+  }
+
   const filteredOrders = orders.filter(o => {
     const matchesFilter = filter === 'ALL' || o.status === filter
     if (!matchesFilter) return false
     if (!searchValue) return true
     const s = searchValue.toLowerCase()
+    
+    const productNames = o.items?.length > 0 
+      ? o.items.map(i => i.product?.name).join(' ') 
+      : (o.product?.name || '');
+
     return (
       (o.customer?.name || '').toLowerCase().includes(s) ||
-      (o.product?.name || '').toLowerCase().includes(s) ||
+      productNames.toLowerCase().includes(s) ||
       (o.orderId || '').toLowerCase().includes(s)
     )
   }).sort((a, b) => {
@@ -201,7 +250,6 @@ export default function AssignedDeliveries() {
     return new Date(b.createdAt) - new Date(a.createdAt)
   })
   
-  // Reset page when filter changes
   useEffect(() => {
     setCurrentPage(1)
   }, [filter, searchValue])
@@ -217,13 +265,15 @@ export default function AssignedDeliveries() {
   const delivered = orders.filter(o => o.status === 'DELIVERED').length
 
   const activeOrder = orders.find(o => o.status === 'IN_TRANSIT')
+  const displayedMapOrder = (activeOrder && showActiveMap) ? activeOrder : viewingRouteFor
 
-  if (activeOrder) {
-    const destPoint = activeOrder.deliveryLatitude && activeOrder.deliveryLongitude 
-      ? [activeOrder.deliveryLatitude, activeOrder.deliveryLongitude] 
-      : null;
-    const driverPoint = activeOrder.driverLatitude && activeOrder.driverLongitude 
-      ? [activeOrder.driverLatitude, activeOrder.driverLongitude] 
+  if (displayedMapOrder) {
+    const destPoint = displayedMapOrder.deliveryLatitude && displayedMapOrder.deliveryLongitude 
+      ? [Number(displayedMapOrder.deliveryLatitude), Number(displayedMapOrder.deliveryLongitude)] 
+      : (geocodedLocations[displayedMapOrder.id] ? [geocodedLocations[displayedMapOrder.id].lat, geocodedLocations[displayedMapOrder.id].lng] : null);
+    
+    const driverPoint = displayedMapOrder.driverLatitude && displayedMapOrder.driverLongitude 
+      ? [Number(displayedMapOrder.driverLatitude), Number(displayedMapOrder.driverLongitude)] 
       : null;
     
     const points = []
@@ -239,7 +289,7 @@ export default function AssignedDeliveries() {
     }
 
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000, display: 'flex', flexDirection: 'column', background: '#000' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000, display: 'flex', flexDirection: 'column', background: '#F7F6E5' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           {isLoaded && destPoint ? (
             <GoogleMap
@@ -247,9 +297,9 @@ export default function AssignedDeliveries() {
               center={{ lat: driverPoint ? driverPoint[0] : destPoint[0], lng: driverPoint ? driverPoint[1] : destPoint[1] }}
               zoom={14}
               options={{ disableDefaultUI: true, zoomControl: false }}
-              onLoad={map => setMapInstances(prev => ({ ...prev, [activeOrder.id]: map }))}
+              onLoad={map => setMapInstances(prev => ({ ...prev, [displayedMapOrder.id]: map }))}
             >
-              <FitBounds points={points} map={mapInstances[activeOrder.id]} />
+              <FitBounds points={points} map={mapInstances[displayedMapOrder.id]} />
               <Marker 
                 position={{ lat: destPoint[0], lng: destPoint[1] }} 
                 icon={{ path: window.google.maps.SymbolPath.CIRCLE, fillColor: '#237227', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 12 }}
@@ -268,15 +318,21 @@ export default function AssignedDeliveries() {
               )}
             </GoogleMap>
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading Map...</div>
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5e7a61', flexDirection: 'column', gap: 8 }}>
+              <Navigation size={48} opacity={0.3} />
+              {!destPoint ? 'Destination coordinates unavailable' : 'Loading Map...'}
+            </div>
           )}
 
           {/* Floating Top Bar */}
-          <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', zIndex: 10 }}>
-             <div style={{ background: '#fff', padding: '10px 16px', borderRadius: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontWeight: 'bold' }}>
-               {distKm != null ? `~${formatDistance(distKm)} • ${Math.ceil(distKm * 2.4)} min away` : 'Calculating route...'}
+          <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', zIndex: 10, gap: 10 }}>
+             <button onClick={() => { if (viewingRouteFor) setViewingRouteFor(null); else setShowActiveMap(false); }} style={{ background: '#fff', border: 'none', width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', cursor: 'pointer', flexShrink: 0 }}>
+               <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>✕</span>
+             </button>
+             <div style={{ flex: 1, background: '#fff', padding: '10px 16px', borderRadius: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+               {distKm != null ? `~${formatDistance(distKm)} • ${Math.ceil(distKm * 2.4)} min away` : (!destPoint ? 'No coordinates' : 'Calculating route...')}
              </div>
-             <button onClick={() => setSelectedOrder(activeOrder)} style={{ background: '#fff', border: 'none', width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', cursor: 'pointer' }}>
+             <button onClick={() => setSelectedOrder(displayedMapOrder)} style={{ background: '#fff', border: 'none', width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', cursor: 'pointer', flexShrink: 0 }}>
                <MessageCircle size={20} color="var(--primary)" />
              </button>
           </div>
@@ -288,10 +344,10 @@ export default function AssignedDeliveries() {
            
            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
              <div>
-               <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeOrder.customer?.name}</div>
-               <div style={{ fontSize: '0.9rem', color: 'var(--text-subtle)', marginTop: 4 }}>{activeOrder.address}</div>
+               <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{displayedMapOrder.customer?.name}</div>
+               <div style={{ fontSize: '0.9rem', color: 'var(--text-subtle)', marginTop: 4 }}>{displayedMapOrder.address}</div>
              </div>
-             <a href={`tel:${activeOrder.contactNumber || activeOrder.customer?.phone}`} style={{ background: '#ecfdf5', color: '#10b981', width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+             <a href={`tel:${displayedMapOrder.contactNumber || displayedMapOrder.customer?.phone}`} style={{ background: '#ecfdf5', color: '#10b981', width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                <Phone size={20} />
              </a>
            </div>
@@ -299,24 +355,40 @@ export default function AssignedDeliveries() {
            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, marginBottom: 20 }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                <span style={{ color: 'var(--text-subtle)' }}>Order</span>
-               <span style={{ fontWeight: 600 }}>{activeOrder.quantity}x {activeOrder.product?.name}</span>
+               <span style={{ fontWeight: 600 }}>{getOrderTitle(displayedMapOrder)} ({getOrderQuantityDesc(displayedMapOrder)})</span>
              </div>
              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                <span style={{ color: 'var(--text-subtle)' }}>Collect Cash</span>
                <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                 {activeOrder.paymentMethod === 'PAY_ON_DELIVERY' ? `GHS ${activeOrder.amount.toFixed(2)}` : 'PREPAID'}
+                 {displayedMapOrder.paymentMethod === 'PAY_ON_DELIVERY' ? `GHS ${displayedMapOrder.amount.toFixed(2)}` : 'PREPAID'}
                </span>
              </div>
            </div>
 
-           <button 
-             className="btn-primary" 
-             style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: 12 }}
-             disabled={actionLoading === activeOrder.id}
-             onClick={() => handleUpdateStatus(activeOrder.id, 'DELIVERED')}
-           >
-             {actionLoading === activeOrder.id ? 'Completing...' : 'Slide to Complete Delivery ➔'}
-           </button>
+           {displayedMapOrder.status === 'IN_TRANSIT' && (
+             <button 
+               className="btn-primary" 
+               style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: 12 }}
+               disabled={actionLoading === displayedMapOrder.id}
+               onClick={() => handleUpdateStatus(displayedMapOrder.id, 'DELIVERED')}
+             >
+               {actionLoading === displayedMapOrder.id ? 'Completing...' : 'Slide to Complete Delivery ➔'}
+             </button>
+           )}
+           {displayedMapOrder.status === 'PENDING' && (
+             <button 
+               className="btn-primary" 
+               style={{ width: '100%', padding: '16px', fontSize: '1.1rem', borderRadius: 12 }}
+               disabled={actionLoading === displayedMapOrder.id}
+               onClick={() => {
+                 handleUpdateStatus(displayedMapOrder.id, 'IN_TRANSIT');
+                 setViewingRouteFor(null);
+                 setShowActiveMap(true);
+               }}
+             >
+               {actionLoading === displayedMapOrder.id ? 'Starting...' : 'Start Delivery'}
+             </button>
+           )}
         </div>
         
         {/* Chat Modal specifically for active delivery */}
@@ -381,6 +453,16 @@ export default function AssignedDeliveries() {
         <StatCard label="In Transit" value={inTransit} icon={Truck} iconColor="#3b82f6" accent="#3b82f6" />
         <StatCard label="Delivered" value={delivered} icon={CheckCircle2} iconColor="#237227" accent="#237227" />
       </div>
+      
+      {activeOrder && !showActiveMap && (
+        <button 
+          onClick={() => setShowActiveMap(true)}
+          style={{ width: '100%', padding: '16px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 'bold', fontSize: '1rem', marginBottom: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(35,114,39,0.3)' }}
+        >
+          <Navigation size={20} />
+          Resume Active Delivery
+        </button>
+      )}
 
       <div className="section-header" style={{ marginBottom: 16 }}>
         <div className="filter-tabs">
@@ -421,7 +503,9 @@ export default function AssignedDeliveries() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                   <div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', fontWeight: 600, letterSpacing: '0.05em' }}>{o.orderId}</div>
-                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem', marginTop: 2 }}>{o.product?.name}</div>
+                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem', marginTop: 2 }}>
+                      {getOrderTitle(o)}
+                    </div>
                   </div>
                   <span className={`badge ${statusConfig.color}`} style={{ padding: '4px 10px', fontSize: '0.7rem' }}>{statusConfig.label}</span>
                 </div>
@@ -451,10 +535,25 @@ export default function AssignedDeliveries() {
                     <div style={{ lineHeight: 1.4 }}>{o.address}</div>
                   </div>
 
-                  {o.deliveryLatitude && o.deliveryLongitude && (() => {
-                    const destPoint = [o.deliveryLatitude, o.deliveryLongitude]
+                  {(() => {
+                    const lat = o.deliveryLatitude || geocodedLocations[o.id]?.lat
+                    const lng = o.deliveryLongitude || geocodedLocations[o.id]?.lng
+                    
+                    if (!lat || !lng) {
+                      return (
+                        <div style={{ marginTop: 12, padding: 24, textAlign: 'center', background: '#f8fafc', borderRadius: 12, border: '1px dashed var(--border-light)' }}>
+                          <MapPin size={28} color="var(--text-subtle)" style={{ marginBottom: 8 }} />
+                          <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Resolving location…</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: 4 }}>
+                            Map will appear once the address is geocoded.
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    const destPoint = [Number(lat), Number(lng)]
                     const driverPoint = (o.driverLatitude && o.driverLongitude)
-                      ? [o.driverLatitude, o.driverLongitude]
+                      ? [Number(o.driverLatitude), Number(o.driverLongitude)]
                       : null
                     const points = driverPoint ? [driverPoint, destPoint] : [destPoint]
                     const distKm = driverPoint
@@ -546,11 +645,23 @@ export default function AssignedDeliveries() {
                       <div style={{ fontStyle: 'italic' }}>{o.notes}</div>
                     </div>
                   )}
+                  
+                  {o.items && o.items.length > 1 && (
+                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border-light)', paddingTop: 12 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Included Items</div>
+                      {o.items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0' }}>
+                          <span>{item.quantity}x {item.product?.name}</span>
+                          <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: 16, marginTop: 'auto' }}>
-                  <div style={{ fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--text-subtle)' }}>Qty:</span> <span style={{ fontWeight: 600 }}>{o.quantity} {o.product?.unit}</span>
+                  <div style={{ background: 'var(--bg)', padding: '10px 14px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-subtle)' }}>Qty:</span> <span style={{ fontWeight: 600 }}>{getOrderQuantityDesc(o)}</span>
                   </div>
                   
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -558,15 +669,7 @@ export default function AssignedDeliveries() {
                       className="btn-outline" 
                       style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }} 
                       title="Open turn-by-turn navigation in Google Maps"
-                      onClick={() => {
-                        if (o.deliveryLatitude && o.deliveryLongitude) {
-                          window.open(`https://www.google.com/maps/dir/?api=1&destination=${o.deliveryLatitude},${o.deliveryLongitude}`, '_blank');
-                        } else if (o.address) {
-                          window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address)}`, '_blank');
-                        } else {
-                          alert('No location details provided for this delivery.');
-                        }
-                      }}
+                      onClick={() => setViewingRouteFor(o)}
                     >
                       <Navigation size={13} /> Route
                     </button>

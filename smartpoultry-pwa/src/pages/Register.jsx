@@ -50,9 +50,10 @@ export default function Register() {
     } catch (err) {
       console.error(err)
       if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
-        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign Up.")
+        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.")
       } else {
-        alert("Google Sign-Up failed: " + (err?.message || 'Please try again.'))
+        const msg = err?.response?.data?.message || err?.message || 'Please try again.'
+        alert("Google Sign-Up failed: " + msg)
       }
     }
   }

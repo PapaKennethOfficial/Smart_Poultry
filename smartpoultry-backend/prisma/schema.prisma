@@ -251,8 +251,8 @@ model DeliveryOrder {
   id            String         @id @default(cuid())
   orderId       String         @unique                  // "DEL-2026-001"
   customerId    String
-  productId     String
-  quantity      Int
+  productId     String?
+  quantity      Int?
   driverId      String?
   deliveryDate  DateTime
   address       String?
@@ -274,7 +274,8 @@ model DeliveryOrder {
   updatedAt     DateTime       @updatedAt
 
   customer      User     @relation(fields: [customerId], references: [id])
-  product       Product  @relation(fields: [productId], references: [id])
+  product       Product? @relation(fields: [productId], references: [id])
+  items         OrderItem[]
   driver        User?    @relation("DriverOrders", fields: [driverId], references: [id])
   messages      DeliveryMessage[]
   review        Review?
@@ -287,6 +288,19 @@ model DeliveryOrder {
   @@index([paymentStatus])
   @@index([paymentMethod])
   @@index([driverPayoutStatus])
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  deliveryOrderId String
+  deliveryOrder   DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  quantity        Int
+  price           Float         // Price at time of purchase
+
+  @@index([deliveryOrderId])
+  @@index([productId])
 }
 
 model Product {
@@ -302,9 +316,10 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  orders      DeliveryOrder[]
-  reviews     Review[]
-  wishlists   Wishlist[]
+  deliveryOrders DeliveryOrder[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+  wishlists      Wishlist[]
 }
 
 model Vehicle {

@@ -28,8 +28,12 @@ const STATUS_NOTIFICATION = {
 }
 
 const createOrderSchema = z.object({
-  productId: z.string().min(1, "Product is required"),
-  quantity: z.coerce.number().int().positive("Quantity must be positive"),
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    quantity: z.coerce.number().int().positive()
+  })).optional(),
+  productId: z.string().optional(),
+  quantity: z.coerce.number().int().positive().optional(),
   deliveryDate: z.string().min(1, "Delivery date is required"),
   address: z.string().trim().min(5, "Delivery address is required"),
   contactNumber: z.string().trim().min(7, "Contact number is required"),
@@ -71,6 +75,11 @@ function publicUserSelect() {
 function orderInclude() {
   return {
     product: true,
+    items: {
+      include: {
+        product: true
+      }
+    },
     customer: { select: publicUserSelect() },
     driver: {
       select: {
@@ -141,10 +150,30 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
     const data = parseBody(createOrderSchema, req, res)
     if (!data) return
 
-    const product = await prisma.product.findUnique({ where: { id: data.productId } })
-    if (!product) return res.status(404).json({ message: "Product not found" })
-    if (product.stock < data.quantity) {
-      return res.status(400).json({ message: "Requested quantity exceeds available stock" })
+    const itemsToProcess = data.items && data.items.length > 0 
+      ? data.items 
+      : [{ productId: data.productId, quantity: data.quantity }];
+
+    if (!itemsToProcess[0].productId) {
+      return res.status(400).json({ message: "Product items are required" })
+    }
+
+    let amount = 0;
+    const validatedItems = [];
+
+    // Check all products and calculate total amount
+    for (const item of itemsToProcess) {
+      const product = await prisma.product.findUnique({ where: { id: item.productId } })
+      if (!product) return res.status(404).json({ message: `Product ${item.productId} not found` })
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ message: `Requested quantity for ${product.name} exceeds stock` })
+      }
+      amount += product.price * item.quantity;
+      validatedItems.push({
+        productId: product.id,
+        quantity: item.quantity,
+        price: product.price
+      })
     }
 
     const deliveryDate = new Date(data.deliveryDate)
@@ -153,7 +182,6 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
     }
 
     const orderId = await generateOrderId()
-    const amount = product.price * data.quantity
     const deliveryFee = calculateDeliveryFee(data.deliveryLatitude, data.deliveryLongitude)
     let assignedDriver = null
 
@@ -172,10 +200,15 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
         data: {
           orderId,
           customerId: req.user.id,
-          productId: data.productId,
-          quantity: data.quantity,
           driverId: assignedDriver?.id || null,
           deliveryDate,
+          items: {
+            create: validatedItems.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price
+            }))
+          },
           address: data.address,
           contactNumber: data.contactNumber,
           amount,
@@ -191,10 +224,12 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
         include: orderInclude(),
       })
 
-      await tx.product.update({
-        where: { id: data.productId },
-        data: { stock: { decrement: data.quantity } },
-      })
+      for (const item of validatedItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        })
+      }
 
       return created
     })
@@ -231,39 +266,41 @@ router.post("/", requireAuth, requireRole(["CUSTOMER"]), async (req, res, next) 
     await Promise.all(notifications)
 
     // ─── Automated Low-Stock & Out-of-Stock Alerts ───────────────────────────
-    const updatedProduct = await prisma.product.findUnique({ where: { id: data.productId } })
-    if (updatedProduct) {
-      const LOW_STOCK_THRESHOLD = 5
+    for (const item of validatedItems) {
+      const updatedProduct = await prisma.product.findUnique({ where: { id: item.productId } })
+      if (updatedProduct) {
+        const LOW_STOCK_THRESHOLD = 5
 
-      // Auto-unlist product if stock has reached zero
-      if (updatedProduct.stock <= 0) {
-        await prisma.product.update({
-          where: { id: data.productId },
-          data: { isActive: false }
-        })
-      }
+        // Auto-unlist product if stock has reached zero
+        if (updatedProduct.stock <= 0) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { isActive: false }
+          })
+        }
 
-      // Notify all managers about low or out-of-stock
-      if (updatedProduct.stock <= LOW_STOCK_THRESHOLD) {
-        const managers = await prisma.user.findMany({
-          where: { role: { in: ["MANAGER", "ADMIN"] } },
-          select: { id: true }
-        })
+        // Notify all managers about low or out-of-stock
+        if (updatedProduct.stock <= LOW_STOCK_THRESHOLD) {
+          const managers = await prisma.user.findMany({
+            where: { role: { in: ["MANAGER", "ADMIN"] } },
+            select: { id: true }
+          })
 
-        const stockMessage = updatedProduct.stock <= 0
-          ? `"${updatedProduct.name}" is now OUT OF STOCK and has been automatically unlisted from the marketplace.`
-          : `"${updatedProduct.name}" is running low — only ${updatedProduct.stock} ${updatedProduct.unit}(s) remaining. Consider restocking soon.`
+          const stockMessage = updatedProduct.stock <= 0
+            ? `"${updatedProduct.name}" is now OUT OF STOCK and has been automatically unlisted from the marketplace.`
+            : `"${updatedProduct.name}" is running low — only ${updatedProduct.stock} ${updatedProduct.unit}(s) remaining. Consider restocking soon.`
 
-        const stockAlerts = managers.map((m) =>
-          createNotification(
-            m.id,
-            updatedProduct.stock <= 0 ? "Product out of stock" : "Low stock alert",
-            stockMessage,
-            "LOW_STOCK",
-            { productId: data.productId, currentStock: updatedProduct.stock }
+          const stockAlerts = managers.map((m) =>
+            createNotification(
+              m.id,
+              updatedProduct.stock <= 0 ? "Product out of stock" : "Low stock alert",
+              stockMessage,
+              "LOW_STOCK",
+              { productId: item.productId, currentStock: updatedProduct.stock }
+            )
           )
-        )
-        await Promise.all(stockAlerts)
+          await Promise.all(stockAlerts)
+        }
       }
     }
 

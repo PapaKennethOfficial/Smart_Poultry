@@ -171,6 +171,22 @@ export default function ManagerOrders() {
   const inTransit = orders.filter(o => o.status === 'IN_TRANSIT').length
   const delivered = orders.filter(o => o.status === 'DELIVERED').length
 
+  const getOrderTitle = (o) => {
+    if (o.items && o.items.length > 0) {
+      if (o.items.length === 1) return o.items[0].product?.name;
+      return `${o.items[0].product?.name} + ${o.items.length - 1} more`;
+    }
+    return o.product?.name;
+  }
+
+  const getOrderQuantityDesc = (o) => {
+    if (o.items && o.items.length > 0) {
+      const totalQty = o.items.reduce((sum, i) => sum + i.quantity, 0);
+      return `${totalQty} items total`;
+    }
+    return `${o.quantity} ${o.product?.unit || ''}`;
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -335,10 +351,10 @@ export default function ManagerOrders() {
                           {o.contactNumber || o.customer?.phone || o.customer?.email}
                         </div>
                       </td>
-                      <td>{o.product?.name}</td>
+                      <td>{getOrderTitle(o)}</td>
                       <td>
-                        <div>{o.quantity} {o.product?.unit}</div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)' }}>GHS {o.amount.toFixed(2)}</div>
+                        <div>{getOrderQuantityDesc(o)}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>GHS {o.amount.toFixed(2)}</div>
                       </td>
                       <td>
                         <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || 'N/A'}</div>
@@ -407,8 +423,20 @@ export default function ManagerOrders() {
                 </div>
                 
                 <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.85rem' }}>
-                  <div><strong style={{ color: 'var(--text-muted)' }}>Product:</strong> {selectedOrder.product?.name}</div>
-                  <div><strong style={{ color: 'var(--text-muted)' }}>Quantity:</strong> {selectedOrder.quantity} {selectedOrder.product?.unit}</div>
+                  <div><strong style={{ color: 'var(--text-muted)' }}>Product:</strong> {getOrderTitle(selectedOrder)}</div>
+                  <div><strong style={{ color: 'var(--text-muted)' }}>Quantity:</strong> {getOrderQuantityDesc(selectedOrder)}</div>
+
+                  {selectedOrder.items && selectedOrder.items.length > 1 && (
+                    <div style={{ marginTop: 12, padding: 12, background: 'var(--bg-light)', borderRadius: 8 }}>
+                      <strong style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem' }}>Included Items:</strong>
+                      {selectedOrder.items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
+                          <span>{item.quantity}x {item.product?.name}</span>
+                          <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div><strong style={{ color: 'var(--text-muted)' }}>Total Amount:</strong> GHS {selectedOrder.amount.toFixed(2)}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Payment:</strong> {PAYMENT_LABELS[selectedOrder.paymentMethod] || selectedOrder.paymentMethod || 'N/A'}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Payment Status:</strong> {(selectedOrder.paymentStatus || 'PENDING').replaceAll('_', ' ')}</div>
