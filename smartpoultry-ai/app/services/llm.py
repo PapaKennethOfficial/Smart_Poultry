@@ -62,13 +62,22 @@ def _run_prompt(prompt: str) -> LlmResult:
         # google-genai SDK: single-shot generation via client.models.generate_content
         # See https://ai.google.dev/gemini-api/docs/quickstart#python
         from google.genai import types  # type: ignore
+
+        # gemini-flash-latest currently points at 2.5-flash, which is a
+        # reasoning model that spends most of the output budget on internal
+        # "thinking" tokens before writing anything visible — that truncated
+        # the briefing to a single fragment. Passing thinking_config to
+        # disable it is rejected as INVALID_ARGUMENT on the current alias, so
+        # instead we just give the total budget plenty of headroom: 4096
+        # tokens is enough for the model to think AND still write the 3-5
+        # sentence answer we ask for.
         resp = client.models.generate_content(
             model=model_name,
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.2,
                 top_p=0.9,
-                max_output_tokens=512,
+                max_output_tokens=4096,
             ),
         )
         text = getattr(resp, "text", "") or ""
@@ -109,6 +118,8 @@ Rules:
      12% from last week"), never with technical wording like "delta".
   4. Do not mention driver names, customer names, or personal contact
      details — the CONTEXT deliberately omits them.
+  5. Use Ghana Cedi (GHS) for money, never dollars. Round to whole numbers
+     if the value is greater than 1,000.
 """.strip()
 
 
