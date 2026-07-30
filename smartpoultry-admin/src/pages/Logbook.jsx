@@ -9,16 +9,18 @@ function AddEntryModal({ onClose }) {
   const queryClient = useQueryClient()
   const { showSuccess, showError } = useToast()
 
-  const BATCH_DETAILS = {
-    'cm4a5b2x80000abc123456789': { breed: 'Broiler', hasEggs: false },
-    'cm4a5b2x80000abc123456790': { breed: 'Layer', hasEggs: true },
-    'cm4a5b2x80000abc123456791': { breed: 'Noiler', hasEggs: true },
-    'cm4a5b2x80000abc123456792': { breed: 'Local Fowl', hasEggs: true },
-  }
+  // Dynamically fetch active batches from the database
+  const { data: batches = [], isLoading: batchesLoading } = useQuery({
+    queryKey: ['logbook', 'batches'],
+    queryFn: () => api.get('/api/logbook/batches').then(r => r.data),
+  })
+
+  // Egg-producing breeds
+  const EGG_BREEDS = ['layer', 'noiler', 'local fowl', 'local']
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    batchId: 'cm4a5b2x80000abc123456789',
+    batchId: '',
     feedConsumption: '',
     eggsCount: '',
     dailyEggPurchases: '',
@@ -31,18 +33,27 @@ function AddEntryModal({ onClose }) {
     notes: '',
   })
 
+  // Auto-select first batch when batches load
+  useEffect(() => {
+    if (batches.length > 0 && !formData.batchId) {
+      setFormData(prev => ({ ...prev, batchId: batches[0].id }))
+    }
+  }, [batches])
+
   const [errors, setErrors] = useState({})
 
-  const selectedBatch = BATCH_DETAILS[formData.batchId] || { breed: 'Birds', hasEggs: true }
-  
+  const selectedBatch = batches.find(b => b.id === formData.batchId)
+  const hasEggs = selectedBatch ? EGG_BREEDS.some(e => selectedBatch.breed.toLowerCase().includes(e)) : true
+
   const validate = () => {
     const newErrors = {}
-    if (selectedBatch.hasEggs && Number(formData.eggsCount) < 0) {
+    if (!formData.batchId) newErrors.batchId = "Please select a batch"
+    if (hasEggs && Number(formData.eggsCount) < 0) {
       newErrors.eggsCount = "Egg count cannot be negative"
     }
     if (Number(formData.feedConsumption) < 0) newErrors.feedConsumption = "Feed amount cannot be negative"
     if (Number(formData.birdsBought) < 0) newErrors.birdsBought = "Birds bought count cannot be negative"
-    
+
     const today = new Date().toISOString().split('T')[0]
     if (formData.date > today) newErrors.date = "Date cannot be in the future"
 
@@ -70,9 +81,9 @@ function AddEntryModal({ onClose }) {
       date: formData.date,
       batchId: formData.batchId,
       feedConsumption: Number(formData.feedConsumption || 0),
-      eggsCount: selectedBatch.hasEggs ? Number(formData.eggsCount || 0) : 0,
-      dailyEggPurchases: selectedBatch.hasEggs ? Number(formData.dailyEggPurchases || 0) : 0,
-      weeklyEggPurchases: selectedBatch.hasEggs ? Number(formData.weeklyEggPurchases || 0) : 0,
+      eggsCount: hasEggs ? Number(formData.eggsCount || 0) : 0,
+      dailyEggPurchases: hasEggs ? Number(formData.dailyEggPurchases || 0) : 0,
+      weeklyEggPurchases: hasEggs ? Number(formData.weeklyEggPurchases || 0) : 0,
       birdsBought: Number(formData.birdsBought || 0),
       mortality: Number(formData.mortality || 0),
       expenses: Number(formData.expenses || 0),
@@ -114,17 +125,19 @@ function AddEntryModal({ onClose }) {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Batch / House</label>
               <select className="form-select" name="batchId" value={formData.batchId} onChange={handleChange} required>
-                <option value="cm4a5b2x80000abc123456789">Batch A - Broilers</option>
-                <option value="cm4a5b2x80000abc123456790">Batch B - Layers</option>
-                <option value="cm4a5b2x80000abc123456791">Batch C - Noilers</option>
-                <option value="cm4a5b2x80000abc123456792">Batch D - Local Fowls</option>
+                <option value="">— Select a batch —</option>
+                {batches.map(b => (
+                  <option key={b.id} value={b.id}>{b.batchNumber} - {b.breed} ({b.currentCount} birds)</option>
+                ))}
               </select>
+              {batchesLoading && <div style={{ fontSize: '0.75rem', color: '#8da58f', marginTop: 4 }}>Loading batches…</div>}
+              {!batchesLoading && batches.length === 0 && <div style={{ fontSize: '0.75rem', color: 'red', marginTop: 4 }}>No active batches found. Create a batch first.</div>}
             </div>
           </div>
 
           <div style={{ height: 14 }} />
 
-          {selectedBatch.hasEggs ? (
+          {hasEggs ? (
             <>
               {/* Row 2: Feed and Eggs */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -163,7 +176,7 @@ function AddEntryModal({ onClose }) {
                   <input className="form-input" type="number" name="mortality" value={formData.mortality} onChange={handleChange} placeholder="e.g. 2" />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">{selectedBatch.breed}s Bought</label>
+                  <label className="form-label">{selectedBatch?.breed || 'Bird'}s Bought</label>
                   <input className="form-input" type="number" name="birdsBought" value={formData.birdsBought} onChange={handleChange} placeholder="e.g. 100" />
                   {errors.birdsBought && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.birdsBought}</div>}
                 </div>
@@ -204,7 +217,7 @@ function AddEntryModal({ onClose }) {
                   {errors.feedConsumption && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.feedConsumption}</div>}
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">{selectedBatch.breed}s Bought</label>
+                  <label className="form-label">{selectedBatch?.breed || 'Bird'}s Bought</label>
                   <input className="form-input" type="number" name="birdsBought" value={formData.birdsBought} onChange={handleChange} placeholder="e.g. 100" />
                   {errors.birdsBought && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.birdsBought}</div>}
                 </div>

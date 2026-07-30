@@ -566,6 +566,175 @@ function formatDateTime(iso) {
   return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+// ─── Recent Transactions Table with Pagination & Filtering ──────────────────
+const ROWS_PER_PAGE = 5
+const ALL_STATUSES = ['ALL', 'PENDING', 'CONFIRMED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']
+const ALL_PAYMENTS = ['ALL', 'PAID', 'UNPAID', 'PARTIAL']
+
+function RecentTransactionsTable({ transactions = [] }) {
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [paymentFilter, setPaymentFilter] = useState('ALL')
+  const [page, setPage] = useState(1)
+
+  // Reset to page 1 when filters change
+  const filtered = transactions.filter(t => {
+    if (statusFilter !== 'ALL' && t.status !== statusFilter) return false
+    if (paymentFilter !== 'ALL' && t.paymentStatus !== paymentFilter) return false
+    if (search) {
+      const q = search.toLowerCase()
+      if (
+        !(t.orderId || '').toLowerCase().includes(q) &&
+        !(t.customer || '').toLowerCase().includes(q) &&
+        !(t.product || '').toLowerCase().includes(q)
+      ) return false
+    }
+    return true
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE))
+  const safePage = Math.min(page, totalPages)
+  const pageRows = filtered.slice((safePage - 1) * ROWS_PER_PAGE, safePage * ROWS_PER_PAGE)
+
+  // Reset page when filters change
+  const handleSearch = (v) => { setSearch(v); setPage(1) }
+  const handleStatus = (v) => { setStatusFilter(v); setPage(1) }
+  const handlePayment = (v) => { setPaymentFilter(v); setPage(1) }
+
+  const selectStyle = {
+    padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)',
+    fontSize: '0.78rem', background: '#fff', color: 'var(--text-body)', outline: 'none',
+  }
+
+  return (
+    <div className="chart-card">
+      <div className="chart-header" style={{ flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <div className="chart-title">Recent Transactions</div>
+          <div className="chart-subtitle">
+            {filtered.length} of {transactions.length} orders
+            {(statusFilter !== 'ALL' || paymentFilter !== 'ALL' || search) && ' (filtered)'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Search order, customer, product…"
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            style={{ ...selectStyle, minWidth: 180 }}
+          />
+          <select value={statusFilter} onChange={e => handleStatus(e.target.value)} style={selectStyle}>
+            {ALL_STATUSES.map(s => (
+              <option key={s} value={s}>{s === 'ALL' ? 'All Statuses' : s.replace('_', ' ')}</option>
+            ))}
+          </select>
+          <select value={paymentFilter} onChange={e => handlePayment(e.target.value)} style={selectStyle}>
+            {ALL_PAYMENTS.map(s => (
+              <option key={s} value={s}>{s === 'ALL' ? 'All Payments' : s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>
+              <th style={{ padding: '10px 8px' }}>Order ID</th>
+              <th style={{ padding: '10px 8px' }}>Customer</th>
+              <th style={{ padding: '10px 8px' }}>Product</th>
+              <th style={{ padding: '10px 8px', textAlign: 'right' }}>Amount</th>
+              <th style={{ padding: '10px 8px' }}>Status</th>
+              <th style={{ padding: '10px 8px' }}>Payment</th>
+              <th style={{ padding: '10px 8px' }}>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ padding: 20, textAlign: 'center', color: 'var(--text-subtle)' }}>
+                  {transactions.length === 0 ? 'No transactions in this window.' : 'No transactions match the current filters.'}
+                </td>
+              </tr>
+            ) : pageRows.map((t) => (
+              <tr key={t.orderId} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                <td style={{ padding: '10px 8px', fontWeight: 600, color: 'var(--text-heading)' }}>{t.orderId}</td>
+                <td style={{ padding: '10px 8px', color: 'var(--text-body)' }}>{t.customer}</td>
+                <td style={{ padding: '10px 8px', color: 'var(--text-body)' }}>{t.product}</td>
+                <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--text-heading)' }}>{formatMoney(t.amount)}</td>
+                <td style={{ padding: '10px 8px' }}>
+                  <span style={{
+                    padding: '3px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
+                    background: (STATUS_COLOURS[t.status] || '#8da58f') + '20',
+                    color: STATUS_COLOURS[t.status] || '#8da58f',
+                  }}>{t.status.replace('_', ' ')}</span>
+                </td>
+                <td style={{ padding: '10px 8px' }}>
+                  <span style={{
+                    padding: '3px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
+                    background: (PAYMENT_COLOURS[t.paymentStatus] || '#8da58f') + '20',
+                    color: PAYMENT_COLOURS[t.paymentStatus] || '#8da58f',
+                  }}>{t.paymentStatus}</span>
+                </td>
+                <td style={{ padding: '10px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(t.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 8px 6px', borderTop: '1px solid var(--border-light)' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Page {safePage} of {totalPages}
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              style={{
+                padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                background: safePage <= 1 ? '#f5f5f5' : '#fff', color: safePage <= 1 ? '#ccc' : 'var(--text-body)',
+                fontSize: '0.78rem', cursor: safePage <= 1 ? 'default' : 'pointer',
+              }}
+            >← Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+              .map((p, idx, arr) => (
+                <span key={p}>
+                  {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ padding: '5px 4px', color: 'var(--text-muted)' }}>…</span>}
+                  <button
+                    onClick={() => setPage(p)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 6,
+                      border: p === safePage ? '1.5px solid #237227' : '1px solid var(--border)',
+                      background: p === safePage ? 'rgba(35,114,39,0.08)' : '#fff',
+                      color: p === safePage ? '#237227' : 'var(--text-body)',
+                      fontWeight: p === safePage ? 700 : 500,
+                      fontSize: '0.78rem', cursor: 'pointer',
+                    }}
+                  >{p}</button>
+                </span>
+              ))
+            }
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              style={{
+                padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                background: safePage >= totalPages ? '#f5f5f5' : '#fff', color: safePage >= totalPages ? '#ccc' : 'var(--text-body)',
+                fontSize: '0.78rem', cursor: safePage >= totalPages ? 'default' : 'pointer',
+              }}
+            >Next →</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SalesTrackerPanel() {
   const [windowDays, setWindowDays] = useState(30)
   const { data, isLoading, isError, refetch, isFetching } = useSalesTracker(windowDays)
@@ -805,61 +974,8 @@ function SalesTrackerPanel() {
             </div>
           </div>
 
-          {/* Recent transactions table */}
-          <div className="chart-card">
-            <div className="chart-header">
-              <div>
-                <div className="chart-title">Recent Transactions</div>
-                <div className="chart-subtitle">Last {data.recentTransactions.length} orders</div>
-              </div>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                <thead>
-                  <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border-light)' }}>
-                    <th style={{ padding: '10px 8px' }}>Order ID</th>
-                    <th style={{ padding: '10px 8px' }}>Customer</th>
-                    <th style={{ padding: '10px 8px' }}>Product</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'right' }}>Amount</th>
-                    <th style={{ padding: '10px 8px' }}>Status</th>
-                    <th style={{ padding: '10px 8px' }}>Payment</th>
-                    <th style={{ padding: '10px 8px' }}>When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recentTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ padding: 20, textAlign: 'center', color: 'var(--text-subtle)' }}>
-                        No transactions in this window.
-                      </td>
-                    </tr>
-                  ) : data.recentTransactions.map((t) => (
-                    <tr key={t.orderId} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td style={{ padding: '10px 8px', fontWeight: 600, color: 'var(--text-heading)' }}>{t.orderId}</td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-body)' }}>{t.customer}</td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-body)' }}>{t.product}</td>
-                      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--text-heading)' }}>{formatMoney(t.amount)}</td>
-                      <td style={{ padding: '10px 8px' }}>
-                        <span style={{
-                          padding: '3px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
-                          background: (STATUS_COLOURS[t.status] || '#8da58f') + '20',
-                          color: STATUS_COLOURS[t.status] || '#8da58f',
-                        }}>{t.status.replace('_', ' ')}</span>
-                      </td>
-                      <td style={{ padding: '10px 8px' }}>
-                        <span style={{
-                          padding: '3px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
-                          background: (PAYMENT_COLOURS[t.paymentStatus] || '#8da58f') + '20',
-                          color: PAYMENT_COLOURS[t.paymentStatus] || '#8da58f',
-                        }}>{t.paymentStatus}</span>
-                      </td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDateTime(t.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Recent transactions table with pagination & filtering */}
+          <RecentTransactionsTable transactions={data.recentTransactions} />
         </>
       )}
     </div>

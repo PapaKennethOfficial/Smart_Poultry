@@ -84,6 +84,25 @@ exports.getLogbook = async (req, res) => {
   }
 };
 
+exports.getBatches = async (req, res) => {
+  try {
+    const batches = await prisma.batch.findMany({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true,
+        batchNumber: true,
+        breed: true,
+        currentCount: true,
+      },
+      orderBy: { batchNumber: "asc" },
+    });
+    res.json(batches);
+  } catch (error) {
+    console.error("Error fetching batches:", error);
+    res.status(500).json({ error: "Failed to fetch batches" });
+  }
+};
+
 exports.createLogEntry = async (req, res) => {
   try {
     const validatedData = logEntrySchema.parse(req.body);

@@ -1,7 +1,7 @@
 const express = require("express")
 const router = express.Router()
 
-const { login, register, googleAuth, verifyOTP, forgotPassword, resetPassword } = require("../controllers/auth.controller")
+const { login, register, verifyOTP, forgotPassword, resetPassword } = require("../controllers/auth.controller")
 const validate = require("../middleware/validate")
 const { loginSchema, registerSchema } = require("../validators/authValidator")
 
@@ -9,7 +9,6 @@ const { loginSchema, registerSchema } = require("../validators/authValidator")
 router.post("/login", validate(loginSchema), login)
 router.post("/login/verify", verifyOTP)
 router.post("/register", validate(registerSchema), register)
-router.post("/google", googleAuth)
 router.post("/forgot-password", forgotPassword)
 router.post("/reset-password", resetPassword)
 
