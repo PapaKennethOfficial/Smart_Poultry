@@ -52,7 +52,10 @@ export default function Register() {
       if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
         alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign Up.")
       } else {
-        alert("Google Sign-Up failed: " + (err?.message || 'Please try again.'))
+        // Prefer the backend's explanatory message over axios's generic
+        // "Request failed with status code NNN" fallback.
+        const backendMsg = err?.response?.data?.message
+        alert("Google Sign-Up failed: " + (backendMsg || err?.message || 'Please try again.'))
       }
     }
   }

@@ -199,6 +199,19 @@ const googleAuth = async (req, res, next) => {
                     deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
                 }
             })
+        } else if (user.role !== requestedRole) {
+            // A Google account is bound to one SmartPoultry role. If the user
+            // hits the Customer tab but their account was created via the
+            // Delivery tab (or vice versa), refuse the login rather than
+            // silently signing them in to the wrong dashboard. Give them a
+            // clear next step so they can pick the correct tab.
+            const roleLabel = { CUSTOMER: "Customer", DELIVERY: "Delivery Staff", MANAGER: "Manager", ADMIN: "Admin" }
+            return res.status(403).json({
+                message:
+                    `This Google account is registered as a ${roleLabel[user.role] || user.role} account. ` +
+                    `Please sign in via the ${roleLabel[user.role] || user.role} tab instead.`,
+                registeredRole: user.role,
+            })
         }
 
         // 3. Generate internal JWT
