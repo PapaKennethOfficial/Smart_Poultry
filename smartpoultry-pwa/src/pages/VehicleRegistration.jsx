@@ -326,8 +326,78 @@ export default function VehicleRegistration() {
     )
   }
 
+  // ── Small helpers used inside the wider two-column layout ────────────────
+  const PhotoUpload = ({ field, label, hint, previewHeight = 180 }) => (
+    <div className="form-group" style={{ marginBottom: 0 }}>
+      <label className="form-label">{label} *</label>
+      <div style={{
+        border: '1.5px dashed var(--border)',
+        borderRadius: 12,
+        padding: 12,
+        background: 'var(--bg)',
+      }}>
+        {formData[field] ? (
+          <img
+            src={formData[field]}
+            alt={label}
+            style={{
+              width: '100%',
+              height: previewHeight,
+              objectFit: 'contain',
+              borderRadius: 10,
+              marginBottom: 10,
+              background: '#fff',
+            }}
+          />
+        ) : (
+          <div style={{
+            height: previewHeight,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-subtle)',
+            background: '#fff',
+            borderRadius: 10,
+            marginBottom: 10,
+            textAlign: 'center',
+            fontSize: '0.82rem',
+            lineHeight: 1.4,
+            padding: '0 12px',
+          }}>
+            {hint}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            required={!formData[field]}
+            key={`${formData.vehicle_type}-${field}-${formData[field] ? 'loaded' : 'empty'}`}
+            type="file"
+            accept="image/*"
+            className="form-input"
+            disabled={uploadingField === field || submitting}
+            onChange={handleFileChange(field, { imageOnly: true, maxSizeMb: 5 })}
+            style={{ flex: 1 }}
+          />
+          {uploadingField === field && <RefreshCw size={18} className="spin" color="var(--primary)" />}
+        </div>
+      </div>
+    </div>
+  )
+
+  // Card that groups a section — reused so the two columns stay visually consistent.
+  const SectionCard = ({ icon: Icon, title, children, style }) => (
+    <div className="chart-card" style={{ padding: 24, ...style }}>
+      <div className="section-header" style={{ marginBottom: 16 }}>
+        <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon size={18} color="var(--primary)" /> {title}
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 20px' }}>
       <div className="page-header">
         <div className="page-title">Register Your Vehicle</div>
         <div className="page-desc">Provide your vehicle details for manager verification before you can start deliveries.</div>
@@ -350,232 +420,198 @@ export default function VehicleRegistration() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="chart-card">
+      <form onSubmit={handleSubmit}>
         {error && (
           <div style={{ background: 'var(--clr-danger-bg)', color: 'var(--clr-danger-txt)', padding: 12, borderRadius: 8, marginBottom: 20, fontSize: '0.85rem' }}>
             {error}
           </div>
         )}
 
-        <div className="section-header">
-          <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Car size={18} color="var(--primary)" /> Vehicle Information
+        {/* Vehicle-type tabs — full width across the top so the choice steers the whole form */}
+        <div className="chart-card" style={{ padding: 20, marginBottom: 20 }}>
+          <label className="form-label" style={{ marginBottom: 12, display: 'block' }}>Vehicle Type</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            {['Truck', 'Van', 'Motorcycle', 'Bicycle'].map(type => (
+              <label key={type} style={{
+                padding: 12,
+                border: `1.5px solid ${formData.vehicle_type === type ? 'var(--primary)' : 'var(--border)'}`,
+                borderRadius: 12, cursor: 'pointer', textAlign: 'center',
+                background: formData.vehicle_type === type ? 'var(--primary-subtle)' : 'transparent',
+                fontWeight: formData.vehicle_type === type ? 600 : 400,
+                color: formData.vehicle_type === type ? 'var(--primary)' : 'var(--text-body)',
+                transition: 'all 0.2s'
+              }}>
+                <input type="radio" name="vehicle_type" value={type} checked={formData.vehicle_type === type} onChange={handleChange} style={{ display: 'none' }} />
+                {type}
+              </label>
+            ))}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label">Vehicle Type</label>
-            <div style={{ display: 'flex', gap: 12 }}>
-              {['Truck', 'Van', 'Motorcycle', 'Bicycle'].map(type => (
-                <label key={type} style={{
-                  flex: 1, padding: 12, border: `1.5px solid ${formData.vehicle_type === type ? 'var(--primary)' : 'var(--border)'}`,
-                  borderRadius: 12, cursor: 'pointer', textAlign: 'center', background: formData.vehicle_type === type ? 'var(--primary-subtle)' : 'transparent',
-                  fontWeight: formData.vehicle_type === type ? 600 : 400, color: formData.vehicle_type === type ? 'var(--primary)' : 'var(--text-body)',
-                  transition: 'all 0.2s'
-                }}>
-                  <input type="radio" name="vehicle_type" value={type} checked={formData.vehicle_type === type} onChange={handleChange} style={{ display: 'none' }} />
-                  {type}
-                </label>
-              ))}
+        {/* Two-column responsive grid — auto-collapses to one column below ~880px */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+          gap: 20,
+          alignItems: 'start',
+        }}>
+
+          {/* ── Column A · Row 1 · Vehicle Information ───────────────── */}
+          <SectionCard icon={Car} title="Vehicle Information">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Make *</label>
+                <input required type="text" name="make" className="form-input" placeholder="e.g. Toyota, Honda" value={formData.make} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Model *</label>
+                <input required type="text" name="model" className="form-input" placeholder="e.g. Hilux, CG125" value={formData.model} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Year of Manufacture *</label>
+                <input required type="number" name="year_of_manufacture" className="form-input" value={formData.year_of_manufacture} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Color *</label>
+                <input required type="text" name="color" className="form-input" placeholder="e.g. White" value={formData.color} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">License Plate {requiresFullDetails && '*'}</label>
+                <input required={requiresFullDetails} type="text" name="license_plate" className="form-input" placeholder="e.g. GW 1234-26" value={formData.license_plate} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">VIN {requiresFullDetails && '*'}</label>
+                <input required={requiresFullDetails} type="text" name="vin" className="form-input" placeholder="17-character VIN" value={formData.vin} onChange={handleChange} />
+              </div>
             </div>
-          </div>
+          </SectionCard>
 
-          <div className="form-group">
-            <label className="form-label">Make *</label>
-            <input required type="text" name="make" className="form-input" placeholder="e.g. Toyota, Honda" value={formData.make} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Model *</label>
-            <input required type="text" name="model" className="form-input" placeholder="e.g. Hilux, CG125" value={formData.model} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Year of Manufacture *</label>
-            <input required type="number" name="year_of_manufacture" className="form-input" value={formData.year_of_manufacture} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Color *</label>
-            <input required type="text" name="color" className="form-input" placeholder="e.g. White" value={formData.color} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">License Plate {requiresFullDetails && '*'}</label>
-            <input required={requiresFullDetails} type="text" name="license_plate" className="form-input" placeholder="e.g. GW 1234-26" value={formData.license_plate} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">VIN (Vehicle Identification Number) {requiresFullDetails && '*'}</label>
-            <input required={requiresFullDetails} type="text" name="vin" className="form-input" placeholder="17-character VIN" value={formData.vin} onChange={handleChange} />
-          </div>
-        </div>
+          {/* ── Column B · Row 1 · Required Photos ────────────────────── */}
+          <SectionCard icon={ImageIcon} title="Required Photos">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <PhotoUpload
+                field="driver_photo"
+                label="Driver Photo"
+                hint="Clear face photo of the delivery staff"
+                previewHeight={160}
+              />
+              <PhotoUpload
+                field="vehicle_photo"
+                label="Vehicle Photo"
+                hint="Clear photo showing the delivery vehicle"
+                previewHeight={160}
+              />
+            </div>
+          </SectionCard>
 
-        <div className="section-header" style={{ marginTop: 12 }}>
-          <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ImageIcon size={18} color="var(--primary)" /> Required Photos
-          </div>
-        </div>
+          {/* ── Column A · Row 2 · Driver Security + Licensing ─────────── */}
+          <SectionCard icon={UserIcon} title="Driver Security & Licensing">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Contact Number *</label>
+                <input required type="tel" name="driver_contact_number" className="form-input" placeholder="e.g. 0241234567" value={formData.driver_contact_number} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Residential Address *</label>
+                <input required type="text" name="driver_residential_address" className="form-input" placeholder="House, street, area/town" value={formData.driver_residential_address} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Driver License Number *</label>
+                <input required type="text" name="driver_license_number" className="form-input" value={formData.driver_license_number} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">License Expiration *</label>
+                <input required type="date" name="license_expiration" className="form-input" value={formData.license_expiration} onChange={handleChange} />
+              </div>
+            </div>
+          </SectionCard>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-          {[
-            { key: 'driver_photo', label: 'Driver Photo', hint: 'Clear face photo of the delivery staff' },
-            { key: 'vehicle_photo', label: 'Vehicle Photo', hint: 'Clear photo showing the delivery vehicle' },
-          ].map(item => (
-            <div key={item.key} className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">{item.label} *</label>
+          {/* ── Column B · Row 2 · Registration Document ───────────────── */}
+          <SectionCard icon={Hash} title="Registration Document">
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ color: 'var(--text-subtle)' }}>Optional — upload if available</label>
               <div style={{
                 border: '1.5px dashed var(--border)',
                 borderRadius: 12,
                 padding: 12,
                 background: 'var(--bg)',
               }}>
-                {formData[item.key] ? (
-                  <img
-                    src={formData[item.key]}
-                    alt={item.label}
-                    style={{
-                      width: '100%',
-                      height: 180,
-                      objectFit: 'contain',
-                      borderRadius: 10,
-                      marginBottom: 10,
-                      background: '#fff',
-                    }}
-                  />
+                {formData.registration_document ? (
+                  formData.registration_document.endsWith('.pdf') ? (
+                    <div style={{ padding: '32px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                      PDF Document Uploaded
+                    </div>
+                  ) : (
+                    <img
+                      src={formData.registration_document}
+                      alt="Registration document"
+                      style={{ width: '100%', height: 190, objectFit: 'contain', borderRadius: 10, marginBottom: 10, background: '#f9f9f9' }}
+                    />
+                  )
                 ) : (
-                  <div style={{
-                    height: 180,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-subtle)',
-                    background: '#fff',
-                    borderRadius: 10,
-                    marginBottom: 10,
-                    textAlign: 'center',
-                    fontSize: '0.82rem',
-                    lineHeight: 1.4,
-                  }}>
-                    {item.hint}
+                  <div style={{ padding: '52px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.82rem' }}>
+                    Upload vehicle registration document if available
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input
-                    required={!formData[item.key]}
-                    key={`${formData.vehicle_type}-${item.key}-${formData[item.key] ? 'loaded' : 'empty'}`}
+                    required={!formData.registration_document}
+                    key={`${formData.vehicle_type}-registration_document-${formData.registration_document ? 'loaded' : 'empty'}`}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     className="form-input"
-                    disabled={uploadingField === item.key || submitting}
-                    onChange={handleFileChange(item.key, { imageOnly: true, maxSizeMb: 5 })}
+                    disabled={uploadingField === 'registration_document' || submitting}
+                    onChange={handleFileChange('registration_document', { maxSizeMb: 5 })}
                     style={{ flex: 1 }}
                   />
-                  {uploadingField === item.key && <RefreshCw size={18} className="spin" color="var(--primary)" />}
+                  {uploadingField === 'registration_document' && <RefreshCw size={18} className="spin" color="var(--primary)" />}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="section-header" style={{ marginTop: 32 }}>
-          <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Hash size={18} color="var(--primary)" /> Driver Security Details
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Contact Number *</label>
-            <input required type="tel" name="driver_contact_number" className="form-input" placeholder="e.g. 0241234567" value={formData.driver_contact_number} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Residential Address *</label>
-            <input required type="text" name="driver_residential_address" className="form-input" placeholder="House number, street, area/town" value={formData.driver_residential_address} onChange={handleChange} />
-          </div>
-        </div>
-
-        <div className="section-header" style={{ marginTop: 32 }}>
-          <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Hash size={18} color="var(--primary)" /> Licensing
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Driver License Number *</label>
-            <input required type="text" name="driver_license_number" className="form-input" value={formData.driver_license_number} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">License Expiration *</label>
-            <input required type="date" name="license_expiration" className="form-input" value={formData.license_expiration} onChange={handleChange} />
-          </div>
-          <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
-            <label className="form-label">Registration Document</label>
-            <div style={{
-              border: '1.5px dashed var(--border)',
-              borderRadius: 12,
-              padding: 12,
-              background: 'var(--bg)',
-            }}>
-              {formData.registration_document ? (
-                formData.registration_document.endsWith('.pdf') ? (
-                  <div style={{ padding: '32px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                    PDF Document Uploaded
-                  </div>
-                ) : (
-                  <img
-                    src={formData.registration_document}
-                    alt="Registration document"
-                    style={{ width: '100%', height: 150, objectFit: 'contain', borderRadius: 10, marginBottom: 10, background: '#f9f9f9' }}
-                  />
-                )
-              ) : (
-                <div style={{ padding: '32px 12px', background: '#fff', borderRadius: 10, marginBottom: 10, textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.82rem' }}>
-                  Upload vehicle registration document if available
-                </div>
+              {formData.registration_document && (
+                <a href={formData.registration_document} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: 8, fontSize: '0.8rem', color: 'var(--primary)' }}>
+                  View Uploaded Document
+                </a>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  required={!formData.registration_document}
-                  key={`${formData.vehicle_type}-registration_document-${formData.registration_document ? 'loaded' : 'empty'}`}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="form-input"
-                  disabled={uploadingField === 'registration_document' || submitting}
-                  onChange={handleFileChange('registration_document', { maxSizeMb: 5 })}
-                  style={{ flex: 1 }}
-                />
-                {uploadingField === 'registration_document' && <RefreshCw size={18} className="spin" color="var(--primary)" />}
-              </div>
             </div>
-            {formData.registration_document && (
-              <a href={formData.registration_document} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: 8, fontSize: '0.8rem', color: 'var(--primary)' }}>
-                View Uploaded Document
-              </a>
-            )}
-          </div>
+          </SectionCard>
+
         </div>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%', justifyContent: 'center' }}>
-            <input 
-              type="checkbox" 
-              id="agree-staff-terms" 
-              checked={agreedToTerms}
-              onChange={(e) => {
-                setAgreedToTerms(e.target.checked)
-                if (error) setError('')
-              }}
-              style={{ marginTop: '3px', cursor: 'pointer' }}
-            />
-            <label htmlFor="agree-staff-terms" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', maxWidth: '400px' }}>
-              I agree to the{' '}
-              <Link to="/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms and Conditions</Link>
-              {' '}and{' '}
-              <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>, and acknowledge that platform interactions contribute to AI analytics.
+        {/* Full-width footer: terms + submit. Always horizontal — checkbox left, button right. */}
+        <div className="chart-card" style={{ padding: 20, marginTop: 20 }}>
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 20,
+            alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <label htmlFor="agree-staff-terms" style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
+              fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4, flex: '1 1 340px',
+            }}>
+              <input
+                type="checkbox"
+                id="agree-staff-terms"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked)
+                  if (error) setError('')
+                }}
+                style={{ marginTop: 3, cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              <span>
+                I agree to the{' '}
+                <Link to="/terms" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Terms and Conditions</Link>
+                {' '}and{' '}
+                <Link to="/privacy" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Privacy Policy</Link>, and acknowledge that platform interactions contribute to AI analytics.
+              </span>
             </label>
+            <button type="submit" className="btn-primary" disabled={submitting} style={{
+              padding: '12px 32px', minWidth: 260,
+              display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8,
+            }}>
+              {submitting ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
+              {submitting ? 'Submitting...' : 'Submit Vehicle Details'}
+            </button>
           </div>
-          <button type="submit" className="btn-primary" disabled={submitting} style={{ padding: '12px 24px', width: '100%', maxWidth: '400px', display: 'flex', justifyContent: 'center' }}>
-            {submitting ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
-            {submitting ? 'Submitting...' : 'Submit Vehicle Details'}
-          </button>
         </div>
       </form>
     </div>
