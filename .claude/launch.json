@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "smartpoultry-admin", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "pwa-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "smartpoultry-pwa", "run", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "smartpoultry-backend", "run", "dev"],
+      "port": 5001
+    },
+    {
+      "name": "ai-microservice",
+      "runtimeExecutable": "py",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--reload", "--port", "8000", "--app-dir", "smartpoultry-ai"],
+      "port": 8000
+    }
+  ]
+}

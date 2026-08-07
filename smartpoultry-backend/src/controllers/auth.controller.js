@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const admin = require("../config/firebaseAdmin")
 const { sendEmail } = require("../services/email.service")
 const { sendSMS } = require("../services/sms.service")
 
@@ -154,6 +155,85 @@ const register = async (req, res, next) => {
     }
 }
 
+const googleAuth = async (req, res, next) => {
+    try {
+        const { token: idToken, role } = req.body
+        const requestedRole = role || "CUSTOMER"
+
+        if (!idToken) return res.status(400).json({ message: "Firebase ID token is required" })
+        if (!admin.apps.length) {
+            return res.status(503).json({
+                message: "Firebase authentication is not configured on the server.",
+            })
+        }
+        if (!PUBLIC_REGISTRATION_ROLES.has(requestedRole)) {
+            return res.status(403).json({
+                message: "This role cannot be self-registered with Google sign-in.",
+            })
+        }
+
+        // 1. Verify token with Firebase Admin. Never mock users here: a failed
+        // Firebase verification must not become a successful app login.
+        let decodedToken
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken)
+        } catch (err) {
+            return res.status(401).json({ message: "Invalid Firebase token" })
+        }
+
+        const email = decodedToken.email
+        if (!email) return res.status(400).json({ message: "Firebase account has no email address" })
+
+        const name = decodedToken.name || email.split('@')[0]
+
+        // 2. Find or create user
+        let user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    name,
+                    email,
+                    password: "", // No password for OAuth
+                    role: requestedRole,
+                    deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
+                }
+            })
+        } else if (user.role !== requestedRole) {
+            // A Google account is bound to one SmartPoultry role. If the user
+            // hits the Customer tab but their account was created via the
+            // Delivery tab (or vice versa), refuse the login rather than
+            // silently signing them in to the wrong dashboard. Give them a
+            // clear next step so they can pick the correct tab.
+            const roleLabel = { CUSTOMER: "Customer", DELIVERY: "Delivery Staff", MANAGER: "Manager", ADMIN: "Admin" }
+            return res.status(403).json({
+                message:
+                    `This Google account is registered as a ${roleLabel[user.role] || user.role} account. ` +
+                    `Please sign in via the ${roleLabel[user.role] || user.role} tab instead.`,
+                registeredRole: user.role,
+            })
+        }
+
+        // 3. Generate internal JWT
+        const token = signToken(user)
+
+        prisma.user
+            .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+            .catch((e) => console.error("[googleAuth] failed to stamp lastLoginAt:", e.message))
+
+        const { password: _pw, ...safeUser } = user
+
+        res.status(200).json({
+            message: "Google login successful",
+            token,
+            role: user.role,
+            user: safeUser,
+        })
+
+    } catch (error) {
+        next(error)
+    }
+}
 
 const verifyOTP = async (req, res, next) => {
     try {
@@ -252,4 +332,4 @@ const resetPassword = async (req, res, next) => {
     }
 }
 
-module.exports = { login, register, verifyOTP, forgotPassword, resetPassword }
+module.exports = { login, register, googleAuth, verifyOTP, forgotPassword, resetPassword }
