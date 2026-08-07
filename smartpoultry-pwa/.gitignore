@@ -6,6 +6,9 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+# vite-plugin-pwa generated service worker + workbox for dev — regenerated
+# on every `npm run dev`, no reason to check them in.
+dev-dist/
 build/
 
 # Environment variables
