@@ -30,7 +30,7 @@ export default function AdminLogin() {
   const inlineError = isInvalidCreds
     ? 'Incorrect email or password'
     : error
-      ? (error?.response?.data?.message || 'Login failed. Please try again.')
+      ? (!error.response ? 'Network error — is the server running?' : (error?.response?.data?.message || 'Login failed. Please try again.'))
       : null;
 
   const clearErrorOnChange = (setter) => (e) => {
@@ -39,7 +39,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <form className="login-page desktop-only" onSubmit={handleSubmit} noValidate>
+    <form className="login-page" onSubmit={handleSubmit} noValidate>
       {/* Left panel */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>

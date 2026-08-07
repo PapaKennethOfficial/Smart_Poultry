@@ -74,7 +74,7 @@ export default function Login() {
   const inlineError = isInvalidCreds
     ? 'Incorrect email or password'
     : error
-      ? (error?.response?.data?.message || 'Login failed. Please try again.')
+      ? (!error.response ? 'Network error — is the server running?' : (error?.response?.data?.message || 'Login failed. Please try again.'))
       : null
 
   const clearErrorOnChange = (setter) => (e) => {
@@ -115,6 +115,9 @@ export default function Login() {
               Smart<span style={{ color: '#84be88' }}>Poultry</span>
             </span>
           </Link>
+          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginTop: 8, marginBottom: 8 }}>
+            Your premium farm-to-door poultry platform.
+          </div>
 
           <div className="login-marketing" style={{ marginBottom: 30 }}>
             <div style={{
