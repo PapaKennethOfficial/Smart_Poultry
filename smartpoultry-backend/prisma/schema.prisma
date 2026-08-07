@@ -66,7 +66,7 @@ enum WithdrawalStatus {
 model User {
   id                      String   @id @default(cuid())
   name                    String
-  email                   String   @unique
+  email                   String
   password                String
   phone                   String?
   avatarUrl               String?
@@ -96,6 +96,14 @@ model User {
   reviews   Review[]
   wishlists Wishlist[]
   withdrawals WithdrawalRequest[]
+
+  // One SmartPoultry email can now hold multiple accounts — one per role.
+  // A driver can also shop as a customer using the same Google identity;
+  // each tab on the login screen simply resolves to the account with the
+  // matching role. Enforced by a composite unique on (email, role) rather
+  // than by making email globally unique.
+  @@unique([email, role])
+  @@index([email])
 }
 
 model Farm {
