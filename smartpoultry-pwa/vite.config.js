@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => {
 
     server: {
       port: 5174,
+      // Accept requests from any Cloudflare Quick Tunnel subdomain so we can
+      // expose this dev server publicly for phone testing without editing
+      // config every time cloudflared assigns a new random hostname.
+      allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.io', '.loca.lt'],
       proxy: {
         "/api": {
           target: backendTarget,

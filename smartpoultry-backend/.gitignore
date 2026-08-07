@@ -7,3 +7,7 @@ node_modules
 # Ignore generated uploads
 /uploads
 
+# Firebase service-account private key — must never be committed
+firebase-adminsdk.json
+*-firebase-adminsdk-*.json
+
