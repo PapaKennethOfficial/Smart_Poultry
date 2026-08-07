@@ -468,7 +468,7 @@ export default function VehicleRegistration() {
 
           {/* ── Column A · Row 1 · Vehicle Information ───────────────── */}
           <SectionCard icon={Car} title="Vehicle Information">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Make *</label>
                 <input required type="text" name="make" className="form-input" placeholder="e.g. Toyota, Honda" value={formData.make} onChange={handleChange} />
@@ -498,7 +498,7 @@ export default function VehicleRegistration() {
 
           {/* ── Column B · Row 1 · Required Photos ────────────────────── */}
           <SectionCard icon={ImageIcon} title="Required Photos">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
               <PhotoUpload
                 field="driver_photo"
                 label="Driver Photo"
@@ -516,7 +516,7 @@ export default function VehicleRegistration() {
 
           {/* ── Column A · Row 2 · Driver Security + Licensing ─────────── */}
           <SectionCard icon={UserIcon} title="Driver Security & Licensing">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Contact Number *</label>
                 <input required type="tel" name="driver_contact_number" className="form-input" placeholder="e.g. 0241234567" value={formData.driver_contact_number} onChange={handleChange} />
