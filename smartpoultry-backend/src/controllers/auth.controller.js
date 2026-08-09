@@ -1,6 +1,7 @@
 const prisma = require("../config/prisma")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const admin = require("../config/firebaseAdmin")
 const { sendEmail } = require("../services/email.service")
 const { sendSMS } = require("../services/sms.service")
 
@@ -22,6 +23,20 @@ function assertCanRegisterRole(role) {
     }
 }
 
+/**
+ * Since (email, role) is the unique key on User (not email alone), every
+ * user-by-email lookup needs to be scoped to the role the caller is trying
+ * to sign in as. The Manager tab is a special case: it accepts either a
+ * MANAGER or an ADMIN account so a super-admin can use the same portal.
+ * When `requestedRole` is falsy we accept any role — used only by the
+ * password-reset flow, which just needs one match to send the reset link.
+ */
+function userWhereForRole(email, requestedRole) {
+    if (!requestedRole) return { email }
+    if (requestedRole === "MANAGER") return { email, role: { in: ["MANAGER", "ADMIN"] } }
+    return { email, role: requestedRole }
+}
+
 function signToken(user) {
     if (!process.env.JWT_SECRET) {
         const err = new Error("JWT secret is not configured")
@@ -40,8 +55,11 @@ const login = async (req, res, next) => {
     try {
         const { email, password, role } = req.body
 
-        const user = await prisma.user.findUnique({
-            where: { email }
+        // Scope by (email, role) so the driver's account and the customer's
+        // account under the same email are cleanly separated. Missing role
+        // (older clients) falls back to email-only match.
+        const user = await prisma.user.findFirst({
+            where: userWhereForRole(email, role)
         })
 
         // Use the same message for both cases to prevent user enumeration
@@ -120,9 +138,11 @@ const register = async (req, res, next) => {
             })
         }
 
-        const existing = await prisma.user.findUnique({ where: { email } })
+        // Uniqueness is per (email, role) — an existing customer can register
+        // as a delivery driver under the same email and vice versa.
+        const existing = await prisma.user.findFirst({ where: userWhereForRole(email, requestedRole) })
         if (existing) {
-            return res.status(409).json({ message: "Email already registered" })
+            return res.status(409).json({ message: "Email already registered for this role" })
         }
 
         const hashed = await bcrypt.hash(password, 10)
@@ -154,6 +174,80 @@ const register = async (req, res, next) => {
     }
 }
 
+const googleAuth = async (req, res, next) => {
+    try {
+        const { token: idToken, role } = req.body
+        const requestedRole = role || "CUSTOMER"
+
+        if (!idToken) return res.status(400).json({ message: "Firebase ID token is required" })
+        if (!admin.apps.length) {
+            return res.status(503).json({
+                message: "Firebase authentication is not configured on the server.",
+            })
+        }
+        if (!PUBLIC_REGISTRATION_ROLES.has(requestedRole)) {
+            return res.status(403).json({
+                message: "This role cannot be self-registered with Google sign-in.",
+            })
+        }
+
+        // 1. Verify token with Firebase Admin. Never mock users here: a failed
+        // Firebase verification must not become a successful app login.
+        let decodedToken
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken)
+        } catch (err) {
+            return res.status(401).json({ message: "Invalid Firebase token" })
+        }
+
+        const email = decodedToken.email
+        if (!email) return res.status(400).json({ message: "Firebase account has no email address" })
+
+        const name = decodedToken.name || email.split('@')[0]
+
+        // 2. Find or create user — scoped to the tab-selected role.
+        //
+        // A single Google identity can wear multiple hats on SmartPoultry: a
+        // driver may also want to shop as a customer. So each (email, role)
+        // pair is its own account. Looking up by role means the Customer tab
+        // sees the customer account and the Delivery tab sees the delivery
+        // account, even when they share the same Google email. If the pair
+        // doesn't exist yet, we create it — one click enrolls the user in
+        // the second role automatically.
+        let user = await prisma.user.findFirst({ where: { email, role: requestedRole } });
+
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    name,
+                    email,
+                    password: "", // No password for OAuth
+                    role: requestedRole,
+                    deliveryStaffStatus: requestedRole === "DELIVERY" ? "PENDING" : null,
+                }
+            })
+        }
+
+        // 3. Generate internal JWT
+        const token = signToken(user)
+
+        prisma.user
+            .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+            .catch((e) => console.error("[googleAuth] failed to stamp lastLoginAt:", e.message))
+
+        const { password: _pw, ...safeUser } = user
+
+        res.status(200).json({
+            message: "Google login successful",
+            token,
+            role: user.role,
+            user: safeUser,
+        })
+
+    } catch (error) {
+        next(error)
+    }
+}
 
 const verifyOTP = async (req, res, next) => {
     try {
@@ -188,9 +282,11 @@ const verifyOTP = async (req, res, next) => {
 
 const forgotPassword = async (req, res, next) => {
     try {
-        const { email } = req.body
-        const user = await prisma.user.findUnique({ where: { email } })
-        
+        const { email, role } = req.body
+        // If the caller supplied a role (from the tab context), scope by it;
+        // otherwise fall back to any account under that email.
+        const user = await prisma.user.findFirst({ where: userWhereForRole(email, role) })
+
         if (!user) {
             // Return success even if user not found to prevent enumeration
             return res.status(200).json({ message: "If an account exists, an OTP has been sent." })
@@ -226,9 +322,13 @@ const forgotPassword = async (req, res, next) => {
 
 const resetPassword = async (req, res, next) => {
     try {
-        const { email, otpCode, newPassword } = req.body
+        const { email, otpCode, newPassword, role } = req.body
 
-        const user = await prisma.user.findUnique({ where: { email } })
+        // The forgot-password OTP is randomly generated per user; scoping by
+        // role (if the caller can supply it) narrows to the exact account
+        // the reset request was issued for. Falling back to any-role match
+        // stays backwards compatible with clients that don't send `role`.
+        const user = await prisma.user.findFirst({ where: userWhereForRole(email, role) })
         if (!user) return res.status(404).json({ message: "Invalid request" })
 
         if (user.otpCode !== otpCode || !user.otpExpiry || user.otpExpiry < new Date()) {
@@ -252,4 +352,4 @@ const resetPassword = async (req, res, next) => {
     }
 }
 
-module.exports = { login, register, verifyOTP, forgotPassword, resetPassword }
+module.exports = { login, register, googleAuth, verifyOTP, forgotPassword, resetPassword }

@@ -800,8 +800,8 @@ function SalesTrackerPanel() {
         </div>
       ) : data && (
         <>
-          {/* KPI row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+          {/* KPI row — 4-up on desktop, collapses to 2×2 then 1-col on phones */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
             <KpiCard
               icon={DollarSign}
               tint="#237227"
@@ -837,8 +837,10 @@ function SalesTrackerPanel() {
             />
           </div>
 
-          {/* Revenue timeseries + breakdown side-by-side */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
+          {/* Revenue timeseries + breakdown side-by-side. Collapses to a
+              single column on narrower viewports so both are legible on
+              tablet / phone widths. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 14 }}>
             <div className="chart-card">
               <div className="chart-header">
                 <div>
@@ -900,8 +902,8 @@ function SalesTrackerPanel() {
             </div>
           </div>
 
-          {/* Payment status + Top products */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          {/* Payment status + Top products — same responsive rule as above */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginBottom: 14 }}>
             <div className="chart-card">
               <div className="chart-header">
                 <div>

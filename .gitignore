@@ -8,6 +8,10 @@ dist/
 dist-ssr/
 build/
 
+# Local docs / thesis artifacts / scratch — machine-local only
+docs/
+.claude/
+
 # Environment variables
 .env
 .env.local

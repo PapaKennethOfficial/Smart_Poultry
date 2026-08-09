@@ -6,6 +6,9 @@ import { useVerifyOTP } from '../hooks/auth/useVerifyOTP'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { auth, isFirebaseConfigured } from '../firebase'
+import { googleAuthUser } from '../api/auth'
 
 const GOOGLE_ROLE_MAP = {
   delivery: 'DELIVERY',
@@ -30,9 +33,36 @@ export default function Login() {
   const { setToken, setRole: setAuthRole, setUser } = useAuth()
   const navigate = useNavigate()
 
-  const handleGoogleLogin = (e) => {
-    e.preventDefault()
-    alert('Google Sign-In is temporarily disabled.')
+  const handleGoogleLogin = async () => {
+    try {
+      if (role === 'manager') {
+        alert('Managers and admins must sign in with their approved account credentials.')
+        return
+      }
+      if (!isFirebaseConfigured || !auth) {
+        alert('Firebase is not configured yet. Use email and password, or add your Firebase credentials to enable Google Sign-In.')
+        return
+      }
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
+      const idToken = await result.user.getIdToken()
+      const data = await googleAuthUser({ token: idToken, role: GOOGLE_ROLE_MAP[role] || 'CUSTOMER' })
+      setToken(data.token)
+      if (data.role) setAuthRole(data.role)
+      if (data.user) setUser(data.user)
+      navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
+    } catch (err) {
+      console.error(err)
+      if (err?.code === "auth/invalid-api-key" || err?.message?.includes("dummy")) {
+        alert("Firebase is not configured yet! Please create a .env file with your real Firebase credentials to use Google Sign In.")
+      } else {
+        // Prefer the backend's explanatory message (e.g. "This Google account is
+        // registered as a Delivery Staff account...") over axios's generic
+        // "Request failed with status code NNN" fallback.
+        const backendMsg = err?.response?.data?.message
+        alert("Google Sign-In failed: " + (backendMsg || err?.message || 'Please try again.'))
+      }
+    }
   }
 
   const handleSubmit = (e) => {
@@ -56,8 +86,10 @@ export default function Login() {
     setter(e.target.value)
   }
 
-  const googleDisabled = false
-  const googleButtonLabel = 'Continue with Google'
+  const googleDisabled = !isFirebaseConfigured
+  const googleButtonLabel = !isFirebaseConfigured
+    ? 'Google Sign-In unavailable'
+    : 'Continue with Google'
 
   const features = [
     'Farm-fresh poultry delivered securely',

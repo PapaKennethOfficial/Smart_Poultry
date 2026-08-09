@@ -167,9 +167,12 @@ const createUser = async (req, res, next) => {
       });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    // (email, role) is the unique key now — one manager can also be a
+    // customer under the same email. Only block if the same (email, role)
+    // pair is already taken.
+    const existing = await prisma.user.findFirst({ where: { email, role } });
     if (existing) {
-      return res.status(409).json({ message: "Email already registered" });
+      return res.status(409).json({ message: `Email already registered for role ${role}` });
     }
 
     const hashed = await bcrypt.hash(password, 10);
