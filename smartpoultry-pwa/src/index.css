@@ -881,6 +881,25 @@ body {
   -webkit-backface-visibility: hidden;
 }
 
+/* Wide variant used by the customer's order-details view so the two-column
+   grid (details on the left, live map + chat on the right) has real room to
+   breathe on desktop. Falls back to the same width as the standard modal on
+   phones so the grid can collapse cleanly. */
+.modal-box.modal-box-wide {
+  width: min(96vw, 1200px);
+}
+
+/* Below ~900 px the order-details grid stops trying to render two columns
+   and stacks so each section stays legible on tablet + phone widths. */
+@media (max-width: 900px) {
+  .order-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .order-detail-grid > div:nth-child(2) {
+    position: static !important;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
