@@ -230,7 +230,7 @@ export default function VehicleRegistration() {
     }
   }, [vehicle, isEditingApproved])
 
-  const requiresFullDetails = !['Bicycle', 'Motorcycle'].includes(formData.vehicle_type)
+  const requiresFullDetails = !['Motorcycle'].includes(formData.vehicle_type)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -372,7 +372,7 @@ export default function VehicleRegistration() {
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label className="form-label">Vehicle Type</label>
             <div style={{ display: 'flex', gap: 12 }}>
-              {['Truck', 'Van', 'Motorcycle', 'Bicycle'].map(type => (
+              {['Truck', 'Van', 'Motorcycle'].map(type => (
                 <label key={type} style={{
                   flex: 1, padding: 12, border: `1.5px solid ${formData.vehicle_type === type ? 'var(--primary)' : 'var(--border)'}`,
                   borderRadius: 12, cursor: 'pointer', textAlign: 'center', background: formData.vehicle_type === type ? 'var(--primary-subtle)' : 'transparent',

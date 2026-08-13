@@ -456,7 +456,7 @@ export default function VehicleVerification() {
                   <div className="form-group">
                     <label className="form-label">Vehicle Type</label>
                     <select className="form-select" name="vehicle_type" value={editForm.vehicle_type} onChange={handleEditChange}>
-                      {['Truck', 'Van', 'Motorcycle', 'Bicycle'].map(type => <option key={type} value={type}>{type}</option>)}
+                      {['Truck', 'Van', 'Motorcycle'].map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
                   {[

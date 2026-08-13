@@ -180,14 +180,8 @@ export default function CustomerMarketplace() {
               return (
               <div key={p.id} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 12 }}>
                 <div style={{ padding: 20, display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem', paddingRight: 24 }}>{p.name}</div>
-                    <button 
-                      onClick={() => toggleWishlist(p)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: -4, marginRight: -4 }}
-                    >
-                      <Heart size={20} fill={isWishlisted ? "#ef4444" : "none"} color={isWishlisted ? "#ef4444" : "var(--text-muted)"} />
-                    </button>
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem' }}>{p.name}</div>
                   </div>
                   <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6 }}>GHS {p.price}</div>
                   {p.category && (

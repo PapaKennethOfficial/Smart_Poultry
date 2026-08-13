@@ -116,6 +116,85 @@ Sign in with the account created by your seed script (whatever email/password yo
 
 ---
 
+## 3a. Testing the running stack
+
+The full stack has three real flows worth walking through — auth, ordering, and the customer↔driver live-tracking map. All commands below assume the four dev servers from §3 are running.
+
+### End-to-end flow (browser)
+
+1. **Sign in as a manager** at `http://localhost:5173/admin/login`. Confirm the Dashboard renders KPI cards and the Analytics page shows the Sales Tracker.
+2. **Register a driver** at `http://localhost:5174/register` → pick the Delivery Staff tab. On first login they'll land on `/delivery/vehicle` — submit vehicle details (Truck / Van / Motorcycle; photos required).
+3. **Approve the vehicle** as the manager: `/admin/dashboard/verify-vehicles` → change status to APPROVED. The driver's dashboard now switches to "Assigned Deliveries".
+4. **Register a customer** at `http://localhost:5174/register` → Customer tab. Log in → land on `/customer/marketplace` → add a product to cart → checkout with your address. The order is auto-assigned to any driver whose vehicle is APPROVED and who has fewest active jobs.
+5. **As the driver**, open `/delivery/orders`, tap the new order → **Start Delivery** to move it to IN_TRANSIT. The browser starts sending GPS updates every 5–10 s.
+6. **As the customer**, open `/customer/orders`, tap the same order → live map appears with a **green destination pin**, a **car icon for the driver**, a line between them and a haversine distance label. The car updates as the driver moves.
+7. **As the driver**, mark the order Delivered. The customer's live map disappears (server clears `driverLatitude/Longitude` on any terminal state).
+
+### API smoke tests (terminal)
+
+Substitute `<TOKEN>` with the value returned by `/api/auth/login` for whichever role the endpoint requires.
+
+```bash
+# Health
+curl -s http://localhost:5001/
+
+# Auth
+curl -s -X POST http://localhost:5001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"<your-manager-email>","password":"<your-password>","role":"MANAGER"}'
+
+# Sales Tracker (Manager)
+curl -s http://localhost:5001/api/analytics/sales-tracker?days=30 \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Prophet demand forecast (Manager) — first call may take ~3 s while the model trains,
+# subsequent calls hit the joblib cache and return in <200 ms.
+curl -s http://localhost:5001/api/ai/forecast/demand?days=14 \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Force a Prophet retrain (Manager) — refits on latest DeliveryOrder history
+# and reports MAPE / RMSE / MAE on the holdout window.
+curl -s -X POST http://localhost:5001/api/ai/forecast/retrain \
+  -H "Authorization: Bearer <TOKEN>"
+
+# OR-Tools route optimisation (Manager) — pass a list of order IDs and get an
+# ordered stop sequence per vehicle.
+curl -s -X POST http://localhost:5001/api/ai/routes/optimize \
+  -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"orderIds":["<order-id-1>","<order-id-2>"]}'
+
+# Morning Briefing from Gemini (Manager) — returns friendly 503 if GOOGLE_API_KEY missing.
+curl -s -X POST http://localhost:5001/api/ai/insights/morning-briefing \
+  -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" -d '{"days":7}'
+```
+
+### Google Maps: customer ↔ driver live tracking
+
+The map only wakes up when an order is in **IN_TRANSIT** state. To see it end-to-end:
+
+1. Have an approved driver logged in on **`http://localhost:5174/delivery/orders`** (a browser window). Grant location permission when the browser asks.
+2. Have a customer with an active order logged in on **another window** at `http://localhost:5174/customer/orders`. Open the order details.
+3. The driver taps **Start Delivery** on the assigned order — the button toggles state to IN_TRANSIT and the driver's browser starts `navigator.geolocation.watchPosition` PATCHing coordinates to `/api/orders/:id/location`.
+4. The customer's order-detail map re-polls every ~10 s via TanStack Query; the **blue car icon** moves toward the **green destination pin** with the polyline recalculated each tick.
+5. Mark the order Delivered on the driver side. The customer's live map hides itself (backend clears the driver coordinates on any terminal transition).
+
+If the driver's coordinates don't reach the customer:
+- Backend log will show `PATCH /api/orders/:id/location -> 400` if the order isn't IN_TRANSIT (that guard is intentional).
+- Browser console on the customer side may show a Google Maps `ApiNotActivatedMapError` — enable the "Maps JavaScript API" for your key in the Google Cloud Console.
+- If both sides show 200s but nothing moves, refresh the customer window — service-worker cache from `vite-plugin-pwa` occasionally serves a stale bundle.
+
+### Full build check before opening a PR
+
+```bash
+cd smartpoultry-backend && npm run build   # if applicable
+cd ../smartpoultry-admin  && npm run build
+cd ../smartpoultry-pwa    && npm run build
+```
+
+All three should exit with `built in Ns` and no red output.
+
+---
+
 ## 4. Optional: Google Sign-In (Firebase)
 
 Skip this if you're happy with email + password locally. If you want the "Continue with Google" button working:

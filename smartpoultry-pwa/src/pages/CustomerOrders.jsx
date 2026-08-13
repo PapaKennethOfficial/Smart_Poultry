@@ -713,18 +713,33 @@ export default function CustomerOrders() {
                         />
                         {driverPoint && (
                           <>
-                            <Marker 
+                            {/* Driver marker rendered as a car so the customer
+                                immediately reads it as the delivery vehicle,
+                                not just a generic pin. SVG lives inline as a
+                                data URI — no extra HTTP request, no risk of a
+                                4xx from a missing asset. Anchor pins the
+                                bottom-centre of the car to the coordinate. */}
+                            <Marker
                               position={{ lat: driverPoint[0], lng: driverPoint[1] }}
                               icon={{
-                                path: window.google.maps.SymbolPath.CIRCLE,
-                                fillColor: '#3b82f6',
-                                fillOpacity: 1,
-                                strokeColor: '#fff',
-                                strokeWeight: 2,
-                                scale: 10
+                                url:
+                                  'data:image/svg+xml;utf8,' + encodeURIComponent(
+                                    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+                                      <g>
+                                        <circle cx="24" cy="24" r="22" fill="#fff" stroke="#3b82f6" stroke-width="2"/>
+                                        <path d="M14 27c0-.6.2-1 .6-1.4l1.4-4.3c.4-1 1.4-1.7 2.5-1.7h11c1.1 0 2.1.7 2.5 1.7l1.4 4.3c.4.4.6.8.6 1.4v5c0 .6-.4 1-1 1h-1c-.6 0-1-.4-1-1v-1H16v1c0 .6-.4 1-1 1h-1c-.6 0-1-.4-1-1v-5z" fill="#3b82f6"/>
+                                        <circle cx="17" cy="30" r="2" fill="#0d1f0e"/>
+                                        <circle cx="31" cy="30" r="2" fill="#0d1f0e"/>
+                                        <rect x="17" y="22" width="14" height="4" rx="1" fill="#fff" opacity="0.9"/>
+                                      </g>
+                                    </svg>`
+                                  ),
+                                scaledSize: new window.google.maps.Size(40, 40),
+                                anchor: new window.google.maps.Point(20, 20),
                               }}
+                              title="Driver is here"
                             />
-                            <Polyline 
+                            <Polyline
                               path={[{ lat: driverPoint[0], lng: driverPoint[1] }, { lat: destPoint[0], lng: destPoint[1] }]}
                               options={{ strokeColor: '#237227', strokeOpacity: 0.8, strokeWeight: 3 }}
                             />
