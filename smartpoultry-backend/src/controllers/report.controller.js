@@ -4,6 +4,8 @@ const { createObjectCsvWriter } = require("csv-writer");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const charts = require("../utils/pdfCharts");
+const { buildSections, AVG_EGG_MASS_KG, FCR_BENCHMARK } = require("../services/reportSections.service");
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -61,7 +63,7 @@ function makeFilename(type, ext) {
 
 // ─── PDF Generator ────────────────────────────────────────────────────────────
 
-function generatePDF(data, type, dateRange) {
+function generatePDF(data, type, dateRange, sections = []) {
   return new Promise((resolve, reject) => {
     const filename = makeFilename(type, "pdf");
     const filepath = path.join(REPORTS_DIR, filename);
@@ -104,18 +106,88 @@ function generatePDF(data, type, dateRange) {
     doc.text(`Total Feed Consumed: ${totalFeed.toFixed(1)} kg`);
     doc.text(`Total Water Consumed: ${totalWater.toFixed(1)} L`);
     doc.text(`Total Mortality: ${totalMortality}`);
-    if (totalEggs > 0) {
-      doc.text(`Feed Conversion Ratio: ${(totalFeed / totalEggs).toFixed(2)}`);
+    // FCR is kg feed per kg of EGGS, not per egg. Dividing feed mass by an egg
+    // count produced a meaningless ~0.10 that was then compared to the 2.3
+    // mass-ratio benchmark elsewhere in the app.
+    const eggMassKg = totalEggs * AVG_EGG_MASS_KG;
+    if (eggMassKg > 0) {
+      const fcr = totalFeed / eggMassKg;
+      doc.text(
+        `Feed Conversion Ratio: ${fcr.toFixed(2)} kg feed / kg eggs ` +
+        `(benchmark ${FCR_BENCHMARK}, lower is better)`
+      );
     }
     doc.moveDown(1);
 
-    // ── Data table
-    doc.fontSize(14).font("Helvetica-Bold").fillColor("#000000").text("Daily Log Details");
+    // ── Visual sections: chart, then plain-language explanation, then data
+    const CONTENT_X = 90;                     // leaves room for y-axis labels
+    const CONTENT_W = doc.page.width - CONTENT_X - 50;
+
+    for (const section of sections) {
+      // Start each section on a fresh page when the current one is nearly full.
+      if (doc.y > doc.page.height - 300) doc.addPage();
+
+      doc.fontSize(14).font("Helvetica-Bold").fillColor("#000000")
+        .text(section.title, 50, doc.y);
+      doc.moveDown(0.3);
+
+      if (section.summary) {
+        doc.fontSize(9).font("Helvetica").fillColor("#4b5563");
+        const line = Object.entries(section.summary)
+          .map(([k, v]) => `${k}: ${v}`).join("   |   ");
+        doc.text(line, 50, doc.y);
+        doc.moveDown(0.5);
+      }
+
+      const caption = section.narration || section.narrationError || null;
+      const chartTop = doc.y + 6;
+      let nextY;
+
+      if (section.chart.type === "line") {
+        nextY = charts.lineChart(doc, {
+          x: CONTENT_X, y: chartTop, width: CONTENT_W, height: 140,
+          data: section.chart.data, caption,
+        });
+      } else if (section.chart.type === "bar") {
+        nextY = charts.barChart(doc, {
+          x: CONTENT_X, y: chartTop, width: CONTENT_W, height: 140,
+          data: section.chart.data,
+          benchmark: section.chart.benchmark,
+          benchmarkLabel: section.chart.benchmarkLabel,
+          caption,
+        });
+      } else if (section.chart.type === "funnel") {
+        nextY = charts.funnelChart(doc, {
+          x: 50, y: chartTop, width: CONTENT_W + 40,
+          data: section.chart.data, caption,
+        });
+      } else {
+        nextY = chartTop;
+      }
+
+      doc.y = nextY;
+
+      if (section.table && section.table.rows.length) {
+        if (doc.y > doc.page.height - 160) doc.addPage();
+        doc.y = charts.table(doc, {
+          x: 50, y: doc.y,
+          columns: section.table.columns,
+          rows: section.table.rows,
+          maxRows: 20,
+        });
+      }
+
+      doc.moveDown(1);
+    }
+
+    // ── Raw log table
+    if (doc.y > doc.page.height - 200) doc.addPage();
+    doc.fontSize(14).font("Helvetica-Bold").fillColor("#000000").text("Daily Log Details", 50, doc.y);
     doc.moveDown(0.5);
 
     const headers = ["Date", "Batch", "Eggs", "Feed (kg)", "Water (L)", "Mortality", "Temp"];
     const colWidths = [75, 95, 55, 65, 65, 65, 55];
-    let tableY = doc.y;
+    let tableY = doc.y + 4;
     let x = 50;
 
     doc.fontSize(8).font("Helvetica-Bold").fillColor("#0a260d");
@@ -218,6 +290,10 @@ async function generateCSV(data, type) {
 const generateReportHandler = async (req, res, next) => {
   try {
     const { type, dateRange, format } = req.body;
+    // Visuals and narration are on by default; either can be turned off, which
+    // matters when the LLM is unavailable or its rate limit is tight.
+    const includeVisuals = req.body.includeVisuals !== false;
+    const includeNarration = req.body.includeNarration !== false;
 
     // Strict input validation to prevent invalid ranges, format errors, and path traversal
     const allowedTypes = ["production", "financial", "delivery", "analytics"];
@@ -243,13 +319,29 @@ const generateReportHandler = async (req, res, next) => {
     const { start, end } = getDateRange(dateRange);
     const data = await queryReportData(type, start, end);
 
+    const windowDays =
+      dateRange === "quarter" ? 90 : dateRange === "month" ? 30 : 7;
+
     // Generate file
     let result;
     if (format === "csv") {
       result = await generateCSV(data, type);
     } else {
-      // Default to PDF for both "pdf" and "excel" (excel not yet supported)
-      result = await generatePDF(data, type, dateRange);
+      // Build the visual sections first. Narration is sequential and rate
+      // limited, so this is the slow part of a report — typically a few
+      // seconds per section. Failures degrade to chart-plus-table.
+      let sections = [];
+      if (includeVisuals) {
+        try {
+          sections = await buildSections(start, end, {
+            narrate: includeNarration,
+            windowDays,
+          });
+        } catch (err) {
+          console.error("[report] section build failed:", err.message);
+        }
+      }
+      result = await generatePDF(data, type, dateRange, sections);
     }
 
     const fileUrl = `/uploads/reports/${result.filename}`;
@@ -264,7 +356,10 @@ const generateReportHandler = async (req, res, next) => {
           userId: req.user.id,
           type: "CUSTOM",
           title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report — ${dateRange}`,
-          content: { dateRange, format, entriesCount: data.length },
+          content: {
+            dateRange, format, entriesCount: data.length,
+            includeVisuals, includeNarration,
+          },
           fileUrl,
           format: format.toUpperCase(),
           startDate: start,

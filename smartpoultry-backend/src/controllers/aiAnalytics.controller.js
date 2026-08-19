@@ -11,6 +11,23 @@ const aiClient = require("../config/aiClient")
 
 // ─── Shared helper — translate axios failures into HTTP responses ──────────
 function forwardAiError(err, res, fallbackMessage) {
+  // Always log the upstream failure. Without this the only trace of a bad
+  // Groq model name or a Prophet crash was a status code on the client.
+  if (err.response) {
+    console.error(
+      `[ai-gateway] ${err.config?.method?.toUpperCase() || "?"} ${err.config?.url || "?"} ` +
+      `-> ${err.response.status}`,
+      typeof err.response.data === "object"
+        ? JSON.stringify(err.response.data).slice(0, 600)
+        : String(err.response.data).slice(0, 600)
+    )
+  } else {
+    console.error(
+      `[ai-gateway] ${err.config?.url || "?"} failed with no response:`,
+      err.code || err.message
+    )
+  }
+
   if (err.response) {
     // AI service returned a structured error — forward its status and body.
     return res.status(err.response.status).json({
@@ -38,11 +55,41 @@ const getDemandForecast = async (req, res, next) => {
   }
 }
 
+// ─── GET /api/ai/forecast/eggs?days=14 ────────────────────────────────────
+// Prophet forecast of EGG PRODUCTION (from LogEntry), as opposed to /demand
+// which forecasts customer orders. Putting the two on one chart is what shows
+// whether the farm is over- or under-producing against what customers want.
+const getEggForecast = async (req, res, next) => {
+  try {
+    const params = {}
+    if (req.query.days) params.days = req.query.days
+    const { data } = await aiClient.get("/api/v1/forecast/eggs", { params })
+    res.status(200).json(data)
+  } catch (err) {
+    return forwardAiError(err, res, "Failed to fetch egg production forecast")
+  }
+}
+
+// ─── GET /api/ai/forecast/series ──────────────────────────────────────────
+// Which series the AI service can model. Lets the UI build its selector
+// without hardcoding names.
+const getForecastSeries = async (req, res, next) => {
+  try {
+    const { data } = await aiClient.get("/api/v1/forecast/series")
+    res.status(200).json(data)
+  } catch (err) {
+    return forwardAiError(err, res, "Failed to list forecast series")
+  }
+}
+
 // ─── POST /api/ai/forecast/retrain ────────────────────────────────────────
 // MANAGER/ADMIN only — used by a UI button or a nightly cron.
 const retrainForecast = async (req, res, next) => {
   try {
-    const { data } = await aiClient.post("/api/v1/forecast/retrain")
+    // No `series` param retrains every registered series.
+    const params = {}
+    if (req.query.series) params.series = req.query.series
+    const { data } = await aiClient.post("/api/v1/forecast/retrain", {}, { params })
     res.status(200).json(data)
   } catch (err) {
     return forwardAiError(err, res, "Failed to retrain forecast model")
@@ -118,7 +165,9 @@ const optimizeRoutes = async (req, res, next) => {
 // LLM-generated executive summary of the trailing week. No body required.
 const getMorningBriefing = async (req, res, next) => {
   try {
-    const { data } = await aiClient.post("/api/v1/insights/morning-briefing")
+    const params = {}
+    if (req.query.days) params.days = req.query.days
+    const { data } = await aiClient.post("/api/v1/insights/morning-briefing", {}, { params })
     res.status(200).json(data)
   } catch (err) {
     return forwardAiError(err, res, "Failed to generate morning briefing")
@@ -133,15 +182,67 @@ const askInsight = async (req, res, next) => {
     if (!question || typeof question !== "string") {
       return res.status(400).json({ message: "`question` is required" })
     }
-    const { data } = await aiClient.post("/api/v1/insights/ask", { question })
+    // `days` lets the manager widen the window past the default 7.
+    const days = Number(req.body?.days)
+    const payload = { question }
+    if (Number.isFinite(days) && days >= 1 && days <= 365) payload.days = Math.round(days)
+    const { data } = await aiClient.post("/api/v1/insights/ask", payload)
     res.status(200).json(data)
   } catch (err) {
     return forwardAiError(err, res, "Failed to answer question")
   }
 }
 
+// ─── POST /api/ai/insights/explain-chart ──────────────────────────────────
+// Body: { chartId, window? }. Explains ONE chart using that chart's actual
+// current data, recomputed server-side.
+const explainChart = async (req, res, next) => {
+  try {
+    const chartId = req.body?.chartId || req.body?.chart_id
+    if (!chartId || typeof chartId !== "string") {
+      return res.status(400).json({ message: "`chartId` is required" })
+    }
+    const payload = { chart_id: chartId }
+    const w = Number(req.body?.window)
+    if (Number.isFinite(w) && w >= 1 && w <= 365) payload.window = Math.round(w)
+    // "Regenerate" bypasses the AI service's explanation cache.
+    if (req.body?.refresh === true) payload.refresh = true
+
+    const { data } = await aiClient.post("/api/v1/insights/explain-chart", payload)
+    res.status(200).json(data)
+  } catch (err) {
+    return forwardAiError(err, res, "Failed to explain chart")
+  }
+}
+
+// ─── GET /api/ai/insights/charts ──────────────────────────────────────────
+const listExplainableCharts = async (req, res, next) => {
+  try {
+    const { data } = await aiClient.get("/api/v1/insights/charts")
+    res.status(200).json(data)
+  } catch (err) {
+    return forwardAiError(err, res, "Failed to list explainable charts")
+  }
+}
+
+// ─── GET /api/ai/forecast/diagnostics ─────────────────────────────────────
+// Why is the forecast degraded? Returns the real Prophet/cmdstan error.
+const getForecastDiagnostics = async (req, res, next) => {
+  try {
+    const { data } = await aiClient.get("/api/v1/forecast/diagnostics")
+    res.status(200).json(data)
+  } catch (err) {
+    return forwardAiError(err, res, "Failed to run forecast diagnostics")
+  }
+}
+
 module.exports = {
+  getForecastDiagnostics,
+  explainChart,
+  listExplainableCharts,
   getDemandForecast,
+  getEggForecast,
+  getForecastSeries,
   retrainForecast,
   optimizeRoutes,
   getMorningBriefing,

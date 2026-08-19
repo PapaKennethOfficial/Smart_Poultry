@@ -27,7 +27,11 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
       ? (err.message || "An error occurred")
       : "Internal server error";
 
-  res.status(status).json({ error: message });
+  // Emit BOTH keys. The rest of the API answers with `message`, this handler
+  // historically answered with `error`, and clients that only read one saw an
+  // empty body and fell back to a generic axios string — which is how a real
+  // 400 showed up on screen as "Request failed with status code 400".
+  res.status(status).json({ error: message, message });
 }
 
 module.exports = errorHandler;
