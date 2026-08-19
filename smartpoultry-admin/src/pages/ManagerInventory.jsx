@@ -311,7 +311,10 @@ export default function ManagerInventory() {
             </table>
           )}
         </div>
-        {!loading && filteredProducts.length > itemsPerPage && (
+        {/* Render whenever there is anything to count. Pagination itself hides
+            the page buttons on a single page but keeps the "showing X of Y"
+            line, so a short catalogue no longer looks unpaginated. */}
+        {!loading && filteredProducts.length > 0 && (
           <div style={{ padding: '0 16px' }}>
             <Pagination 
               currentPage={currentPage}

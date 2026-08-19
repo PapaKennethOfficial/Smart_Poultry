@@ -8,8 +8,8 @@ function StatCard({ label, value, hint, icon: Icon, iconColor, accent }) {
   return (
     <div className="stat-card">
       <div className="card-accent" style={{ background: accent }} />
-      <div className="card-icon" style={{ background: `${iconColor}22`, width: 46, height: 46, borderRadius: 12 }}>
-        <Icon size={22} color={iconColor} strokeWidth={1.75} />
+      <div className="card-icon" style={{ background: `${iconColor}22` }}>
+        <Icon size={15} color={iconColor} strokeWidth={2} />
       </div>
       <div className="card-label">{label}</div>
       <div className="card-value">{value}</div>
@@ -456,7 +456,7 @@ export default function VehicleVerification() {
                   <div className="form-group">
                     <label className="form-label">Vehicle Type</label>
                     <select className="form-select" name="vehicle_type" value={editForm.vehicle_type} onChange={handleEditChange}>
-                      {['Truck', 'Van', 'Motorcycle', 'Bicycle'].map(type => <option key={type} value={type}>{type}</option>)}
+                      {['Truck', 'Van', 'Motorcycle'].map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
                   {[

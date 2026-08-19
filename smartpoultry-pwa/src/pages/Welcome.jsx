@@ -1,246 +1,124 @@
 import { Link } from 'react-router-dom';
-import { Leaf, Truck, ShoppingBag, ArrowRight, BarChart, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Leaf, Truck, ShoppingBag, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+
+/*
+ * Welcome — the public landing page for the customer/driver PWA.
+ *
+ * Two things this page used to get wrong:
+ *
+ *  1. It advertised a "For Managers" command centre. Nobody arriving at this
+ *     app can reach that — it lives in the separate admin console — so the
+ *     card was a promise the page could not keep. It is gone.
+ *
+ *  2. Nothing on it led to sign-up. Both the nav and the hero pointed at
+ *     /login, so a brand-new visitor had to land on the sign-in card and hunt
+ *     for the small "Sign Up" link underneath it. The audience cards are now
+ *     links that land on /register with the right role already selected.
+ *
+ * Each action appears once: sign-in in the nav, sign-up through the hero call
+ * to action and the two audience cards. Repeating either one gave the page
+ * competing calls to action where it needs a single obvious next step.
+ *
+ * Styling moved to the .welcome-* classes in index.css. Inline style objects
+ * cannot express :hover or :focus-visible, so the `transition` properties this
+ * file used to declare could never fire.
+ */
+
+const AUDIENCES = [
+  {
+    key: 'customer',
+    icon: ShoppingBag,
+    accent: 'var(--sage)',
+    title: 'For Customers',
+    blurb:
+      'Access our live marketplace. Browse fresh farm produce, place secure orders, and track your deliveries in real-time.',
+    points: ['Live inventory sync', 'Secure checkout process', 'Real-time GPS tracking'],
+    action: 'Create a customer account',
+    to: '/register?role=customer',
+  },
+  {
+    key: 'delivery',
+    icon: Truck,
+    accent: 'var(--accent)',
+    title: 'For Logistics',
+    blurb:
+      'Streamline your delivery routes. Manage assigned orders, log vehicle status, and update customers on the go.',
+    points: ['Optimized routing', 'Digital vehicle logbooks', 'One-tap status updates'],
+    action: 'Register as a driver',
+    to: '/register?role=delivery',
+  },
+];
 
 export default function Welcome() {
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#071508',
-      color: '#ffffff',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Inter, sans-serif',
-      position: 'relative',
-      overflowX: 'hidden'
-    }}>
-      {/* Background glowing orbs for glassmorphism effect - Reduced blur for performance */}
-      <div style={{
-        position: 'absolute', top: '-10%', left: '-10%', width: '40vw', height: '40vw', minWidth: '300px', minHeight: '300px',
-        background: 'radial-gradient(circle, rgba(132, 190, 136, 0.15) 0%, rgba(0,0,0,0) 70%)',
-        filter: 'blur(40px)', zIndex: 0
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '-10%', right: '-10%', width: '50vw', height: '50vw', minWidth: '350px', minHeight: '350px',
-        background: 'radial-gradient(circle, rgba(255, 170, 0, 0.1) 0%, rgba(0,0,0,0) 70%)',
-        filter: 'blur(50px)', zIndex: 0
-      }} />
+    <div className="welcome-page">
+      <div className="welcome-orb welcome-orb--sage" aria-hidden="true" />
+      <div className="welcome-orb welcome-orb--accent" aria-hidden="true" />
 
-      {/* Navigation Bar */}
-      <nav style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '24px 5%',
-        borderBottom: '1px solid rgba(255,255,255,0.05)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(35, 114, 39, 0.8), rgba(132, 190, 136, 0.8))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 16px rgba(35, 114, 39, 0.2)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
+      <nav className="welcome-nav">
+        <Link to="/" className="welcome-brand">
+          <span className="welcome-mark">
             <Leaf color="#fff" size={20} strokeWidth={2.5} />
-          </div>
-          <span style={{
-            fontFamily: 'Space Grotesk, sans-serif',
-            fontWeight: 700, fontSize: '1.25rem',
-            letterSpacing: '-0.02em',
-            color: 'rgba(255,255,255,0.95)'
-          }}>
-            SmartPoultry
           </span>
-        </div>
-        
-        <Link to="/login" style={{ textDecoration: 'none' }}>
-          <button style={{
-            backgroundColor: 'rgba(255,255,255,0.1)',
-            color: '#fff', border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: '20px', padding: '8px 20px', fontSize: '0.9rem',
-            fontWeight: 500, cursor: 'pointer', backdropFilter: 'blur(10px)',
-            transition: 'background 0.2s'
-          }}>
-            Sign In
-          </button>
+          <span className="welcome-wordmark">SmartPoultry</span>
         </Link>
+
+        <div className="welcome-nav-actions">
+          <Link to="/login" className="welcome-btn welcome-btn--ghost">Sign In</Link>
+        </div>
       </nav>
 
-      {/* Hero Section */}
-      <header style={{
-        position: 'relative', zIndex: 1,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
-        padding: 'clamp(30px, 8vw, 50px) 5% clamp(20px, 6vw, 40px)',
-        maxWidth: '800px', margin: '0 auto'
-      }}>
-        <div style={{
-          display: 'inline-block',
-          padding: '6px 14px', borderRadius: '20px',
-          background: 'rgba(132, 190, 136, 0.1)',
-          border: '1px solid rgba(132, 190, 136, 0.2)',
-          color: '#84be88', fontSize: '0.75rem', fontWeight: 600,
-          letterSpacing: '0.05em', marginBottom: '20px'
-        }}>
-          THE FUTURE OF AGRI-LOGISTICS
-        </div>
-        
-        <h1 style={{
-          fontFamily: 'Space Grotesk, sans-serif',
-          fontWeight: 600, fontSize: 'clamp(1.75rem, 5vw, 2.8rem)',
-          lineHeight: 1.1, letterSpacing: '-0.03em',
-          marginBottom: '16px'
-        }}>
+      <header className="welcome-hero">
+        <span className="welcome-eyebrow">The future of agri-logistics</span>
+
+        <h1 className="welcome-title">
           Fresh poultry,<br />
-          <span style={{ color: '#84be88', fontStyle: 'italic' }}>delivered smart.</span>
+          <em>delivered smart.</em>
         </h1>
-        
-        <p style={{
-          fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)', color: 'rgba(255,255,255,0.7)',
-          lineHeight: 1.6, maxWidth: '600px', fontWeight: 300,
-          marginBottom: '24px'
-        }}>
-          Experience the premier AI-driven ecosystem bridging the gap between local farms and your doorstep. Secure, transparent, and built for scale.
+
+        <p className="welcome-lede">
+          Experience the premier AI-driven ecosystem bridging the gap between local farms
+          and your doorstep. Secure, transparent, and built for scale.
         </p>
 
-        <Link to="/login" style={{ textDecoration: 'none' }}>
-          <button style={{
-            backgroundColor: '#fff', color: '#071508',
-            border: 'none', borderRadius: '16px', padding: '16px 32px',
-            fontSize: '1.05rem', fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: '10px',
-            cursor: 'pointer', fontFamily: 'Space Grotesk, sans-serif',
-            boxShadow: '0 8px 24px rgba(255,255,255,0.15)',
-            transition: 'transform 0.2s'
-          }}>
-            Get Started <ArrowRight size={18} strokeWidth={2.5} />
-          </button>
-        </Link>
+        <div className="welcome-cta-row">
+          <Link to="/register" className="welcome-btn welcome-btn--hero">
+            Get Started
+            <ArrowRight className="welcome-btn-arrow" size={18} strokeWidth={2.5} />
+          </Link>
+        </div>
       </header>
 
-      {/* Features Grid */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        padding: '20px 5% 40px',
-        maxWidth: '1200px', margin: '0 auto', width: '100%'
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px'
-        }}>
-          {/* Customer Card */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px', padding: '24px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '12px',
-              background: 'rgba(132, 190, 136, 0.15)',
-              border: '1px solid rgba(132, 190, 136, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <ShoppingBag color="#84be88" size={22} strokeWidth={1.5} />
-            </div>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, fontSize: '1.4rem', marginBottom: '12px', color: '#fff'
-            }}>For Customers</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontWeight: 300, marginBottom: '24px' }}>
-              Access our live marketplace. Browse fresh farm produce, place secure orders, and track your deliveries in real-time.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Live inventory sync', 'Secure checkout process', 'Real-time GPS tracking'].map((item, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                  <CheckCircle2 size={16} color="#84be88" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
+      <section className="welcome-section">
+        <h2 className="u-visually-hidden">Choose how you want to join</h2>
 
-          {/* Delivery Card */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px', padding: '24px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '12px',
-              background: 'rgba(255, 170, 0, 0.15)',
-              border: '1px solid rgba(255, 170, 0, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <Truck color="#FFAA00" size={22} strokeWidth={1.5} />
-            </div>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, fontSize: '1.4rem', marginBottom: '12px', color: '#fff'
-            }}>For Logistics</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontWeight: 300, marginBottom: '24px' }}>
-              Streamline your delivery routes. Manage assigned orders, log vehicle status, and update customers on the go.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Optimized routing', 'Digital vehicle logbooks', 'One-tap status updates'].map((item, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                  <CheckCircle2 size={16} color="#FFAA00" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Admin Card */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px', padding: '24px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '12px',
-              background: 'rgba(139, 92, 246, 0.15)',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <BarChart color="#8b5cf6" size={22} strokeWidth={1.5} />
-            </div>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, fontSize: '1.4rem', marginBottom: '12px', color: '#fff'
-            }}>For Managers</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontWeight: 300, marginBottom: '24px' }}>
-              Command center for operations. Monitor farm inventory, oversee all active dispatch units, and analyze fleet performance.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Advanced analytics dashboard', 'Centralized inventory control', 'Fleet compliance & verification'].map((item, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                  <CheckCircle2 size={16} color="#8b5cf6" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="welcome-grid welcome-grid--pair">
+          {AUDIENCES.map(({ key, icon: Icon, accent, title, blurb, points, action, to }) => (
+            <Link key={key} to={to} className="welcome-card" style={{ '--card-accent': accent }}>
+              <span className="welcome-card-icon">
+                <Icon size={22} strokeWidth={1.5} />
+              </span>
+              <h3>{title}</h3>
+              <p>{blurb}</p>
+              <ul className="welcome-card-list">
+                {points.map((point) => (
+                  <li key={point}>
+                    <CheckCircle2 size={16} /> {point}
+                  </li>
+                ))}
+              </ul>
+              <span className="welcome-card-action">
+                {action} <ArrowRight size={15} strokeWidth={2.5} />
+              </span>
+            </Link>
+          ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        marginTop: 'auto',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        padding: '20px 5% 8px',
-        display: 'flex', justifyContent: 'center', alignItems: 'center',
-        position: 'relative', zIndex: 1
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
-          <ShieldCheck size={16} /> Secure Platform © {new Date().getFullYear()} SmartPoultry AI
-        </div>
+      <footer className="welcome-footer">
+        <ShieldCheck size={16} aria-hidden="true" />
+        <span>Secure Platform © {new Date().getFullYear()} SmartPoultry AI</span>
       </footer>
     </div>
-  )
+  );
 }

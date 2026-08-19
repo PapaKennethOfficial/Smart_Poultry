@@ -9,6 +9,27 @@
    ============================================================ */
 
 :root {
+
+  /* ── Geometry / elevation / motion ───────────────────────────────────────
+     Mirrors smartpoultry-admin so the customer app, the driver app and the
+     manager dashboard share one physical language. Colours are unchanged:
+     shadows are tinted with the existing brand green, never a new hue. */
+  --r-xs: 4px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  --e-1: 0 1px 2px rgba(35, 114, 39, 0.05);
+  --e-2: 0 4px 16px rgba(35, 114, 39, 0.07);
+  --e-3: 0 10px 32px rgba(35, 114, 39, 0.11);
+  --e-4: 0 24px 64px rgba(0, 0, 0, 0.18);
+  --e-brand: 0 4px 14px rgba(35, 114, 39, 0.32);
+  --e-focus: 0 0 0 3px rgba(35, 114, 39, 0.10);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 150ms;
+  --dur-2: 240ms;
   --sidebar-width: 272px;
   --topbar-height: 64px;
 
@@ -162,7 +183,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 9px 10px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   color: rgba(255, 255, 255, 0.50);
   font-size: 0.9rem;
   font-weight: 400;
@@ -205,7 +226,7 @@ body {
 .user-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: linear-gradient(135deg, var(--primary), var(--sage));
   display: flex;
   align-items: center;
@@ -279,7 +300,7 @@ body {
 .topbar-btn {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   border: 1px solid var(--border);
   background: var(--bg-card);
   display: flex;
@@ -369,7 +390,7 @@ body {
 /* ── Stat Cards ──────────────────────────────────────────────── */
 .stat-card {
   background: var(--bg-card);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 16px;
   border: 1px solid var(--border-light);
   position: relative;
@@ -379,7 +400,7 @@ body {
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--e-2);
   border-color: var(--border);
 }
 
@@ -415,7 +436,7 @@ body {
 .stat-card .card-icon {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: transparent !important;
   border: 1px solid var(--border-light);
   display: flex;
@@ -432,9 +453,9 @@ body {
   background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: 14px;
+  border-radius: var(--r-md);
   border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--e-2);
   padding: 20px;
   width: 100%;
 }
@@ -538,7 +559,7 @@ body {
   width: 100%;
   padding: 8px 32px 8px 34px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font-size: 0.84rem;
   background: var(--bg);
   color: var(--text-body);
@@ -548,7 +569,7 @@ body {
 
 .table-filter-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(35, 114, 39, 0.10);
+  box-shadow: var(--e-focus);
 }
 
 .table-filter-input::placeholder {
@@ -565,7 +586,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   display: flex;
   align-items: center;
 }
@@ -584,7 +605,7 @@ body {
 .table-filter-select {
   padding: 8px 28px 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font-size: 0.84rem;
   background: var(--bg);
   color: var(--text-body);
@@ -600,7 +621,7 @@ body {
 
 .table-filter-select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(35, 114, 39, 0.10);
+  box-shadow: var(--e-focus);
 }
 
 .table-filter-count {
@@ -608,7 +629,7 @@ body {
   color: var(--text-muted);
   padding: 6px 12px;
   background: rgba(35, 114, 39, 0.06);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -619,7 +640,7 @@ body {
   gap: 4px;
   padding: 6px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   font-size: 0.78rem;
   background: var(--bg);
   color: var(--text-muted);
@@ -654,7 +675,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 3px 9px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   font-size: 0.70rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -701,21 +722,22 @@ body {
   color: #fff;
   border: none;
   padding: 9px 18px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-family: 'Inter', sans-serif;
   font-size: 0.845rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(35, 114, 39, 0.22);
+  box-shadow: var(--e-brand);
 }
 
 .btn-primary:hover {
   background: linear-gradient(135deg, var(--primary-hover), #174518);
-  box-shadow: 0 4px 14px rgba(35, 114, 39, 0.32);
+  box-shadow: var(--e-brand);
   transform: translateY(-1px);
 }
 
@@ -724,7 +746,7 @@ body {
   color: var(--primary);
   border: 1.5px solid var(--border);
   padding: 8px 16px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-family: 'Inter', sans-serif;
   font-size: 0.845rem;
   font-weight: 500;
@@ -747,13 +769,13 @@ body {
   gap: 4px;
   background: #edebd6;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   width: fit-content;
 }
 
 .filter-tab {
   padding: 5px 14px;
-  border-radius: 8px;
+  border-radius: var(--r-pill);
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
@@ -810,7 +832,7 @@ body {
   width: 100%;
   padding: 9px 13px;
   border: 1.5px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-family: 'Inter', sans-serif;
   font-size: 0.845rem;
   color: var(--text-heading);
@@ -821,14 +843,14 @@ body {
 
 .form-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(35, 114, 39, 0.10);
+  box-shadow: var(--e-focus);
 }
 
 .form-select {
   width: 100%;
   padding: 9px 36px 9px 13px;
   border: 1.5px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-family: 'Inter', sans-serif;
   font-size: 0.845rem;
   color: var(--text-heading);
@@ -868,13 +890,13 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   padding: 28px;
   width: 520px;
   max-width: 100%;
   margin: 40px auto;
   max-height: none;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--e-4);
   animation: slideUp 0.22s ease;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -976,11 +998,11 @@ body {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-radius: 20px;
+  border-radius: var(--r-lg);
   padding: 32px;
   width: 380px;
   max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(35, 114, 39, 0.09);
+  box-shadow: var(--e-3);
   border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
@@ -995,13 +1017,13 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: var(--r-xs);
 }
 
 /* ── Map placeholder ─────────────────────────────────────────── */
 .map-placeholder {
   background: linear-gradient(135deg, #f4f3e0, #eae9cc);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   border: 2px dashed var(--border);
   display: flex;
   flex-direction: column;
@@ -1021,7 +1043,7 @@ body {
 
 .forecast-bar-fill {
   width: 26px;
-  border-radius: 5px 5px 0 0;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
   background: linear-gradient(180deg, var(--sage), var(--primary));
   transition: height 0.5s ease;
 }
@@ -1036,7 +1058,7 @@ body {
 .toggle-track {
   width: 42px;
   height: 24px;
-  border-radius: 12px;
+  border-radius: var(--r-pill);
   cursor: pointer;
   position: relative;
   transition: background 0.2s;
@@ -1223,47 +1245,6 @@ body {
   }
 }
 
-/* ── Responsive Login (mobile-first) ──────────────────────────── */
-@media (max-width: 960px) {
-  .login-page {
-    flex-direction: column;
-    overflow-x: hidden;
-  }
-  .login-left {
-    width: 100%;
-    min-height: auto;
-    padding: 24px 20px 32px;
-    background: linear-gradient(160deg, var(--bg-sidebar) 0%, var(--bg-sidebar-mid) 100%);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-  .login-features,
-  .login-footer-text {
-    display: none !important;
-  }
-  .login-marketing {
-    display: block !important;
-    margin-bottom: 0 !important;
-    margin-top: 16px;
-  }
-  .login-marketing h1 {
-    font-size: 1.6rem !important;
-  }
-  .login-marketing p {
-    font-size: 0.8rem !important;
-  }
-  .login-right {
-    padding: 20px 16px 40px;
-    align-items: flex-start;
-  }
-  .login-card {
-    width: 100%;
-    max-width: 100%;
-    padding: 28px 20px;
-    box-shadow: none;
-    border: none;
-    background: transparent;
-  }
-}
 
 /* ── Client (mobile) layout ───────────────────────────────────── */
 .client-layout {
@@ -1297,7 +1278,7 @@ body {
 .client-header-logo {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: rgba(255, 170, 0, 0.18);
   border: 1px solid rgba(255, 170, 0, 0.3);
   display: flex;
@@ -1328,7 +1309,7 @@ body {
   gap: 6px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   padding: 6px 10px;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.85);
@@ -1364,7 +1345,7 @@ body {
   width: 220px;
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
   z-index: 99;
   overflow: hidden;
@@ -1469,31 +1450,40 @@ body {
 }
 
 
+/* ── Responsive Login (mobile) ─────────────────────────────────
+   Single source of truth for this breakpoint. There used to be a
+   second @media (max-width: 960px) block above with contradictory
+   rules -- it forced .login-marketing to display:block !important
+   while this one hid it -- and because this block was the more
+   specific of the two it always won, leaving the other as dead code
+   nobody could reason about. `.desktop-only` was never applied to
+   any element, so `:not(.desktop-only)` only ever existed to win
+   that specificity race; with the duplicate gone it is noise. ── */
 @media (max-width: 960px) {
-  .login-page:not(.desktop-only) {
+  .login-page {
     flex-direction: column;
     overflow-x: hidden;
   }
   .login-logo-container {
     margin-bottom: 12px;
   }
-  .login-page:not(.desktop-only) .login-left {
+  .login-page .login-left {
     width: 100%;
     min-height: auto;
     padding: 24px 20px 32px;
     background: linear-gradient(160deg, var(--bg-sidebar) 0%, var(--bg-sidebar-mid) 100%);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--e-3);
   }
-  .login-page:not(.desktop-only) .login-marketing,
-  .login-page:not(.desktop-only) .login-features,
-  .login-page:not(.desktop-only) .login-footer-text {
+  .login-page .login-marketing,
+  .login-page .login-features,
+  .login-page .login-footer-text {
     display: none !important;
   }
-  .login-page:not(.desktop-only) .login-right {
+  .login-page .login-right {
     padding: 20px 16px 40px;
     align-items: flex-start;
   }
-  .login-page:not(.desktop-only) .login-card {
+  .login-page .login-card {
     width: 100%;
     max-width: 100%;
     padding: 28px 20px;
@@ -1535,7 +1525,7 @@ body {
 .client-header-logo {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: rgba(255, 170, 0, 0.18);
   border: 1px solid rgba(255, 170, 0, 0.3);
   display: flex;
@@ -1566,7 +1556,7 @@ body {
   gap: 6px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   padding: 6px 10px;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.85);
@@ -1662,7 +1652,7 @@ body {
   font-size: 0.65rem;
   font-weight: 700;
   padding: 2px 5px;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   border: 2px solid var(--bg-sidebar-mid);
 }
 
@@ -1693,4 +1683,682 @@ body {
   .client-header {
     display: none;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM PASS — customer + driver app.
+   Same geometry, elevation and motion language as the admin dashboard.
+   No new hue: every value reuses the existing palette.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Prices, quantities, earnings and order numbers get compared at a glance.
+   Tabular figures stop the digits jittering between rows. */
+.data-table td, .data-table th,
+.stat-card .card-value,
+.card-change, .table-filter-count {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Large display text needs negative tracking; body text does not. */
+.page-title { letter-spacing: -0.025em; }
+.section-title, .chart-card .chart-title, .modal-title { letter-spacing: -0.012em; }
+.stat-card .card-value { letter-spacing: -0.028em; }
+
+/* Touch targets. The driver app is used one-handed, often in a vehicle and in
+   sunlight; 44px is the accepted minimum for a reliable tap. */
+@media (pointer: coarse) {
+  .btn-primary, .btn-outline,
+  .filter-tab, .topbar-btn, .nav-item { min-height: 44px; }
+  /* 16px specifically: iOS Safari zooms the viewport on focus for anything
+     smaller, which yanks the layout sideways mid-form. */
+  .form-input, .form-select { min-height: 46px; font-size: 16px; }
+}
+
+.btn-primary, .btn-outline, .filter-tab, .nav-item, .topbar-btn {
+  transition: background var(--dur-1) var(--ease),
+              border-color var(--dur-1) var(--ease),
+              color var(--dur-1) var(--ease),
+              transform var(--dur-1) var(--ease),
+              box-shadow var(--dur-1) var(--ease);
+}
+.btn-primary:active, .btn-outline:active { transform: scale(0.97); }
+
+.form-input, .form-select {
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+/* Cards respond to press, not hover — there is no hover on a phone. */
+.stat-card, .chart-card {
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.stat-card:active { transform: scale(0.99); }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.stat-card, .chart-card { animation: rise-in var(--dur-2) var(--ease) both; }
+.stat-card:nth-child(1) { animation-delay: 0ms; }
+.stat-card:nth-child(2) { animation-delay: 40ms; }
+.stat-card:nth-child(3) { animation-delay: 80ms; }
+.stat-card:nth-child(n+4) { animation-delay: 120ms; }
+
+/* Bottom sheets rise from the edge they belong to. A centred dialog is a
+   desktop idiom and always reads as ported on a phone. */
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: none; }
+}
+@media (max-width: 640px) {
+  .modal-box {
+    animation: sheet-up var(--dur-2) var(--ease) both;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    margin-top: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.btn-primary:focus-visible, .btn-outline:focus-visible,
+.filter-tab:focus-visible, .nav-item:focus-visible, .topbar-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Installed as a PWA on a notched phone, a fixed bottom bar lands under the
+   home indicator without this. */
+.bottom-nav, .client-bottom-nav {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DENSITY PASS — stat cards were taller than their content justified.
+   The icon sat ABOVE the label with a 12px gap, so a 36px icon cost ~48px of
+   pure height on every card. Moving it to the top-right corner takes it out
+   of the flow entirely: same information, roughly a third less card.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.stat-card {
+  padding: 13px 15px;
+}
+
+.stat-card .card-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0;          /* was 12px, and it was pushing the whole card down */
+  flex: none;
+}
+
+/* Lucide renders its own width/height attributes; CSS overrides them, so the
+   glyph can be resized without touching every call site. */
+.stat-card .card-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Keep the label clear of the corner icon. */
+.stat-card .card-label {
+  padding-right: 32px;
+  font-size: 0.7rem;
+  margin-bottom: 2px;
+}
+
+.stat-card .card-value {
+  font-size: 1.35rem;
+  margin-bottom: 2px;
+}
+
+.stat-card .card-change {
+  font-size: 0.72rem;
+}
+
+/* Tighter grid to match the shorter cards. */
+.u-grid-stats {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOMER SHOP — product grid.
+   Palette unchanged; this is geometry, motion and image handling only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.product-card {
+  transition: transform var(--dur-2) var(--ease),
+              box-shadow var(--dur-2) var(--ease),
+              border-color var(--dur-2) var(--ease);
+}
+
+/* Hover exists on desktop; press is the phone equivalent. Both supported. */
+@media (hover: hover) {
+  .product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--e-3);
+    border-color: var(--border);
+  }
+  /* A slow zoom inside a fixed frame — the image moves, the card does not,
+     which is what stops a grid from feeling jumpy. */
+  .product-card:hover img { transform: scale(1.04); }
+}
+.product-card:active { transform: scale(0.995); }
+
+/* Denser columns to match the compact card. Two per row on a phone, more as
+   the viewport allows. Smaller tiles mean more of the catalogue is visible
+   without scrolling, which is what a shop grid is for. */
+.marketplace-products-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+@media (min-width: 600px) {
+  .marketplace-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 12px;
+  }
+}
+@media (min-width: 1100px) {
+  .marketplace-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Prices are compared down a column — tabular figures keep them aligned. */
+.product-card .price,
+.marketplace-products-grid [data-price] {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card,
+  .product-card img { transition: none; }
+  .product-card:hover { transform: none; }
+  .product-card:hover img { transform: none; }
+}
+
+/* ── Add-to-cart button on a product tile ──────────────────────────────────
+   The shared .btn-primary carries a green glow (--e-brand). That reads well on
+   a single prominent action, but a grid renders a dozen of them at once and the
+   page turns into rows of glowing bars. Scoped down here rather than weakened
+   globally, so the primary action elsewhere keeps its emphasis. */
+.product-card .btn-primary {
+  /* Same 135deg direction and same green family as the client header, but
+     started at the brand green so the tile button stays legible against the
+     white card instead of reading as a near-black block. The tail lands on
+     the header's lightest sidebar stop, which is what ties the two together. */
+  background: linear-gradient(135deg, var(--primary) 0%, var(--bg-sidebar-end) 100%);
+  color: #fff;
+  box-shadow: none;
+  /* The coarse-pointer rule sets a 44px floor for touch. On a compact tile that
+     is taller than the price and stock lines combined, so this tile takes 38px
+     — still an easy target, and the whole card is tappable besides. */
+  min-height: 38px;
+  padding: 6px 10px;
+  letter-spacing: 0.01em;
+}
+.product-card .btn-primary:hover:not(:disabled) {
+  /* Lift: keep the head, pull the tail up to the brand hover green. */
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  box-shadow: var(--e-2);
+}
+.product-card .btn-primary:disabled {
+  background: var(--border-light);
+  color: var(--text-subtle);
+  cursor: not-allowed;
+}
+
+/* ══ Welcome / landing ═══════════════════════════════════════════════════
+   The landing page used to be styled entirely with inline objects, which
+   cannot express :hover or :focus-visible — so every `transition` it
+   declared was decorative and nothing ever moved. These classes give the
+   page real states, and pull the colours from the design tokens instead of
+   the hardcoded hexes that were repeated down the file.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.welcome-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sidebar);
+  color: #fff;
+  font-family: Inter, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Two soft colour washes behind the content. Sized in vw so they scale with
+   the viewport, capped so they do not swallow small screens. */
+.welcome-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.welcome-orb--sage {
+  top: -10%;
+  left: -10%;
+  width: clamp(300px, 40vw, 620px);
+  height: clamp(300px, 40vw, 620px);
+  background: radial-gradient(circle, rgba(132, 190, 136, 0.16) 0%, transparent 70%);
+  filter: blur(40px);
+}
+.welcome-orb--accent {
+  bottom: -10%;
+  right: -10%;
+  width: clamp(350px, 50vw, 760px);
+  height: clamp(350px, 50vw, 760px);
+  background: radial-gradient(circle, rgba(255, 170, 0, 0.11) 0%, transparent 70%);
+  filter: blur(50px);
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────── */
+.welcome-nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.welcome-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--primary), var(--sage));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgba(35, 114, 39, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.welcome-wordmark {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
+}
+.welcome-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.welcome-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s ease, border-color 0.18s ease,
+              transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+.welcome-btn:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+
+.welcome-btn--ghost {
+  padding: 9px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.welcome-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+/* Primary hero call to action. */
+.welcome-btn--hero {
+  padding: 15px 30px;
+  font-size: 1.02rem;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--bg-sidebar);
+  background: #fff;
+  border: 1px solid #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+.welcome-btn--hero:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
+}
+.welcome-btn--hero:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+/* The arrow leans forward as the button is approached. */
+.welcome-btn--hero .welcome-btn-arrow {
+  transition: transform 0.18s ease;
+}
+.welcome-btn--hero:hover .welcome-btn-arrow {
+  transform: translateX(3px);
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────── */
+.welcome-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: clamp(40px, 8vw, 76px) clamp(20px, 5vw, 64px) clamp(28px, 5vw, 48px);
+  max-width: 820px;
+  margin: 0 auto;
+}
+.welcome-eyebrow {
+  display: inline-block;
+  padding: 6px 15px;
+  border-radius: 999px;
+  background: var(--sage-muted);
+  border: 1px solid rgba(132, 190, 136, 0.22);
+  color: var(--sage);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+.welcome-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin: 0 0 18px;
+  text-wrap: balance;
+}
+.welcome-title em {
+  color: var(--sage);
+  font-style: italic;
+}
+.welcome-lede {
+  font-size: clamp(0.92rem, 2.4vw, 1.03rem);
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.65;
+  max-width: 580px;
+  font-weight: 300;
+  margin: 0 0 30px;
+  text-wrap: pretty;
+}
+.welcome-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+.welcome-section {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 8px clamp(20px, 5vw, 64px) clamp(32px, 5vw, 56px);
+}
+.welcome-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 18px;
+}
+
+/* Two cards stretched across the full 1120px container read as banners
+   rather than cards. Narrow the track when the grid holds a pair. */
+.welcome-grid--pair {
+  max-width: 600px;
+  margin: 0 auto;
+  gap: 14px;
+}
+
+/* ── Compact pair cards ──────────────────────────────────────────────────
+   Second pass. The first only shrank type and padding; the height was still
+   dominated by the stacked icon block, so the icon now sits on the same row
+   as the heading. That removes roughly 46px per card on its own.
+
+   `order` plus flex-wrap do the rearranging, so the JSX stays identical
+   between the PWA and the admin console - no markup change needed. Scoped to
+   --pair so the admin's three cards are untouched.
+   ─────────────────────────────────────────────────────────────────────── */
+.welcome-grid--pair .welcome-card {
+  padding: 15px 16px;
+  border-radius: var(--r-md);
+  /* Overrides the base rule's flex-direction: column. */
+  flex-flow: row wrap;
+  align-items: center;
+}
+
+/* Row one: icon beside the heading rather than stacked above it. */
+.welcome-grid--pair .welcome-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  margin: 0 9px 0 0;
+  order: 1;
+  flex: 0 0 auto;
+}
+.welcome-grid--pair .welcome-card-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.welcome-grid--pair .welcome-card h3 {
+  font-size: 0.95rem;
+  margin: 0;
+  order: 2;
+  flex: 1 1 auto;
+}
+
+/* Everything else takes a full row beneath. */
+.welcome-grid--pair .welcome-card p,
+.welcome-grid--pair .welcome-card-list,
+.welcome-grid--pair .welcome-card-action {
+  order: 3;
+  flex: 1 1 100%;
+}
+
+.welcome-grid--pair .welcome-card p {
+  font-size: 0.775rem;
+  line-height: 1.45;
+  margin: 10px 0 11px;
+}
+.welcome-grid--pair .welcome-card-list {
+  gap: 5px;
+  margin-bottom: 11px;
+}
+.welcome-grid--pair .welcome-card-list li {
+  font-size: 0.745rem;
+  gap: 7px;
+}
+.welcome-grid--pair .welcome-card-list svg {
+  width: 12px;
+  height: 12px;
+}
+.welcome-grid--pair .welcome-card-action {
+  font-size: 0.745rem;
+}
+.welcome-grid--pair .welcome-card-action svg {
+  width: 12px;
+  height: 12px;
+}
+
+.welcome-card {
+  /* --card-accent is set per card so hover, icon and bullets all share one
+     colour without any of them being hardcoded here. */
+  --card-accent: var(--sage);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-lg);
+  padding: 26px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease,
+              background 0.2s ease, box-shadow 0.2s ease;
+}
+/* Only the cards that actually navigate get the lift and the pointer. */
+a.welcome-card:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--card-accent);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+}
+a.welcome-card:active {
+  transform: translateY(-1px);
+}
+a.welcome-card:focus-visible {
+  outline: 2px solid var(--card-accent);
+  outline-offset: 3px;
+}
+
+.welcome-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--card-accent);
+  /* Plain fallbacks first for engines without color-mix(); the tinted
+     versions below override wherever it is supported. */
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--card-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--card-accent) 30%, transparent);
+}
+.welcome-card h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 1.3rem;
+  margin: 0 0 10px;
+  color: #fff;
+  letter-spacing: -0.015em;
+}
+.welcome-card p {
+  font-size: 0.885rem;
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.6;
+  font-weight: 300;
+  margin: 0 0 20px;
+}
+.welcome-card-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.welcome-card-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.845rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+.welcome-card-list svg {
+  flex-shrink: 0;
+  color: var(--card-accent);
+}
+
+/* Sits at the bottom of a clickable card so the affordance is visible
+   without hovering — the old cards gave no hint they were interactive. */
+.welcome-card-action {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.845rem;
+  font-weight: 600;
+  color: var(--card-accent);
+}
+.welcome-card-action svg {
+  transition: transform 0.2s ease;
+}
+a.welcome-card:hover .welcome-card-action svg {
+  transform: translateX(4px);
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.welcome-footer {
+  margin-top: auto;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 18px clamp(20px, 5vw, 64px) 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* Honour the OS setting: keep the state changes, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-btn,
+  .welcome-card,
+  .welcome-card-action svg,
+  .welcome-btn-arrow {
+    transition-duration: 0.01ms;
+  }
+  .welcome-btn--hero:hover,
+  a.welcome-card:hover,
+  a.welcome-card:active,
+  .welcome-btn--hero:active {
+    transform: none;
+  }
+}
+
+/* Available to screen readers, invisible on screen. Used for section
+   headings that keep the h1 -> h2 -> h3 outline intact without adding
+   visible chrome. */
+.u-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

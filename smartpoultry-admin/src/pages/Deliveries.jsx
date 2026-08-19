@@ -277,17 +277,18 @@ export default function Deliveries() {
           { label: 'Delivered', value: counts.delivered, color: '#065f46', bg: 'rgba(16,185,129,0.10)' },
         ].map((s, i) => (
           <div key={i} style={{
-            background: '#fff', borderRadius: 12, padding: '16px 18px',
-            border: '1px solid #dddabd', display: 'flex', alignItems: 'center', gap: 12
+            background: '#fff', borderRadius: 'var(--r-md)', padding: '11px 13px',
+            border: '1px solid #dddabd', display: 'flex', alignItems: 'center', gap: 10
           }}>
             <div style={{
-              width: 42, height: 42, borderRadius: 10, background: s.bg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.2rem', fontWeight: 700, color: s.color
+              width: 32, height: 32, borderRadius: 'var(--r-sm)', background: s.bg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none',
+              fontFamily: 'Space Grotesk, sans-serif', fontSize: '0.95rem', fontWeight: 700,
+              color: s.color, fontVariantNumeric: 'tabular-nums'
             }}>
               {s.value}
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#5e7a61', fontWeight: 500 }}>{s.label}</div>
+            <div style={{ fontSize: '0.78rem', color: '#5e7a61', fontWeight: 500 }}>{s.label}</div>
           </div>
         ))}
       </div>

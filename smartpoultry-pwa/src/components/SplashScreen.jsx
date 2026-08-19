@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import eggImg      from '../assets/egg.png'
 import patternImg  from '../assets/patterns.png'
 
@@ -9,21 +9,45 @@ import patternImg  from '../assets/patterns.png'
  *   egg.png      — hybrid organic/AI egg
  *   patterns.png — network/tech pattern overlay
  *
- * Sequence (total ~6 s):
- *   0 ms    → background visible, pattern drifts
- *   600 ms  → egg rolls in from the left
- *   1 700 ms → text slides up + fades in
- *   4 200 ms → exit fade begins
- *   4 900 ms → onComplete() fires → login page
+ * Sequence (total ~2.7 s):
+ *   0 ms     → background visible, pattern drifts
+ *   150 ms   → egg rolls in from the left
+ *   700 ms   → text slides up + fades in
+ *   2 100 ms → egg zooms out
+ *   2 250 ms → background fade begins
+ *   2 650 ms → onComplete() fires → landing page
+ *
+ * The original held for 7.6 s before handing off, which is a very long time
+ * to make someone wait on an intro they did not ask for. Anywhere on the
+ * overlay is also a skip target, and Esc/Enter/Space work for keyboards.
  */
 
 const TIMINGS = {
-  eggDelay:    600,
-  textDelay:   1700,
-  holdEnd:     7000,   // hold the full scene longer
-  eggZoomMs:   800,   // egg zoom-out duration
-  exitDelay:   400,   // gap between egg zoom start and background fade
-  exitMs:      700,   // background fade duration
+  eggDelay:    150,
+  textDelay:   700,
+  holdEnd:     2100,  // scene fully assembled until here
+  eggZoomMs:   450,   // egg zoom-out duration
+  exitDelay:   150,   // gap between egg zoom start and background fade
+  exitMs:      400,   // background fade duration
+}
+
+// Someone who has asked the OS to reduce motion gets the brand moment
+// without the roll, the drift or the zoom — just a short cross-fade.
+const REDUCED_TIMINGS = {
+  eggDelay:    0,
+  textDelay:   150,
+  holdEnd:     1000,
+  eggZoomMs:   1,
+  exitDelay:   0,
+  exitMs:      300,
+}
+
+export function prefersReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
 }
 
 export default function SplashScreen({ onComplete }) {
@@ -32,32 +56,69 @@ export default function SplashScreen({ onComplete }) {
   const [eggExiting, setEggExiting] = useState(false)
   const [exiting,    setExiting]    = useState(false)
 
+  // Read once on mount and keep it: the scene should not restyle itself
+  // halfway through if the OS setting changes mid-animation.
+  const [reduced] = useState(prefersReducedMotion)
+  const timing = reduced ? REDUCED_TIMINGS : TIMINGS
+
+  // onComplete unmounts this component, so it must never fire twice — a tap
+  // landing in the same frame as the final timer would otherwise double-call.
+  const doneRef = useRef(false)
+  const finish = useCallback(() => {
+    if (doneRef.current) return
+    doneRef.current = true
+    onComplete?.()
+  }, [onComplete])
+
+  // Skipping fades out rather than cutting, so a tap does not feel like a
+  // glitch. The fade is short enough not to be a second wait.
+  const skip = useCallback(() => {
+    if (doneRef.current) return
+    setEggExiting(true)
+    setExiting(true)
+    setTimeout(finish, Math.min(timing.exitMs, 260))
+  }, [finish, timing.exitMs])
+
   useEffect(() => {
-    const t1 = setTimeout(() => setEggIn(true),      TIMINGS.eggDelay)
-    const t2 = setTimeout(() => setTextIn(true),     TIMINGS.textDelay)
+    const t1 = setTimeout(() => setEggIn(true),      timing.eggDelay)
+    const t2 = setTimeout(() => setTextIn(true),     timing.textDelay)
     // Egg zooms out first, then background fades
-    const t3 = setTimeout(() => setEggExiting(true), TIMINGS.holdEnd)
-    const t4 = setTimeout(() => setExiting(true),    TIMINGS.holdEnd + TIMINGS.exitDelay)
-    const t5 = setTimeout(() => onComplete?.(),      TIMINGS.holdEnd + TIMINGS.exitDelay + TIMINGS.exitMs)
+    const t3 = setTimeout(() => setEggExiting(true), timing.holdEnd)
+    const t4 = setTimeout(() => setExiting(true),    timing.holdEnd + timing.exitDelay)
+    const t5 = setTimeout(finish,                    timing.holdEnd + timing.exitDelay + timing.exitMs)
     return () => [t1, t2, t3, t4, t5].forEach(clearTimeout)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Esc/Enter/Space skip from the keyboard. Bound on document rather than the
+  // overlay so it works before anything inside has taken focus.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (['Escape', 'Enter', ' ', 'Spacebar'].includes(e.key)) skip()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [skip])
 
   return (
     <>
       <style>{KEYFRAMES}</style>
 
       {/* ── Root overlay ──────────────────────────────────────────── */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
-        /* Flyer background gradient: rich deep green */
-        background: 'radial-gradient(ellipse at 30% 40%, #1e6b22 0%, #0f3d13 40%, #071f08 75%, #030d04 100%)',
-        opacity: exiting ? 0 : 1,
-        transition: exiting ? `opacity ${TIMINGS.exitMs}ms ease-in-out` : 'none',
-        fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-      }}>
+      <div
+        onClick={skip}
+        role="presentation"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          /* Flyer background gradient: rich deep green */
+          background: 'radial-gradient(ellipse at 30% 40%, #1e6b22 0%, #0f3d13 40%, #071f08 75%, #030d04 100%)',
+          opacity: exiting ? 0 : 1,
+          transition: exiting ? `opacity ${timing.exitMs}ms ease-in-out` : 'none',
+          fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+        }}>
 
         {/* ── Pattern overlay — slow drift ──────────────────────── */}
         <div style={{
@@ -66,7 +127,7 @@ export default function SplashScreen({ onComplete }) {
           backgroundRepeat: 'repeat',
           backgroundSize: '520px auto',
           opacity: 0.28,
-          animation: 'sp_patternDrift 28s linear infinite',
+          animation: reduced ? 'none' : 'sp_patternDrift 28s linear infinite',
           pointerEvents: 'none',
           mixBlendMode: 'screen',
         }} />
@@ -87,14 +148,19 @@ export default function SplashScreen({ onComplete }) {
 
           {/* Egg */}
           <div style={{
-            width: 420, height: 'auto',
+            // Was a flat 420px, which overflowed every phone narrower than
+            // that. Scales with the viewport now and never exceeds 420.
+            width: 'min(62vw, 420px)', height: 'auto',
             opacity:   eggIn ? 1 : 0,
+            transition: reduced ? `opacity 320ms ease-out` : 'none',
             // Roll in on entrance; zoom out on exit (eggExiting overrides)
-            animation: eggExiting
-              ? `sp_eggZoomOut ${TIMINGS.eggZoomMs}ms cubic-bezier(0.4,0,1,1) forwards`
-              : eggIn
-                ? `sp_eggRoll 1.1s cubic-bezier(0.22,1,0.36,1) forwards`
-                : 'none',
+            animation: reduced
+              ? 'none'
+              : eggExiting
+                ? `sp_eggZoomOut ${timing.eggZoomMs}ms cubic-bezier(0.4,0,1,1) forwards`
+                : eggIn
+                  ? `sp_eggRoll 1.1s cubic-bezier(0.22,1,0.36,1) forwards`
+                  : 'none',
             filter: 'drop-shadow(0 28px 56px rgba(0,0,0,0.75)) drop-shadow(0 8px 16px rgba(0,0,0,0.55))',
             marginBottom: 18,
           }}>
@@ -106,7 +172,10 @@ export default function SplashScreen({ onComplete }) {
           <div style={{
             textAlign: 'center',
             opacity:   textIn ? 1 : 0,
-            animation: textIn ? 'sp_textUp 0.75s cubic-bezier(0.34,1.1,0.64,1) forwards' : 'none',
+            transition: reduced ? 'opacity 320ms ease-out' : 'none',
+            animation: reduced
+              ? 'none'
+              : textIn ? 'sp_textUp 0.75s cubic-bezier(0.34,1.1,0.64,1) forwards' : 'none',
           }}>
             {/* Title row — matches flyer: "Smart" white-bold, "Poultry" green-bold */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 10, lineHeight: 1 }}>
@@ -137,6 +206,27 @@ export default function SplashScreen({ onComplete }) {
             }}>AI Farm Management</div>
           </div>
         </div>
+
+        {/* A real button, so the skip is reachable by keyboard and announced
+            by screen readers — the overlay click handler alone is neither. */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); skip() }}
+          style={{
+            position: 'absolute', bottom: 28, right: 28, zIndex: 3,
+            padding: '8px 18px', borderRadius: 999,
+            background: 'rgba(255,255,255,0.10)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            color: 'rgba(255,255,255,0.82)',
+            fontFamily: "'Inter', sans-serif",
+            fontSize: '0.8rem', fontWeight: 500,
+            cursor: 'pointer',
+            opacity: exiting ? 0 : 1,
+            transition: 'opacity 200ms ease',
+          }}
+        >
+          Skip
+        </button>
       </div>
     </>
   )

@@ -1,246 +1,126 @@
 import { Link } from 'react-router-dom';
-import { Leaf, Truck, ShoppingBag, ArrowRight, BarChart, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Leaf, Truck, Boxes, BarChart, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+
+/*
+ * Welcome — the public landing page for the manager/admin console.
+ *
+ * This used to be a byte-for-byte copy of the customer PWA's landing page,
+ * which meant it advertised a customer marketplace and a driver app that
+ * nobody signing in here can reach. The three cards now describe what this
+ * console actually does instead.
+ *
+ * The landing page offers one action: sign in. Manager accounts are still
+ * created at /admin/register, but that route is no longer advertised here —
+ * an operations console is not something the public signs itself up for.
+ *
+ * The cards are plain <div>s on purpose: everything they describe sits behind
+ * authentication, so making them look clickable would only lead to a redirect.
+ *
+ * Styling moved to the .welcome-* classes in index.css. Inline style objects
+ * cannot express :hover or :focus-visible, so the `transition` properties this
+ * file used to declare could never fire.
+ */
+
+const CAPABILITIES = [
+  {
+    key: 'farm',
+    icon: Boxes,
+    accent: 'var(--sage)',
+    title: 'Farm Operations',
+    blurb:
+      'Centralized inventory control. Record daily logbook entries, track batches through their cycle, and keep product stock in step with what the farm actually holds.',
+    points: ['Daily farm logbook', 'Batch and mortality tracking', 'Live product inventory'],
+  },
+  {
+    key: 'dispatch',
+    icon: Truck,
+    accent: 'var(--accent)',
+    title: 'Dispatch & Fleet',
+    blurb:
+      'Oversee every active dispatch unit. Assign drivers to orders, verify vehicle documents, and follow deliveries on the map as they move.',
+    points: ['Driver assignment', 'Vehicle compliance & verification', 'Live delivery tracking'],
+  },
+  {
+    key: 'analytics',
+    icon: BarChart,
+    // Not --primary: #237227 sits at roughly 2:1 against this dark card, too
+    // dim to read as an icon. The page's own text colour is already in the
+    // system and holds up, so no new hue is introduced.
+    accent: 'rgba(255, 255, 255, 0.88)',
+    title: 'Analytics & Forecasting',
+    blurb:
+      'Advanced analytics dashboard. Read demand and yield forecasts, feed conversion, fulfilment funnels and driver performance — with printable reports.',
+    points: ['Demand & yield forecasts', 'Feed conversion and anomalies', 'Exportable PDF reports'],
+  },
+];
 
 export default function Welcome() {
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#071508',
-      color: '#ffffff',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Inter, sans-serif',
-      position: 'relative',
-      overflowX: 'hidden'
-    }}>
-      {/* Background glowing orbs for glassmorphism effect - Reduced blur for performance */}
-      <div style={{
-        position: 'absolute', top: '-10%', left: '-10%', width: '40vw', height: '40vw', minWidth: '300px', minHeight: '300px',
-        background: 'radial-gradient(circle, rgba(132, 190, 136, 0.15) 0%, rgba(0,0,0,0) 70%)',
-        filter: 'blur(40px)', zIndex: 0
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '-10%', right: '-10%', width: '50vw', height: '50vw', minWidth: '350px', minHeight: '350px',
-        background: 'radial-gradient(circle, rgba(255, 170, 0, 0.1) 0%, rgba(0,0,0,0) 70%)',
-        filter: 'blur(50px)', zIndex: 0
-      }} />
+    <div className="welcome-page">
+      <div className="welcome-orb welcome-orb--sage" aria-hidden="true" />
+      <div className="welcome-orb welcome-orb--accent" aria-hidden="true" />
 
-      {/* Navigation Bar */}
-      <nav style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '24px 5%',
-        borderBottom: '1px solid rgba(255,255,255,0.05)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(35, 114, 39, 0.8), rgba(132, 190, 136, 0.8))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 16px rgba(35, 114, 39, 0.2)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>
+      <nav className="welcome-nav">
+        <Link to="/" className="welcome-brand">
+          <span className="welcome-mark">
             <Leaf color="#fff" size={20} strokeWidth={2.5} />
-          </div>
-          <span style={{
-            fontFamily: 'Space Grotesk, sans-serif',
-            fontWeight: 700, fontSize: '1.25rem',
-            letterSpacing: '-0.02em',
-            color: 'rgba(255,255,255,0.95)'
-          }}>
-            SmartPoultry
           </span>
-        </div>
-        
-        <Link to="/login" style={{ textDecoration: 'none' }}>
-          <button style={{
-            backgroundColor: 'rgba(255,255,255,0.1)',
-            color: '#fff', border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: '20px', padding: '8px 20px', fontSize: '0.9rem',
-            fontWeight: 500, cursor: 'pointer', backdropFilter: 'blur(10px)',
-            transition: 'background 0.2s'
-          }}>
-            Sign In
-          </button>
+          <span className="welcome-wordmark">SmartPoultry</span>
         </Link>
+
+        <div className="welcome-nav-actions">
+          <Link to="/admin/login" className="welcome-btn welcome-btn--ghost">Sign In</Link>
+        </div>
       </nav>
 
-      {/* Hero Section */}
-      <header style={{
-        position: 'relative', zIndex: 1,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
-        padding: 'clamp(40px, 10vw, 80px) 5% clamp(30px, 8vw, 60px)',
-        maxWidth: '800px', margin: '0 auto'
-      }}>
-        <div style={{
-          display: 'inline-block',
-          padding: '6px 14px', borderRadius: '20px',
-          background: 'rgba(132, 190, 136, 0.1)',
-          border: '1px solid rgba(132, 190, 136, 0.2)',
-          color: '#84be88', fontSize: '0.8rem', fontWeight: 600,
-          letterSpacing: '0.05em', marginBottom: '24px'
-        }}>
-          THE FUTURE OF AGRI-LOGISTICS
-        </div>
-        
-        <h1 style={{
-          fontFamily: 'Space Grotesk, sans-serif',
-          fontWeight: 600, fontSize: 'clamp(2rem, 6vw, 3.5rem)',
-          lineHeight: 1.1, letterSpacing: '-0.03em',
-          marginBottom: '20px'
-        }}>
-          Fresh poultry,<br />
-          <span style={{ color: '#84be88', fontStyle: 'italic' }}>delivered smart.</span>
+      <header className="welcome-hero">
+        <span className="welcome-eyebrow">Operations, dispatch &amp; analytics</span>
+
+        <h1 className="welcome-title">
+          Run the farm,<br />
+          <em>end to end.</em>
         </h1>
-        
-        <p style={{
-          fontSize: 'clamp(0.95rem, 3vw, 1.05rem)', color: 'rgba(255,255,255,0.7)',
-          lineHeight: 1.6, maxWidth: '600px', fontWeight: 300,
-          marginBottom: '32px'
-        }}>
-          Experience the premier AI-driven ecosystem bridging the gap between local farms and your doorstep. Secure, transparent, and built for scale.
+
+        <p className="welcome-lede">
+          One command centre for flock records, marketplace inventory, dispatch and
+          forecasting — the operational half of the SmartPoultry platform.
         </p>
 
-        <Link to="/login" style={{ textDecoration: 'none' }}>
-          <button style={{
-            backgroundColor: '#fff', color: '#071508',
-            border: 'none', borderRadius: '16px', padding: '16px 32px',
-            fontSize: '1.05rem', fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: '10px',
-            cursor: 'pointer', fontFamily: 'Space Grotesk, sans-serif',
-            boxShadow: '0 8px 24px rgba(255,255,255,0.15)',
-            transition: 'transform 0.2s'
-          }}>
-            Access Portal <ArrowRight size={18} strokeWidth={2.5} />
-          </button>
-        </Link>
+        <div className="welcome-cta-row">
+          <Link to="/admin/login" className="welcome-btn welcome-btn--hero">
+            Access Portal
+            <ArrowRight className="welcome-btn-arrow" size={18} strokeWidth={2.5} />
+          </Link>
+        </div>
       </header>
 
-      {/* Features Grid */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        padding: '20px 5% 40px',
-        maxWidth: '1200px', margin: '0 auto', width: '100%'
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px'
-        }}>
-          {/* Customer Card */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px', padding: '24px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '12px',
-              background: 'rgba(132, 190, 136, 0.15)',
-              border: '1px solid rgba(132, 190, 136, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <ShoppingBag color="#84be88" size={22} strokeWidth={1.5} />
-            </div>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, fontSize: '1.4rem', marginBottom: '12px', color: '#fff'
-            }}>For Customers</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontWeight: 300, marginBottom: '24px' }}>
-              Access our live marketplace. Browse fresh farm produce, place secure orders, and track your deliveries in real-time.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Live inventory sync', 'Secure checkout process', 'Real-time GPS tracking'].map((item, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                  <CheckCircle2 size={16} color="#84be88" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
+      <section className="welcome-section">
+        <h2 className="u-visually-hidden">What the console does</h2>
 
-          {/* Delivery Card */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px', padding: '24px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '12px',
-              background: 'rgba(255, 170, 0, 0.15)',
-              border: '1px solid rgba(255, 170, 0, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <Truck color="#FFAA00" size={22} strokeWidth={1.5} />
+        <div className="welcome-grid">
+          {CAPABILITIES.map(({ key, icon: Icon, accent, title, blurb, points }) => (
+            <div key={key} className="welcome-card" style={{ '--card-accent': accent }}>
+              <span className="welcome-card-icon">
+                <Icon size={22} strokeWidth={1.5} />
+              </span>
+              <h3>{title}</h3>
+              <p>{blurb}</p>
+              <ul className="welcome-card-list">
+                {points.map((point) => (
+                  <li key={point}>
+                    <CheckCircle2 size={16} /> {point}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, fontSize: '1.4rem', marginBottom: '12px', color: '#fff'
-            }}>For Logistics</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontWeight: 300, marginBottom: '24px' }}>
-              Streamline your delivery routes. Manage assigned orders, log vehicle status, and update customers on the go.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Optimized routing', 'Digital vehicle logbooks', 'One-tap status updates'].map((item, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                  <CheckCircle2 size={16} color="#FFAA00" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Admin Card */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px', padding: '24px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '12px',
-              background: 'rgba(139, 92, 246, 0.15)',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <BarChart color="#8b5cf6" size={22} strokeWidth={1.5} />
-            </div>
-            <h3 style={{
-              fontFamily: 'Space Grotesk, sans-serif',
-              fontWeight: 600, fontSize: '1.4rem', marginBottom: '12px', color: '#fff'
-            }}>For Managers</h3>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, fontWeight: 300, marginBottom: '24px' }}>
-              Command center for operations. Monitor farm inventory, oversee all active dispatch units, and analyze fleet performance.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Advanced analytics dashboard', 'Centralized inventory control', 'Fleet compliance & verification'].map((item, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
-                  <CheckCircle2 size={16} color="#8b5cf6" /> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        marginTop: 'auto',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        padding: '20px 5% 8px',
-        display: 'flex', justifyContent: 'center', alignItems: 'center',
-        position: 'relative', zIndex: 1
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
-          <ShieldCheck size={16} /> Secure Platform © {new Date().getFullYear()} SmartPoultry AI
-        </div>
+      <footer className="welcome-footer">
+        <ShieldCheck size={16} aria-hidden="true" />
+        <span>Secure Platform © {new Date().getFullYear()} SmartPoultry AI</span>
       </footer>
     </div>
-  )
+  );
 }

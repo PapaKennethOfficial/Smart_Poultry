@@ -50,8 +50,11 @@ function StatCard({ label, value, hint, icon: Icon, iconBg, iconColor, accent, l
   return (
     <div className="stat-card">
       <div className="card-accent" style={{ background: accent }} />
-      <div className="card-icon" style={{ background: iconBg, width: 46, height: 46, borderRadius: 12 }}>
-        <Icon size={22} color={iconColor} strokeWidth={1.75} />
+      {/* Size and radius come from .stat-card .card-icon in index.css.
+          Setting them inline here overrode the shared scale, which is why
+          these cards stayed tall. Only the tint stays local. */}
+      <div className="card-icon" style={{ background: iconBg }}>
+        <Icon size={15} color={iconColor} strokeWidth={2} />
       </div>
       <div className="card-label">{label}</div>
       <div className="card-value">
@@ -263,7 +266,10 @@ export default function Dashboard() {
                 <XAxis dataKey="week" tick={{ fontSize: 11, fill: '#8da58f' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#8da58f' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="#fca5a5" radius={[6, 6, 0, 0]} name="Deaths" />
+                {/* Mortality is a bad outcome, so it wears the status/danger
+                    colour rather than a decorative pastel. #fca5a5 was too
+                    pale to read against the cream page. */}
+                <Bar dataKey="count" fill="#c0392b" radius={[4, 4, 0, 0]} name="Deaths" maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           )}
