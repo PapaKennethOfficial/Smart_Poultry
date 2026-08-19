@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+.vite
+
+# Secrets and machine-local overrides. Build-time values arrive as build args
+# from compose instead, so a stray .env cannot silently override them.
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+.git
+.gitignore
+Dockerfile
+.dockerignore

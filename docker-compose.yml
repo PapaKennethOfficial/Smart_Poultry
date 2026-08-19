@@ -1,33 +1,56 @@
-# SmartPoultry — one-command local stack.
+# ═════════════════════════════════════════════════════════════════════════════
+#  SmartPoultry — full stack, one command.
 #
-#   docker compose up --build
+#      cp .env.docker.example .env
+#      # fill in the required values, then:
+#      docker compose up --build
 #
-# Ports:
-#   5432   postgres            (internal only)
-#   5001   Node backend        (host + internal)
-#   8000   Python AI service   (internal only — the Node backend is the only caller)
-#   5173   Vite dev server     (run separately with `npm run dev` — not in compose)
+#  Once it is up:
+#      http://localhost:8080   customer / driver PWA
+#      http://localhost:8081   manager admin console
+#      http://localhost:5000   API directly (handy for /api/ai/diagnostics)
+#      localhost:5433          postgres  (5433, not 5432, so it cannot collide
+#                                         with a postgres already installed on
+#                                         the host)
 #
-# Env-var wiring is intentionally explicit so a defence panel can trace who talks
-# to whom without opening this file. Every secret has a `${VAR:-fallback}` shape
-# so the compose stack still boots with sensible defaults for demos.
+#  Each frontend is served by its own nginx which also proxies /api, /uploads
+#  and /socket.io through to the backend. Same origin means no CORS, no base
+#  URL in the bundle, and WebSocket upgrades that actually upgrade.
+#
+#  The AI service is deliberately NOT published to the host: the Node backend
+#  is its only legitimate caller, and it authenticates with a shared key.
+#
+#  Secrets use ${VAR:?message}, never ${VAR:-default}. Compose refuses to start
+#  and prints the message when one is missing, so a deployment can never come
+#  up on a password that was published in this file.
+# ═════════════════════════════════════════════════════════════════════════════
+
+name: smartpoultry
 
 services:
+  # ── Database ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-2230}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-smartpoultry_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      # -d as well as -U: without the database name pg_isready reports ready as
+      # soon as the server accepts connections, which is before initdb has
+      # finished creating smartpoultry_db.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-smartpoultry_db}"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
+      start_period: 10s
 
+  # ── Python AI microservice ────────────────────────────────────────────────
   ai:
     build:
       context: ./smartpoultry-ai
@@ -37,52 +60,152 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-2230}@postgres:5432/${POSTGRES_DB:-smartpoultry_db}
+      # psycopg2 dialect — the Python service reads the same database the Node
+      # backend writes, through SQLAlchemy rather than Prisma.
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-smartpoultry_db}
       HOST: 0.0.0.0
       PORT: 8000
-      # Same shared secret used by the Node backend service below
-      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:-dev-only-share-with-ai-service}
-      NODE_BACKEND_ORIGIN: http://backend:5001
-      FORECAST_HISTORY_DAYS: 180
-      FORECAST_DEFAULT_HORIZON: 14
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?set AI_SERVICE_API_KEY in .env - it must match the backend}
+      NODE_BACKEND_ORIGIN: http://backend:5000
+      FORECAST_HISTORY_DAYS: ${FORECAST_HISTORY_DAYS:-180}
+      FORECAST_DEFAULT_HORIZON: ${FORECAST_DEFAULT_HORIZON:-14}
       MODEL_CACHE_DIR: /app/app/models/cache
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      GEMINI_MODEL: gemini-1.5-flash
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
     volumes:
-      # Persist trained model between rebuilds so we don't retrain on every restart
+      # Trained Prophet models survive rebuilds — otherwise every restart costs
+      # a full retrain before the first forecast can be served.
       - ai_models:/app/app/models/cache
-    # Not exposed to the host — only the Node backend talks to it
     expose:
       - "8000"
 
+  # ── Node API ──────────────────────────────────────────────────────────────
   backend:
     build:
       context: ./smartpoultry-backend
-      # Assumes a Dockerfile exists in smartpoultry-backend/ (out of scope for
-      # this PR — add later). For now `docker compose up` will fail on this
-      # service until that Dockerfile is added; run node locally in the meantime.
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       ai:
-        condition: service_started
+        # service_healthy, not service_started: the AI container is "started"
+        # long before uvicorn is listening, and the backend's first forecast
+        # call would fail against a port that is open but unserved.
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-2230}@postgres:5432/${POSTGRES_DB:-smartpoultry_db}
-      PORT: 5001
-      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
-      JWT_EXPIRES_IN: 7d
-      CLIENT_URL: http://localhost:5173
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-smartpoultry_db}
+      PORT: 5000
+      NODE_ENV: production
+      TZ: ${TZ:-Africa/Accra}
+
+      # Quoted: the message contains a colon, and an unquoted YAML scalar would
+      # be parsed as a nested mapping.
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env - generate one with `openssl rand -hex 32`}"
+
+      # Browsers talk to the frontends, never to this port, so CORS is moot
+      # behind the same-origin nginx proxy. Kept configurable for anyone who
+      # calls the API directly.
+      FRONTEND_URL: ${FRONTEND_URL:-*}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8080}
+      # Socket.IO checks the browser's Origin header, which is the nginx origin
+      # the page was loaded from — so both frontends must be listed here.
+      SOCKET_ALLOWED_ORIGINS: ${SOCKET_ALLOWED_ORIGINS:-http://localhost:8080,http://localhost:8081}
+
       AI_SERVICE_URL: http://ai:8000
-      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:-dev-only-share-with-ai-service}
-      AI_SERVICE_TIMEOUT: 45000
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:?set AI_SERVICE_API_KEY in .env - it must match the ai service}
+      AI_SERVICE_TIMEOUT: ${AI_SERVICE_TIMEOUT:-45000}
+
+      # Analytics constants — see analytics.controller.js for what each drives.
+      AVG_EGG_MASS_KG: ${AVG_EGG_MASS_KG:-0.06}
+      FCR_BENCHMARK: ${FCR_BENCHMARK:-2.3}
+      ANOMALY_SIGMA: ${ANOMALY_SIGMA:-2}
       FARM_DEPOT_LAT: ${FARM_DEPOT_LAT:-5.6037}
       FARM_DEPOT_LON: ${FARM_DEPOT_LON:--0.1870}
+      REPORT_NARRATION_GAP_MS: ${REPORT_NARRATION_GAP_MS:-1500}
+
+      WEEKLY_RETRAIN_ENABLED: ${WEEKLY_RETRAIN_ENABLED:-true}
+      WEEKLY_RETRAIN_CRON: ${WEEKLY_RETRAIN_CRON:-0 3 * * 1}
+
+      # Optional integrations. Blank is fine: the code degrades rather than
+      # crashing, and the features that need them simply stay off.
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      SMS_API_URL: ${SMS_API_URL:-}
+      SMS_API_KEY: ${SMS_API_KEY:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-}
+
+      # Start-up behaviour, handled by docker-entrypoint.sh.
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      RUN_SEED: ${RUN_SEED:-false}
+      # Read by prisma/seed.js for the initial admin account. Optional at boot
+      # rather than required: only the seed path needs it, and making it
+      # mandatory would block startup for everyone who never seeds.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      # Generated report PDFs and uploaded product images. Without this volume
+      # every upload disappears the moment the container is replaced.
+      - uploads:/app/uploads
     ports:
-      - "5001:5001"
+      - "${BACKEND_HOST_PORT:-5000}:5000"
+
+  # ── Customer / driver PWA ─────────────────────────────────────────────────
+  pwa:
+    build:
+      context: ./smartpoultry-pwa
+      dockerfile: Dockerfile
+      args:
+        # Build args, not environment: Vite inlines these at build time. Change
+        # one and the image must be rebuilt — `docker compose up` alone will
+        # not pick it up.
+        VITE_API_BASE_URL: ${PWA_API_BASE_URL:-}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+        VITE_FIREBASE_MEASUREMENT_ID: ${VITE_FIREBASE_MEASUREMENT_ID:-}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${PWA_HOST_PORT:-8080}:80"
+
+  # ── Manager admin console ─────────────────────────────────────────────────
+  admin:
+    build:
+      context: ./smartpoultry-admin
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${ADMIN_API_BASE_URL:-}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+        VITE_FIREBASE_MEASUREMENT_ID: ${VITE_FIREBASE_MEASUREMENT_ID:-}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${ADMIN_HOST_PORT:-8081}:80"
 
 volumes:
   pgdata:
   ai_models:
+  uploads:
