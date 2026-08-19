@@ -60,3 +60,19 @@ venv/
 __pycache__/
 *.pyc
 app/models/cache/
+
+# Local scratch / experiments - never commit. test_groq.py in particular has
+# held a live API key; keep ad-hoc scripts out of the repo entirely.
+smartpoultry-ai/test_groq.py
+smartpoultry-backend/_pdfsmoke.tmp.js
+smartpoultry-backend/fix.js
+smartpoultry-backend/clean_auth.controller.js
+smartpoultry-backend/seed-products.js
+smartpoultry-backend/backend-*.log
+docker-compose.yml.bak-preexisting
+
+# Demo-data generators - useful locally, but they write rows and are not part
+# of the reviewable application.
+smartpoultry-backend/prisma/seedComplex.js
+smartpoultry-backend/prisma/seedDeliveries.js
+smartpoultry-backend/prisma/seedLogbook.js
