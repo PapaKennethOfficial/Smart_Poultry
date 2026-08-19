@@ -66,62 +66,70 @@ export default function DriverEarnings() {
         <div className="page-desc">Track your delivery fees and payouts</div>
       </div>
 
-      <div style={{ background: 'var(--primary)', color: '#fff', padding: 24, borderRadius: 16, marginBottom: 20, boxShadow: '0 8px 24px rgba(35, 114, 39, 0.2)' }}>
-        <div style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: 4 }}>Total All-Time Earnings</div>
-        <div style={{ fontSize: '2.4rem', fontWeight: 800, fontFamily: 'Space Grotesk' }}>
+      <div style={{ background: 'var(--primary)', color: '#fff', padding: '16px 18px', borderRadius: 'var(--r-md)', marginBottom: 14, boxShadow: 'var(--e-2)' }}>
+        <div style={{ fontSize: '0.68rem', opacity: 0.85, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+          Total all-time earnings
+        </div>
+        <div style={{ fontSize: '1.7rem', fontWeight: 700, fontFamily: 'Space Grotesk', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
           GHS {earnings.total.toFixed(2)}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
-        <div style={{ background: 'var(--bg-card)', padding: 20, borderRadius: 16, border: '1px solid var(--border-light)' }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-            <DollarSign size={20} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 22 }}>
+        <div style={{ background: 'var(--bg-card)', padding: 12, borderRadius: 'var(--r-md)', border: '1px solid var(--border-light)' }}>
+          {/* Icon sits beside the label rather than above it — stacking cost
+              ~38px of height per card for no added meaning. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <DollarSign size={12} />
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cash collected</div>
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', fontWeight: 600 }}>Cash Collected</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4 }}>GHS {earnings.cashCollected.toFixed(2)}</div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>Kept from customers</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>GHS {earnings.cashCollected.toFixed(2)}</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2 }}>Kept from customers</div>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', padding: 20, borderRadius: 16, border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-            <Wallet size={20} />
+        <div style={{ background: 'var(--bg-card)', padding: 12, borderRadius: 'var(--r-md)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Wallet size={12} />
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Owed to you</div>
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', fontWeight: 600 }}>Owed by Company</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4 }}>GHS {earnings.owedByCompany.toFixed(2)}</div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, marginBottom: 12 }}>Available: GHS {availableBalance.toFixed(2)}</div>
-          
-          <button 
-            className="btn btn-primary" 
-            style={{ width: '100%', padding: '8px 0', fontSize: '0.85rem', marginTop: 'auto', justifyContent: 'center' }}
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>GHS {earnings.owedByCompany.toFixed(2)}</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2, marginBottom: 8 }}>Available: GHS {availableBalance.toFixed(2)}</div>
+
+          <button
+            className="btn-primary"
+            style={{ width: '100%', padding: '7px 0', fontSize: '0.72rem', marginTop: 'auto', justifyContent: 'center' }}
             disabled={availableBalance <= 0}
             onClick={() => setShowWithdrawModal(true)}
           >
-            Withdraw Funds
+            Withdraw
           </button>
         </div>
       </div>
 
-      <div style={{ marginBottom: 16, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-heading)' }}>
-        Withdrawal History
+      <div style={{ marginBottom: 10, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        Withdrawal history
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>
         {withdrawals.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 12, border: '1px dashed var(--border-light)' }}>
+          <div style={{ padding: 16, textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border-light)' }}>
             No withdrawals yet.
           </div>
         ) : (
           withdrawals.map((w, i) => (
-            <div key={i} style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 12, border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={i} style={{ background: 'var(--bg-card)', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>Withdrawal</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <Calendar size={12} /> {new Date(w.createdAt).toLocaleDateString()}
+                <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-heading)' }}>Withdrawal</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                  <Calendar size={11} /> {new Date(w.createdAt).toLocaleDateString()}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-body)' }}>GHS {w.amount.toFixed(2)}</div>
-                <div style={{ fontSize: '0.75rem', marginTop: 4, color: w.status === 'PAID' ? '#10b981' : w.status === 'REJECTED' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-body)', fontVariantNumeric: 'tabular-nums' }}>GHS {w.amount.toFixed(2)}</div>
+                <div style={{ fontSize: '0.66rem', marginTop: 2, color: w.status === 'PAID' ? '#10b981' : w.status === 'REJECTED' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                   {w.status === 'PAID' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
                   {w.status}
                 </div>
@@ -131,31 +139,31 @@ export default function DriverEarnings() {
         )}
       </div>
 
-      <div style={{ marginBottom: 16, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-heading)' }}>
-        Recent Deliveries
+      <div style={{ marginBottom: 10, fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        Recent deliveries
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {earnings.history.length === 0 ? (
-          <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 12, border: '1px dashed var(--border-light)' }}>
+          <div style={{ padding: 20, textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', border: '1px dashed var(--border-light)' }}>
             You haven't completed any deliveries yet.
           </div>
         ) : (
           earnings.history.map((h, i) => (
-            <div key={i} style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 12, border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={i} style={{ background: 'var(--bg-card)', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{h.orderId}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <Calendar size={12} /> {new Date(h.date).toLocaleDateString()}
+                <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-heading)' }}>{h.orderId}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                  <Calendar size={11} /> {new Date(h.date).toLocaleDateString()}
                 </div>
-                <div style={{ fontSize: '0.75rem', marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 4, background: h.paymentMethod === 'PAY_ON_DELIVERY' ? '#ecfdf5' : '#eff6ff', color: h.paymentMethod === 'PAY_ON_DELIVERY' ? '#10b981' : '#3b82f6', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>
+                <div style={{ fontSize: '0.62rem', marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 4, background: h.paymentMethod === 'PAY_ON_DELIVERY' ? '#ecfdf5' : '#eff6ff', color: h.paymentMethod === 'PAY_ON_DELIVERY' ? '#10b981' : '#3b82f6', padding: '3px 7px', borderRadius: 'var(--r-pill)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {h.paymentMethod === 'PAY_ON_DELIVERY' ? 'Cash Trip' : 'Company Trip'}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-body)' }}>+GHS {h.amount.toFixed(2)}</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-body)', fontVariantNumeric: 'tabular-nums' }}>+GHS {h.amount.toFixed(2)}</div>
                 {h.paymentMethod !== 'PAY_ON_DELIVERY' && (
-                  <div style={{ fontSize: '0.75rem', marginTop: 4, color: h.payoutStatus === 'PAID_OUT' ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  <div style={{ fontSize: '0.66rem', marginTop: 2, color: h.payoutStatus === 'PAID_OUT' ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                     {h.payoutStatus === 'PAID_OUT' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
                     {h.payoutStatus === 'PAID_OUT' ? 'Settled' : 'Unpaid'}
                   </div>
@@ -168,11 +176,11 @@ export default function DriverEarnings() {
 
       {showWithdrawModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-card)', width: '100%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', borderTopLeftRadius: 'var(--r-lg)', borderTopRightRadius: 'var(--r-lg)', padding: 18, paddingBottom: 'max(28px, env(safe-area-inset-bottom))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-heading)' }}>Request Withdrawal</div>
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.015em' }}>Request withdrawal</div>
               <button onClick={() => setShowWithdrawModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer' }}>
-                <X size={24} />
+                <X size={18} />
               </button>
             </div>
             
