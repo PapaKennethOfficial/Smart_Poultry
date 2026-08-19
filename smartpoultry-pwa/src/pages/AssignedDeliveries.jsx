@@ -3,6 +3,7 @@ import { Truck, CheckCircle2, Package, MapPin, Clock, Phone, AlertCircle, Messag
 import api from '../api/axios'
 import { GoogleMap, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
 import { haversineKm, formatDistance } from '../utils/distance'
+import { buildCarIcon, buildPinIcon } from '../utils/mapIcons'
 import { useSocket } from '../context/SocketContext'
 import TableFilter from '../components/TableFilter'
 import Pagination from '../components/Pagination'
@@ -302,17 +303,20 @@ export default function AssignedDeliveries() {
               onLoad={map => setMapInstances(prev => ({ ...prev, [displayedMapOrder.id]: map }))}
             >
               <FitBounds points={points} map={mapInstances[displayedMapOrder.id]} />
-              <Marker 
-                position={{ lat: destPoint[0], lng: destPoint[1] }} 
-                icon={{ path: window.google.maps.SymbolPath.CIRCLE, fillColor: '#237227', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 12 }}
+              <Marker
+                position={{ lat: destPoint[0], lng: destPoint[1] }}
+                icon={buildPinIcon('#237227', 12)}
               />
               {driverPoint && (
                 <>
-                  <Marker 
+                  {/* Driver's own live position as a car — same icon the
+                      customer's live-tracking map draws for this driver. */}
+                  <Marker
                     position={{ lat: driverPoint[0], lng: driverPoint[1] }}
-                    icon={{ path: window.google.maps.SymbolPath.CIRCLE, fillColor: '#3b82f6', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 10 }}
+                    icon={buildCarIcon(44)}
+                    title="You are here"
                   />
-                  <Polyline 
+                  <Polyline
                     path={[{ lat: driverPoint[0], lng: driverPoint[1] }, { lat: destPoint[0], lng: destPoint[1] }]}
                     options={{ strokeColor: '#237227', strokeOpacity: 0.8, strokeWeight: 4 }}
                   />
@@ -576,31 +580,18 @@ export default function AssignedDeliveries() {
                               onLoad={map => setMapInstances(prev => ({ ...prev, [o.id]: map }))}
                             >
                               <FitBounds points={points} map={mapInstances[o.id]} />
-                              <Marker 
-                                position={{ lat: destPoint[0], lng: destPoint[1] }} 
-                                icon={{
-                                  path: window.google.maps.SymbolPath.CIRCLE,
-                                  fillColor: '#237227',
-                                  fillOpacity: 1,
-                                  strokeColor: '#fff',
-                                  strokeWeight: 2,
-                                  scale: 10
-                                }}
+                              <Marker
+                                position={{ lat: destPoint[0], lng: destPoint[1] }}
+                                icon={buildPinIcon('#237227', 10)}
                               />
                               {driverPoint && (
                                 <>
-                                  <Marker 
+                                  <Marker
                                     position={{ lat: driverPoint[0], lng: driverPoint[1] }}
-                                    icon={{
-                                      path: window.google.maps.SymbolPath.CIRCLE,
-                                      fillColor: '#3b82f6',
-                                      fillOpacity: 1,
-                                      strokeColor: '#fff',
-                                      strokeWeight: 2,
-                                      scale: 10
-                                    }}
+                                    icon={buildCarIcon(40)}
+                                    title="Driver"
                                   />
-                                  <Polyline 
+                                  <Polyline
                                     path={[{ lat: driverPoint[0], lng: driverPoint[1] }, { lat: destPoint[0], lng: destPoint[1] }]}
                                     options={{ strokeColor: '#237227', strokeOpacity: 0.8, strokeWeight: 3 }}
                                   />

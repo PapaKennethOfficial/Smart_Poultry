@@ -3,6 +3,7 @@ import { ShoppingBag, Clock, Truck, CheckCircle2, Package, MapPin, Eye, Phone, M
 import api from '../api/axios'
 import { GoogleMap, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
 import { haversineKm, formatDistance } from '../utils/distance'
+import { buildCarIcon, buildPinIcon } from '../utils/mapIcons'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import TableFilter from '../components/TableFilter'
@@ -437,7 +438,7 @@ export default function CustomerOrders() {
 
     {selectedOrder && (
       <div className="modal-overlay">
-          <div className="modal-box">
+          <div className="modal-box modal-box-wide">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
               <div>
                 <h2 className="modal-title">Order {selectedOrder.orderId}</h2>
@@ -446,10 +447,28 @@ export default function CustomerOrders() {
               <span className={`badge ${STATUS_MAP[selectedOrder.status]?.color || 'badge-gray'}`}>{selectedOrder.status}</span>
             </div>
 
-            {/* Visual Order Timeline */}
+            {/* Visual Order Timeline — full width across the top */}
             <OrderTimeline statusHistory={selectedOrder.statusHistory} />
 
-            <div className="section-header" style={{ marginTop: 24 }}>
+            {/* Horizontal two-column split from here down: order + delivery
+                details on the LEFT, live map + chat on the RIGHT. Collapses
+                to a single column below ~900 px so it's still readable on
+                phones. The wider `.modal-box.modal-box-wide` class (added
+                in index.css) gives the modal enough real estate for both
+                columns to breathe on desktop. */}
+            <div
+              className="order-detail-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
+                gap: 24,
+                marginTop: 24,
+                alignItems: 'start',
+              }}
+            >
+            <div style={{ minWidth: 0 }}>
+
+            <div className="section-header">
               <div className="section-title">Order Items</div>
             </div>
             <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, padding: 16, marginBottom: 24 }}>
@@ -586,7 +605,7 @@ export default function CustomerOrders() {
               )}
             </div>
 
-            {/* Ratings & Reviews */}
+            {/* Ratings & Reviews — stays in the LEFT column */}
             {selectedOrder.status === 'DELIVERED' && (
               <>
                 <div className="section-header">
@@ -623,6 +642,11 @@ export default function CustomerOrders() {
                 </div>
               </>
             )}
+
+            </div>{/* ── END LEFT column ─────────────────────────────── */}
+
+            {/* ── BEGIN RIGHT column: live map + chat ─────────────── */}
+            <div style={{ minWidth: 0, position: 'sticky', top: 0 }}>
 
             {(() => {
               const status = selectedOrder.status
@@ -693,7 +717,7 @@ export default function CustomerOrders() {
                     )}
                   </div>
                   {isLoaded ? (
-                    <div style={{ height: 260, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)', marginBottom: 8 }}>
+                    <div style={{ height: 'clamp(320px, 55vh, 520px)', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-light)', marginBottom: 8 }}>
                       <GoogleMap
                         mapContainerStyle={{ height: '100%', width: '100%' }}
                         center={{ lat: destPoint[0], lng: destPoint[1] }}
@@ -702,31 +726,20 @@ export default function CustomerOrders() {
                         onLoad={map => setMapInstances(prev => ({ ...prev, [selectedOrder.id]: map }))}
                       >
                         <FitBounds points={points} map={mapInstances[selectedOrder.id]} />
-                        <Marker 
-                          position={{ lat: destPoint[0], lng: destPoint[1] }} 
-                          icon={{
-                            path: window.google.maps.SymbolPath.CIRCLE,
-                            fillColor: '#237227',
-                            fillOpacity: 1,
-                            strokeColor: '#fff',
-                            strokeWeight: 2,
-                            scale: 10
-                          }}
+                        <Marker
+                          position={{ lat: destPoint[0], lng: destPoint[1] }}
+                          icon={buildPinIcon('#237227', 10)}
                         />
                         {driverPoint && (
                           <>
-                            <Marker 
+                            {/* Driver rendered as a car (shared util so the
+                                driver's own map uses the identical icon). */}
+                            <Marker
                               position={{ lat: driverPoint[0], lng: driverPoint[1] }}
-                              icon={{
-                                path: window.google.maps.SymbolPath.CIRCLE,
-                                fillColor: '#3b82f6',
-                                fillOpacity: 1,
-                                strokeColor: '#fff',
-                                strokeWeight: 2,
-                                scale: 10
-                              }}
+                              icon={buildCarIcon(44)}
+                              title="Driver is here"
                             />
-                            <Polyline 
+                            <Polyline
                               path={[{ lat: driverPoint[0], lng: driverPoint[1] }, { lat: destPoint[0], lng: destPoint[1] }]}
                               options={{ strokeColor: '#237227', strokeOpacity: 0.8, strokeWeight: 3 }}
                             />
@@ -804,7 +817,10 @@ export default function CustomerOrders() {
               </>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
+            </div>{/* ── END RIGHT column ─────────────────────────── */}
+            </div>{/* ── END order-detail-grid ───────────────────── */}
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
               <button className="btn-primary" onClick={() => setSelectedOrder(null)}>Close</button>
             </div>
           </div>
