@@ -4,7 +4,7 @@ const router = express.Router()
 const prisma = require("../config/prisma")
 const { requireAuth, requireRole } = require("../middleware/auth")
 
-const VEHICLE_TYPES = ["Truck", "Van", "Motorcycle", "Bicycle"]
+const VEHICLE_TYPES = ["Truck", "Van", "Motorcycle"]
 const VERIFICATION_STATUSES = ["PENDING", "APPROVED", "REJECTED"]
 
 const imageDataSchema = z
@@ -44,7 +44,7 @@ const vehicleBaseSchema = z.object({
 })
 
 const vehicleSchema = vehicleBaseSchema.superRefine((data, ctx) => {
-  const requiresFullDetails = !["Bicycle", "Motorcycle"].includes(data.vehicle_type)
+  const requiresFullDetails = !["Motorcycle"].includes(data.vehicle_type)
   if (!requiresFullDetails) return
 
   const requiredFields = [

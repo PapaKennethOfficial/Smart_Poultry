@@ -14,20 +14,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # ─── Database ────────────────────────────────────────────────────────────
-    database_url: str = Field(
-        default="postgresql+psycopg2://postgres:2230@localhost:5432/smartpoultry_db",
-        alias="DATABASE_URL",
-    )
+    # No default: a real database password must never live in source. Boot
+    # fails with a clear pydantic error if DATABASE_URL is unset.
+    database_url: str = Field(alias="DATABASE_URL")
 
     # ─── Server ──────────────────────────────────────────────────────────────
     port: int = Field(default=8000, alias="PORT")
     host: str = Field(default="127.0.0.1", alias="HOST")
 
     # ─── API-key security ────────────────────────────────────────────────────
-    ai_service_api_key: str = Field(
-        default="change_me_to_a_long_random_string",
-        alias="AI_SERVICE_API_KEY",
-    )
+    # No default. A guessable shared secret is the same as no secret: this key
+    # is the only thing standing between the AI service and any local process.
+    ai_service_api_key: str = Field(alias="AI_SERVICE_API_KEY")
 
     # ─── CORS ────────────────────────────────────────────────────────────────
     node_backend_origin: str = Field(
@@ -41,8 +39,8 @@ class Settings(BaseSettings):
     model_cache_dir: str = Field(default="app/models/cache", alias="MODEL_CACHE_DIR")
 
     # ─── LLM (Phase B) ───────────────────────────────────────────────────────
-    google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
-    gemini_model: str = Field(default="gemini-flash-latest", alias="GEMINI_MODEL")
+    groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+    groq_model: str = Field(default="llama3-8b-8192", alias="GROQ_MODEL")
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -3,7 +3,13 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 export default function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
   const totalPages = Math.ceil(totalItems / itemsPerPage)
 
-  if (totalPages <= 1) return null
+  // Nothing to say about an empty list.
+  if (!totalItems) return null
+
+  // With a single page we still show the "Showing 1 to N of N" line, just
+  // without the page buttons. Hiding the whole bar made short lists look
+  // like pagination was missing rather than unnecessary.
+  const singlePage = totalPages <= 1
 
   // Calculate page range to show
   let startPage = Math.max(1, currentPage - 2)
@@ -21,6 +27,7 @@ export default function Pagination({ currentPage, totalItems, itemsPerPage, onPa
         Showing <span style={{ fontWeight: 600 }}>{Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}</span> to <span style={{ fontWeight: 600 }}>{Math.min(currentPage * itemsPerPage, totalItems)}</span> of <span style={{ fontWeight: 600 }}>{totalItems}</span> entries
       </div>
       
+      {singlePage ? null : (
       <div style={{ display: 'flex', gap: 6 }}>
         <button
           onClick={() => onPageChange(currentPage - 1)}
@@ -76,6 +83,7 @@ export default function Pagination({ currentPage, totalItems, itemsPerPage, onPa
           <ChevronRight size={16} />
         </button>
       </div>
+      )}
     </div>
   )
 }

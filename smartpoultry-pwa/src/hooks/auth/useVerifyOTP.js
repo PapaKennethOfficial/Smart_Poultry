@@ -10,10 +10,12 @@ export function useVerifyOTP() {
   const navigate = useNavigate()
 
   return useMutation({
-    mutationFn: verifyOTP,
+    // `remember` is carried through from the first login step so the OTP
+    // branch honours the same checkbox the password branch does.
+    mutationFn: ({ remember: _remember, ...payload }) => verifyOTP(payload),
 
-    onSuccess: (data) => {
-      setToken(data.token)
+    onSuccess: (data, variables) => {
+      setToken(data.token, { remember: variables?.remember !== false })
       if (data.role) setRole(data.role)
       if (data.user) setUser(data.user)
       showSuccess('Login successful! Redirecting to dashboard…')

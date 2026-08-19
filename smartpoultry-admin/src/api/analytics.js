@@ -1,12 +1,16 @@
 import api from './axios'
 
 /**
- * GET /api/analytics/forecast
- * Fetch the 10-day egg yield forecast
- * @returns {Promise<Array<{ day: string, predicted: number, confidence: number }>>}
+ * GET /api/analytics/trend/eggs?days=N
+ * Daily egg totals — these are MEASUREMENTS, not predictions.
+ * For a real forward-looking forecast use getEggForecast() in aiAnalytics.js.
+ * @returns {Promise<Array<{ date: string, day: string, actual: number }>>}
  */
-export const fetchForecast = () =>
-  api.get('/api/analytics/forecast').then((res) => res.data)
+export const fetchEggTrend = (days = 10) =>
+  api.get('/api/analytics/trend/eggs', { params: { days } }).then((res) => res.data)
+
+/** @deprecated Renamed to fetchEggTrend — this never returned a forecast. */
+export const fetchForecast = () => fetchEggTrend(10)
 
 /**
  * GET /api/analytics/fcr?weeks=N
@@ -20,7 +24,7 @@ export const fetchFCR = (weeks = 6) =>
 /**
  * GET /api/analytics/insights
  * Fetch AI insight card data
- * @returns {Promise<{ predictedYield, fcrStatus, anomalyScore, healthStatus }>}
+ * @returns {Promise<{ recentYield, fcrStatus, anomalyScore, healthStatus }>}
  */
 export const fetchInsights = () =>
   api.get('/api/analytics/insights').then((res) => res.data)
@@ -67,3 +71,11 @@ export const fetchOrderHeatmap = (days = 60) =>
 export const fetchSalesTracker = (days = 30) =>
   api.get('/api/analytics/sales-tracker', { params: { days } }).then((r) => r.data)
 
+/**
+ * GET /api/analytics/supply-vs-demand?days=30
+ * Eggs produced against eggs ordered, on one time axis.
+ * @returns {Promise<{ series, totalProduced, totalOrdered, netSurplus,
+ *                     coveragePct, daysShort, worstShortfall, windowDays }>}
+ */
+export const fetchSupplyVsDemand = (days = 30) =>
+  api.get('/api/analytics/supply-vs-demand', { params: { days } }).then((r) => r.data)

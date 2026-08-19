@@ -12,6 +12,7 @@ const {
 } = require("../services/deliveryAssignment.service")
 const { buildDeliveryOrderWhere } = require("../utils/deliveryFilters")
 const { calculateDeliveryFee } = require("../utils/distance")
+const { emitToOrder } = require("../socket")
 
 const STATUS_VALUES = ["PENDING", "IN_TRANSIT", "DELIVERED", "CANCELLED"]
 const PAYMENT_METHODS = ["MOBILE_MONEY", "PAY_ON_DELIVERY"]
@@ -550,6 +551,14 @@ router.patch("/:id/location", requireAuth, requireRole(["DELIVERY"]), async (req
       include: orderInclude(),
     })
 
+    // Push the new position to the customer watching this order.
+    emitToOrder(order.id, "location_update", {
+      orderId: order.id,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      at: new Date().toISOString(),
+    })
+
     res.status(200).json({ order })
   } catch (error) {
     next(error)
@@ -599,6 +608,12 @@ router.post("/:id/messages", requireAuth, async (req, res, next) => {
         { orderId: order.id }
       )
     }
+
+    // Announce it to everyone in the order room. Without this the socket
+    // clients — which do listen for `chat_message` — only ever saw messages
+    // after a manual refresh.
+    emitToOrder(order.id, "chat_message", created)
+    emitToOrder(order.id, "receive_message", created)
 
     res.status(201).json({ message: created })
   } catch (error) {

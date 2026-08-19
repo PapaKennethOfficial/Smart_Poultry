@@ -45,8 +45,10 @@ function StatCard({ label, value, icon: Icon, iconColor, accent }) {
   return (
     <div className="stat-card">
       <div className="card-accent" style={{ background: accent }} />
-      <div className="card-icon" style={{ background: `${iconColor}22`, width: 46, height: 46, borderRadius: 12 }}>
-        <Icon size={22} color={iconColor} strokeWidth={1.75} />
+      {/* Size and radius come from .stat-card .card-icon in index.css —
+          setting them inline here overrode the shared scale. Only tint is local. */}
+      <div className="card-icon" style={{ background: `${iconColor}22` }}>
+        <Icon size={15} color={iconColor} strokeWidth={2} />
       </div>
       <div className="card-label">{label}</div>
       <div className="card-value">{value}</div>

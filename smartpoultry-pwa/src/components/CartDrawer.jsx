@@ -30,6 +30,17 @@ function formatApiError(err, fallback) {
   return data.message || data.error || fallback;
 }
 
+// The backend requires a delivery address of at least 5 characters. Reverse
+// geocoding can legitimately come back empty — no Maps API key, a rate-limited
+// key, ZERO_RESULTS over farmland — and when it did, the address field stayed
+// blank and checkout was rejected even though we had exact coordinates. This
+// gives that case a real, human-readable address string. The precise pin is
+// still sent separately as deliveryLatitude/deliveryLongitude, so the driver
+// routes off the coordinates regardless of what this text says.
+function coordsAddressLabel(latitude, longitude) {
+  return `Pinned location (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+}
+
 // ─── Places Autocomplete Input ─────────────────────────────────────────────────
 function PlacesAutocomplete({ value, onChange, onSelect, isLoaded }) {
   const inputRef = useRef(null);
@@ -68,6 +79,8 @@ function PlacesAutocomplete({ value, onChange, onSelect, isLoaded }) {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder="Search address or place name..."
+        required
+        minLength={5}
       />
     </div>
   );
@@ -164,7 +177,20 @@ export default function CartDrawer() {
   const handleCheckout = async (e) => {
     e.preventDefault();
     if (cartItems.length === 0) return alert('Your cart is empty!');
-    
+
+    // The pin is the source of truth. If the text field is somehow still empty
+    // or too short but we hold coordinates, describe them rather than sending
+    // a request the API is guaranteed to reject.
+    const resolvedAddress = address.trim().length >= 5
+      ? address.trim()
+      : coords
+        ? coordsAddressLabel(coords.latitude, coords.longitude)
+        : '';
+
+    if (resolvedAddress.length < 5) {
+      return alert('Please enter a delivery address, or tap "Use my current location".');
+    }
+
     setSubmitting(true);
     try {
       const items = cartItems.map(item => ({
@@ -175,7 +201,7 @@ export default function CartDrawer() {
       const res = await api.post('/api/orders', {
         items,
         deliveryDate: new Date(deliveryDate).toISOString(),
-        address,
+        address: resolvedAddress,
         contactNumber,
         paymentMethod,
         notes,
@@ -221,6 +247,26 @@ export default function CartDrawer() {
     }
   };
 
+  /**
+   * Commit a pin to state: coordinates AND the delivery address.
+   *
+   * The address is what the order is actually validated and processed on, so
+   * picking up a location has to fill it in every time — a successful reverse
+   * geocode when we get one, the coordinate label when we don't. Without the
+   * fallback a failed geocode silently left the field empty and the order was
+   * rejected at checkout with "Delivery address is required", which is the bug
+   * this fixes.
+   */
+  const applyPinnedLocation = async (latitude, longitude) => {
+    setCoords({ latitude, longitude });
+    // Fill immediately so the field is never empty while the geocoder is in
+    // flight; the readable address replaces it a moment later if one comes back.
+    setAddress(coordsAddressLabel(latitude, longitude));
+
+    const readable = await reverseGeocodeGoogle(latitude, longitude);
+    if (readable) setAddress(readable);
+  };
+
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert('Location is not supported by this browser.');
@@ -230,13 +276,11 @@ export default function CartDrawer() {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const latitude = pos.coords.latitude;
-        const longitude = pos.coords.longitude;
-        setCoords({ latitude, longitude });
-
-        const readable = await reverseGeocodeGoogle(latitude, longitude);
-        if (readable) setAddress(readable);
-        setLocating(false);
+        try {
+          await applyPinnedLocation(pos.coords.latitude, pos.coords.longitude);
+        } finally {
+          setLocating(false);
+        }
       },
       () => {
         setLocating(false);
@@ -246,11 +290,7 @@ export default function CartDrawer() {
     );
   };
 
-  const handleMarkerDragEnd = async (lat, lng) => {
-    setCoords({ latitude: lat, longitude: lng });
-    const readable = await reverseGeocodeGoogle(lat, lng);
-    if (readable) setAddress(readable);
-  };
+  const handleMarkerDragEnd = (lat, lng) => applyPinnedLocation(lat, lng);
 
   const handlePlaceSelect = useCallback(({ latitude, longitude, address: addr }) => {
     setCoords({ latitude, longitude });

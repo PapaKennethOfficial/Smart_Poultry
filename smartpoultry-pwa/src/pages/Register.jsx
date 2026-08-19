@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Leaf, Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useRegister } from '../hooks/auth/useRegister'
 import { useAuth } from '../context/AuthContext'
@@ -21,9 +21,19 @@ export default function Register() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [role, setRole] = useState('customer')
+  // The landing page links here as /register?role=delivery, so the visitor
+  // arrives on the tab they picked instead of having to find it again.
+  // Anything unrecognised falls back to 'customer'.
+  const [searchParams] = useSearchParams()
+  const [role, setRole] = useState(() => {
+    const requested = (searchParams.get('role') || '').toLowerCase()
+    // hasOwnProperty, not `in`: `in` walks the prototype chain, so
+    // ?role=toString would otherwise be accepted as a valid role.
+    return Object.prototype.hasOwnProperty.call(ROLE_MAP, requested) ? requested : 'customer'
+  })
   const [matchError, setMatchError] = useState(null)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [googlePending, setGooglePending] = useState(false)
 
   const { mutate: register, isPending, error, reset } = useRegister()
   const { setToken, setRole: setAuthRole, setUser } = useAuth()
@@ -33,11 +43,9 @@ export default function Register() {
   // popup → verify on the backend → local state + redirect. Kept named
   // handleGoogleSignup so the existing button's onClick handler works.
   const handleGoogleSignup = async () => {
+    if (googlePending) return
     try {
-      if (role === 'manager') {
-        alert('Managers must sign up with email and password.')
-        return
-      }
+      setGooglePending(true)
       if (!isFirebaseConfigured || !auth) {
         alert('Firebase is not configured yet. Use email and password, or add your Firebase credentials to enable Google Sign-Up.')
         return
@@ -60,6 +68,8 @@ export default function Register() {
         const backendMsg = err?.response?.data?.message
         alert("Google Sign-Up failed: " + (backendMsg || err?.message || 'Please try again.'))
       }
+    } finally {
+      setGooglePending(false)
     }
   }
 
@@ -124,7 +134,7 @@ export default function Register() {
   ]
 
   return (
-    <form className="login-page" onSubmit={handleSubmit} noValidate>
+    <form className="login-page" onSubmit={handleSubmit}>
       {/* Left panel — mirrors Login.jsx for visual consistency */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -239,6 +249,28 @@ export default function Register() {
             </div>
           </div>
 
+          {/* The backend stamps deliveryStaffStatus: "PENDING" on every driver
+              signup, and until now nothing on this page said so -- drivers
+              signed up expecting to start working and hit a wall instead. */}
+          {role === 'delivery' && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: '10px 12px',
+                background: 'rgba(255,170,0,0.10)',
+                border: '1px solid rgba(255,170,0,0.30)',
+                borderRadius: 9,
+                fontSize: '0.78rem',
+                color: '#8a6100',
+                lineHeight: 1.45,
+              }}
+            >
+              Delivery Staff accounts need manager approval before you can be
+              assigned deliveries. You can sign up and register your vehicle
+              now — you'll be notified once you're approved.
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">Full Name</label>
             <input
@@ -250,6 +282,7 @@ export default function Register() {
               onChange={clearOnChange(setName)}
               disabled={isPending}
               required
+              autoComplete="name"
             />
           </div>
 
@@ -264,6 +297,7 @@ export default function Register() {
               onChange={clearOnChange(setEmail)}
               disabled={isPending}
               required
+              autoComplete="email"
             />
           </div>
 
@@ -278,6 +312,7 @@ export default function Register() {
               onChange={clearOnChange(setPhone)}
               disabled={isPending}
               required
+              autoComplete="tel"
             />
           </div>
 
@@ -294,11 +329,14 @@ export default function Register() {
                 disabled={isPending}
                 required
                 minLength={6}
+                autoComplete="new-password"
                 style={{ paddingRight: 44 }}
               />
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
+                aria-label={showPass ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
                 style={{
                   position: 'absolute', right: 13, top: '50%',
                   transform: 'translateY(-50%)',
@@ -323,11 +361,15 @@ export default function Register() {
                 onChange={clearOnChange(setConfirm)}
                 disabled={isPending}
                 required
+                minLength={6}
+                autoComplete="new-password"
                 style={{ paddingRight: 44 }}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
+                aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
                 style={{
                   position: 'absolute', right: 13, top: '50%',
                   transform: 'translateY(-50%)',
@@ -399,7 +441,7 @@ export default function Register() {
           <button
             type="button"
             onClick={handleGoogleSignup}
-            disabled={googleDisabled}
+            disabled={googleDisabled || googlePending}
             style={{ 
               width: '100%', 
               justifyContent: 'center', 
@@ -414,12 +456,16 @@ export default function Register() {
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
               color: '#333',
-              opacity: googleDisabled ? 0.6 : 1,
-              cursor: googleDisabled ? 'not-allowed' : 'pointer'
+              opacity: (googleDisabled || googlePending) ? 0.6 : 1,
+              cursor: (googleDisabled || googlePending) ? 'not-allowed' : 'pointer'
             }}
           >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
-            {googleButtonLabel}
+            {googlePending ? (
+              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" style={{ width: 18, height: 18 }} />
+            )}
+            {googlePending ? 'Opening Google…' : googleButtonLabel}
           </button>
 
           <p style={{

@@ -24,6 +24,7 @@ async function main() {
   await prisma.farm.deleteMany();
   await prisma.product.deleteMany();
   await prisma.vehicle.deleteMany();
+  await prisma.withdrawalRequest.deleteMany();
   await prisma.user.deleteMany();
 
   // ─── Create Admin User Only ────────────────────────────────────────────────

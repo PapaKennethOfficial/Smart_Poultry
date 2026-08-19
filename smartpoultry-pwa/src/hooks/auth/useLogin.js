@@ -11,7 +11,10 @@ import { useQueryClient } from '@tanstack/react-query'
  *
  * Usage:
  *   const { mutate: login, isPending, error } = useLogin()
- *   login({ email, password, role })
+ *   login({ email, password, role, remember })
+ *
+ * `remember` never reaches the API -- it only decides whether the returned
+ * token is persisted (localStorage) or scoped to the tab (sessionStorage).
  *
  * 401/403 auth errors are surfaced via `error` for inline display.
  * Other errors fall back to a toast.
@@ -23,7 +26,7 @@ export function useLogin() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: loginUser,
+    mutationFn: ({ remember: _remember, ...credentials }) => loginUser(credentials),
 
     onSuccess: (data, variables, context) => {
       if (data.requires2FA) {
@@ -35,7 +38,7 @@ export function useLogin() {
         return
       }
       queryClient.clear() // Prevent stale data from previous sessions
-      setToken(data.token)
+      setToken(data.token, { remember: variables?.remember !== false })
       if (data.role) setRole(data.role)
       if (data.user) setUser(data.user)
       showSuccess('Welcome back! Redirecting to dashboard…')

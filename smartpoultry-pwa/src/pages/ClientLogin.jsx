@@ -22,11 +22,17 @@ const PASSWORD_ROLE_MAP = {
 
 export default function Login() {
   const [showPass, setShowPass] = useState(false)
-  const [role, setRole] = useState('delivery')
+  // Customers are the overwhelming majority of sign-ins, and Register defaults
+  // to 'customer' too. Defaulting this to 'delivery' meant a customer who did
+  // not notice the toggle got "Incorrect email or password" for correct
+  // credentials, because the backend scopes the lookup to (email, role).
+  const [role, setRole] = useState('customer')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [showForgotModal, setShowForgotModal] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
+  const [googlePending, setGooglePending] = useState(false)
 
   const { mutate: login, data: loginData, isPending, error, reset } = useLogin()
   const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOTP()
@@ -34,11 +40,9 @@ export default function Login() {
   const navigate = useNavigate()
 
   const handleGoogleLogin = async () => {
+    if (googlePending) return
     try {
-      if (role === 'manager') {
-        alert('Managers and admins must sign in with their approved account credentials.')
-        return
-      }
+      setGooglePending(true)
       if (!isFirebaseConfigured || !auth) {
         alert('Firebase is not configured yet. Use email and password, or add your Firebase credentials to enable Google Sign-In.')
         return
@@ -47,7 +51,7 @@ export default function Login() {
       const result = await signInWithPopup(auth, provider)
       const idToken = await result.user.getIdToken()
       const data = await googleAuthUser({ token: idToken, role: GOOGLE_ROLE_MAP[role] || 'CUSTOMER' })
-      setToken(data.token)
+      setToken(data.token, { remember: rememberMe })
       if (data.role) setAuthRole(data.role)
       if (data.user) setUser(data.user)
       navigate(data.role === 'DELIVERY' ? '/delivery/vehicle' : '/customer/marketplace')
@@ -62,21 +66,29 @@ export default function Login() {
         const backendMsg = err?.response?.data?.message
         alert("Google Sign-In failed: " + (backendMsg || err?.message || 'Please try again.'))
       }
+    } finally {
+      setGooglePending(false)
     }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (loginData?.requires2FA) {
-      verifyOtp({ userId: loginData.userId, otpCode })
+      verifyOtp({ userId: loginData.userId, otpCode, remember: rememberMe })
     } else {
-      login({ email, password, role: PASSWORD_ROLE_MAP[role] })
+      login({ email, password, role: PASSWORD_ROLE_MAP[role], remember: rememberMe })
     }
   }
 
   const isInvalidCreds = error?.response?.status === 401
+  // A 401 here has two causes that look identical to the user: wrong password,
+  // or right password under the other role. Accounts are keyed on (email,
+  // role), so signing in on the wrong tab returns "no such user" -- and the old
+  // copy blamed the credentials for it. We cannot say which it was without
+  // leaking whether the email exists, so name both.
+  const otherRoleLabel = role === 'customer' ? 'Delivery Staff' : 'Customer'
   const inlineError = isInvalidCreds
-    ? 'Incorrect email or password'
+    ? `Incorrect email or password. If this is a ${otherRoleLabel} account, switch the tab above and try again.`
     : error
       ? (!error.response ? 'Network error — is the server running?' : (error?.response?.data?.message || 'Login failed. Please try again.'))
       : null
@@ -99,7 +111,7 @@ export default function Login() {
   ]
 
   return (
-    <form className="login-page" onSubmit={handleSubmit} noValidate>
+    <form className="login-page" onSubmit={handleSubmit}>
       {/* Left panel */}
       <div className="login-left">
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -225,6 +237,8 @@ export default function Login() {
                 onChange={(e) => setOtpCode(e.target.value)}
                 disabled={isVerifying}
                 required
+                inputMode="numeric"
+                autoComplete="one-time-code"
               />
               <div style={{ fontSize: '0.78rem', color: '#5e7a61', marginTop: 6 }}>
                 An OTP has been sent to your email/phone.
@@ -243,6 +257,7 @@ export default function Login() {
                   onChange={clearErrorOnChange(setEmail)}
                   disabled={isPending}
                   required
+                  autoComplete="email"
                 />
               </div>
 
@@ -258,11 +273,14 @@ export default function Login() {
                     onChange={clearErrorOnChange(setPassword)}
                     disabled={isPending}
                     required
+                    autoComplete="current-password"
                     style={{ paddingRight: 44 }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
+                    aria-label={showPass ? 'Hide password' : 'Show password'}
+                    tabIndex={-1}
                     style={{
                       position: 'absolute', right: 13, top: '50%',
                       transform: 'translateY(-50%)',
@@ -280,14 +298,25 @@ export default function Login() {
                 alignItems: 'center', marginBottom: 22
               }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked style={{ accentColor: '#237227', width: 14, height: 14 }} />
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ accentColor: '#237227', width: 14, height: 14 }}
+                  />
                   <span style={{ fontSize: '0.8rem', color: '#5e7a61' }}>Remember me</span>
                 </label>
-                <span 
+                {/* Was a <span onClick>: not reachable by keyboard, no focus
+                    ring, and screen readers never announced it as actionable. */}
+                <button
+                  type="button"
                   onClick={() => setShowForgotModal(true)}
                   style={{
-                    fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600
-                  }}>Forgot password?</span>
+                    fontSize: '0.8rem', color: '#237227', cursor: 'pointer', fontWeight: 600,
+                    background: 'none', border: 'none', padding: 0,
+                    fontFamily: 'inherit', textDecoration: 'none',
+                  }}
+                >Forgot password?</button>
               </div>
             </>
           )}
@@ -332,7 +361,7 @@ export default function Login() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            disabled={googleDisabled}
+            disabled={googleDisabled || googlePending}
             style={{ 
               width: '100%', 
               justifyContent: 'center', 
@@ -347,12 +376,16 @@ export default function Login() {
               fontFamily: 'Inter, sans-serif',
               fontWeight: 600,
               color: '#333',
-              opacity: googleDisabled ? 0.6 : 1,
-              cursor: googleDisabled ? 'not-allowed' : 'pointer'
+              opacity: (googleDisabled || googlePending) ? 0.6 : 1,
+              cursor: (googleDisabled || googlePending) ? 'not-allowed' : 'pointer'
             }}
           >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" style={{ width: 18, height: 18 }} />
-            {googleButtonLabel}
+            {googlePending ? (
+              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" style={{ width: 18, height: 18 }} />
+            )}
+            {googlePending ? 'Opening Google…' : googleButtonLabel}
           </button>
 
           <p style={{

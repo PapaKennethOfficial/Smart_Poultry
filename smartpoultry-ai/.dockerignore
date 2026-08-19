@@ -1,0 +1,22 @@
+venv
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+
+# Secrets - supplied through the environment at runtime.
+.env
+.env.local
+!.env.example
+
+# Trained model pickles are a runtime artifact on a named volume. Baking them
+# in would ship a stale forecast trained on one developer's database.
+app/models/cache
+
+scripts
+test_groq.py
+.git
+.gitignore
+Dockerfile
+.dockerignore

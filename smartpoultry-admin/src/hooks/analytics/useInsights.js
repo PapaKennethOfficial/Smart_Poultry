@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { getMorningBriefing, askInsight } from '../../api/aiAnalytics'
 import { useToast } from '../../components/Toast'
+import { apiErrorMessage } from '../../api/errorMessage'
 
 /**
  * Fetches (and caches) the morning briefing. Auto-runs once when a manager
@@ -12,7 +13,7 @@ export function useMorningBriefing() {
     queryKey: ['ai', 'morning-briefing'],
     queryFn: getMorningBriefing,
     staleTime: 30 * 60 * 1000, // 30 minutes
-    retry: 0, // 503 (no LLM key) shouldn't be retried
+    retry: 0, // a 503 from a missing LLM key shouldn't be retried
   })
 }
 
@@ -26,10 +27,9 @@ export function useAskInsight() {
   return useMutation({
     mutationFn: askInsight,
     onError: (err) => {
-      const message =
-        err?.response?.data?.message
-        || 'Could not reach the AI Advisor. Check that GOOGLE_API_KEY is set on the AI service.'
-      showError(message)
+      // Show what the server actually said. The previous hardcoded hint named
+      // the wrong provider entirely and hid the real failure.
+      showError(apiErrorMessage(err, 'Could not reach the AI Advisor.'))
     },
   })
 }

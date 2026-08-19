@@ -5,6 +5,11 @@ import api from '../api/axios'
 import { useToast } from '../components/Toast'
 import Pagination from '../components/Pagination'
 
+// Rows per page. Used for BOTH the API request and the pager display —
+// if these two ever disagree the page numbers silently lie.
+const LOGBOOK_PAGE_SIZE = 10
+
+
 function AddEntryModal({ onClose }) {
   const queryClient = useQueryClient()
   const { showSuccess, showError } = useToast()
@@ -304,7 +309,7 @@ export default function Logbook() {
       if (debouncedSearch) params.append('search', debouncedSearch)
       if (activeTab !== 'all') params.append('batch', activeTab)
       params.append('page', page)
-      params.append('limit', 20)
+      params.append('limit', LOGBOOK_PAGE_SIZE)
       
       const res = await api.get(`/api/logbook?${params.toString()}`)
       return res.data
@@ -476,7 +481,7 @@ export default function Logbook() {
             <Pagination 
               currentPage={page}
               totalItems={data.meta.total}
-              itemsPerPage={20}
+              itemsPerPage={LOGBOOK_PAGE_SIZE}
               onPageChange={setPage}
             />
           </div>

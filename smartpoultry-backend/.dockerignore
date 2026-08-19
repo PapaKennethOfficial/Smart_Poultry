@@ -1,0 +1,35 @@
+# Anything listed here never reaches the build context, which keeps the image
+# small and - more importantly - keeps secrets and machine-local state out of
+# a layer that could be pushed to a registry.
+
+node_modules
+npm-debug.log*
+pnpm-lock.yaml
+
+# Secrets. The image reads these from the environment at runtime instead.
+.env
+.env.*
+!.env.example
+firebase-adminsdk.json
+**/firebase-adminsdk*.json
+
+# Machine-local run output
+*.log
+
+# Scratch files that accumulated during development
+_pdfsmoke.tmp.js
+fix.js
+clean_auth.controller.js
+seed-products.js
+
+# Generated at runtime and mounted as a volume; baking the current contents
+# into the image would ship one developer's uploaded product photos.
+uploads
+
+# Tests run in CI, not in the shipped image
+tests
+
+.git
+.gitignore
+Dockerfile
+.dockerignore

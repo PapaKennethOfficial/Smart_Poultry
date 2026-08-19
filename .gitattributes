@@ -1,0 +1,21 @@
+# Normalise line endings for everyone.
+#
+# Without this, a Windows checkout rewrites every file to CRLF and the next
+# commit shows all ~190 files as fully modified, burying the real diff. Git
+# stores LF here and converts on checkout per platform.
+* text=auto
+
+# Keep shell scripts LF even on Windows: docker-entrypoint.sh runs inside a
+# Linux container and CRLF would make it fail with "bad interpreter".
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.conf text eol=lf
+
+# Never touch binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.pkl binary
