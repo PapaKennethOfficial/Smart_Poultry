@@ -1,21 +1,29 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import api from '../api/axios'
+import { readAuth, writeAuth, clearAuth, rememberedByDefault } from '../api/authStorage'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null)
-  const [role, setRole] = useState(() => localStorage.getItem('role') || null)
+  const [token, setToken] = useState(() => readAuth('token') || null)
+  const [role, setRole] = useState(() => readAuth('role') || null)
   const [user, setUserState] = useState(() => {
-    const raw = localStorage.getItem('user')
+    const raw = readAuth('user')
     if (!raw) return null
     try {
       return JSON.parse(raw)
     } catch {
-      localStorage.removeItem('user')
+      writeAuth('user', null, true)
+      writeAuth('user', null, false)
       return null
     }
   })
+
+  // A ref, not state: setToken/setRole/setUser are called back-to-back on
+  // sign-in, and a state update would still be queued when the second and
+  // third of them ran -- they would write to the wrong store. The ref is
+  // current the instant setToken assigns it.
+  const rememberRef = useRef(rememberedByDefault())
 
   // Hydrate user profile from the backend on mount when a token exists.
   // This ensures the real username is always available even after a page refresh.
@@ -41,37 +49,35 @@ export function AuthProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  const handleSetToken = (newToken) => {
+  /**
+   * Sign-in entry point. Pass `{ remember }` to choose where the session is
+   * stored; omit it and the previous choice is reused, which is what the
+   * background profile refresh below wants.
+   */
+  const handleSetToken = (newToken, options = {}) => {
+    if (typeof options.remember === 'boolean') rememberRef.current = options.remember
     setToken(newToken)
-    if (newToken) {
-      localStorage.setItem('token', newToken)
-    } else {
-      localStorage.removeItem('token')
-    }
+    writeAuth('token', newToken, rememberRef.current)
   }
 
   const handleSetRole = (newRole) => {
     setRole(newRole)
-    if (newRole) {
-      localStorage.setItem('role', newRole)
-    } else {
-      localStorage.removeItem('role')
-    }
+    writeAuth('role', newRole, rememberRef.current)
   }
 
   const handleSetUser = (newUser) => {
     setUserState(newUser)
-    if (newUser) {
-      localStorage.setItem('user', JSON.stringify(newUser))
-    } else {
-      localStorage.removeItem('user')
-    }
+    writeAuth('user', newUser ? JSON.stringify(newUser) : null, rememberRef.current)
   }
 
   const logout = () => {
-    handleSetToken(null)
-    handleSetRole(null)
-    handleSetUser(null)
+    setToken(null)
+    setRole(null)
+    setUserState(null)
+    // Wipe both stores, not just the active one, so a stale token from an
+    // earlier "Remember me" login can never resurrect the session.
+    clearAuth()
+    rememberRef.current = true
   }
 
   return (
@@ -81,6 +87,7 @@ export function AuthProvider({ children }) {
         role,
         user,
         setToken: handleSetToken,
+        remember: rememberRef.current,
         setRole: handleSetRole,
         setUser: handleSetUser,
         logout,

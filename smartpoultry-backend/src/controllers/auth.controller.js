@@ -73,34 +73,50 @@ const login = async (req, res, next) => {
             })
         }
 
-        if (false /* user.isTwoFactorEnabled - Disabled per user request */) {
-            // Generate a 6 digit OTP
+        // Two-factor authentication, when the account has it switched on.
+        //
+        // This used to be `if (false)`. The whole feature was already built —
+        // the schema fields, this handler, /login/verify, and a complete OTP
+        // step in the admin login UI — it simply never ran. It is now gated on
+        // the user's own setting, which they control from Settings.
+        if (user.isTwoFactorEnabled) {
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
-            const otpExpiry = new Date(Date.now() + 10 * 60000) // 10 minutes from now
+            const otpExpiry = new Date(Date.now() + 10 * 60000) // 10 minutes
 
-            await prisma.user.update({
-                where: { id: user.id },
-                data: { otpCode, otpExpiry }
-            })
-
-            // Send real email or SMS
             const messageBody = `Your SmartPoultry OTP code is: ${otpCode}. It expires in 10 minutes.`
+
+            // Fail CLOSED. If the code cannot be delivered we must not hand out
+            // a `requires2FA` response, because the user would be stuck at a
+            // prompt for a code that never arrives — and we must not fall
+            // through to a session either, because that would silently defeat
+            // the second factor. Either the code is sent or the login fails.
             try {
                 if (user.phone) {
                     await sendSMS(user.phone, messageBody)
                 } else if (user.email) {
                     await sendEmail(user.email, "Your Login OTP", `<p>${messageBody}</p>`)
+                } else {
+                    throw new Error("Account has no phone or email to send a code to")
                 }
             } catch (err) {
-                console.error("Failed to send 2FA OTP:", err)
-                // Continue anyway so they can at least see the mock otp in response if dev mode
+                console.error("[2fa] failed to send OTP:", err.message)
+                return res.status(503).json({
+                    message:
+                        "Two-factor authentication is enabled on this account but the " +
+                        "code could not be sent. Contact an administrator.",
+                })
             }
+
+            // Only persist the code once it has actually been dispatched.
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { otpCode, otpExpiry }
+            })
 
             return res.status(200).json({
                 message: "OTP sent to your email/phone",
                 requires2FA: true,
                 userId: user.id,
-                mockOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined // Only expose in dev
             })
         }
 
@@ -313,7 +329,9 @@ const forgotPassword = async (req, res, next) => {
 
         res.status(200).json({ 
             message: "If an account exists, an OTP has been sent.",
-            mockOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined 
+            // Explicit opt-in only. NODE_ENV alone is too easy to misconfigure,
+            // and echoing a reset code to the caller defeats the whole mechanism.
+            mockOtp: process.env.ALLOW_DEV_OTP_ECHO === "true" ? otpCode : undefined 
         })
     } catch (error) {
         next(error)

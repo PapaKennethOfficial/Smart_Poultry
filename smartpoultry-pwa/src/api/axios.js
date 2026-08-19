@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { readAuth } from './authStorage'
 
 // baseURL is intentionally empty: in dev, Vite proxies "/api" → backend
 // (see vite.config.js). In production, the frontend is served from the same
@@ -13,7 +14,9 @@ const api = axios.create({
 
 // Attach JWT token to every request automatically
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  // Not localStorage directly: a "Remember me"-off session lives in
+  // sessionStorage, and reading only localStorage would drop the header.
+  const token = readAuth('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
