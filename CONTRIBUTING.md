@@ -88,7 +88,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-The two Gemini-backed endpoints (Morning Briefing, AI Advisor) need a Google API key set in your local `.env`. Without it those two endpoints return a friendly `503`; everything else works.
+The LLM-backed endpoints (Morning Briefing, AI Advisor, Explain-this-chart) need a Groq API key (`GROQ_API_KEY`) set in your local `.env`. Without it those two endpoints return a friendly `503`; everything else works.
 
 ---
 
@@ -163,7 +163,7 @@ Install cloudflared once (`winget install --id Cloudflare.cloudflared`), then ru
 | Frontend shows "Google Sign-In unavailable" | Firebase env vars aren't set — see §4, or ignore and use email + password |
 | Frontend Google Maps loader complains about mismatched options | Your `VITE_GOOGLE_MAPS_API_KEY` isn't set in the pwa `.env.local` |
 | Morning Briefing / AI Advisor returns 503 | Google API key missing in `smartpoultry-ai/.env` |
-| Morning Briefing returns truncated fragments | Daily Gemini free-tier quota exhausted — switch to a higher-quota model in `smartpoultry-ai/.env` or wait for the quota window to reset |
+| Morning Briefing returns truncated fragments | Groq free-tier quota exhausted, or `GROQ_MODEL` names a decommissioned model — check the service log for the exact Groq error |
 | Vite dev server can't resolve `/src/main.jsx` | Always `cd` into the app folder before `npm run dev` — the `--prefix` flag doesn't set the working directory the compiler expects |
 
 ---
@@ -175,7 +175,7 @@ Smart_Poultry/
 ├── smartpoultry-backend/     # Express + Prisma + Postgres. Cron for weekly retrain.
 ├── smartpoultry-admin/       # Vite + React — manager dashboard
 ├── smartpoultry-pwa/         # Vite + React — customer + driver mobile app
-├── smartpoultry-ai/          # FastAPI — Prophet, OR-Tools, Gemini
+├── smartpoultry-ai/          # FastAPI — Prophet, OR-Tools, Groq
 └── docker-compose.yml        # One-command local Postgres + AI service
 ```
 

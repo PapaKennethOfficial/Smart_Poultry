@@ -76,3 +76,6 @@ docker-compose.yml.bak-preexisting
 smartpoultry-backend/prisma/seedComplex.js
 smartpoultry-backend/prisma/seedDeliveries.js
 smartpoultry-backend/prisma/seedLogbook.js
+
+# Workaround folder for stale git locks this environment could not unlink.
+_git_stale_locks/
