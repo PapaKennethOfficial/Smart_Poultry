@@ -5,10 +5,15 @@ Strategy
     schema (see services/metrics.py); this file mirrors that schema and
     only lets safe fields through. Any key that isn't explicitly
     whitelisted is dropped — even if new fields are added to the
-    aggregator later, they won't accidentally leak to Gemini.
+    aggregator later, they won't accidentally leak to the LLM.
 
 Additionally the string contents are scrubbed for common patterns
 (email, phone, GPS coords, cuid IDs) as a defence in depth.
+
+The farm, inventory and forecast blocks added alongside the sales metrics
+carry no personal data by construction — birds, eggs, feed, air temperature,
+product stock and model accuracy. Driver and customer identity remain
+excluded, so "who is my fastest driver" is still unanswerable by design.
 """
 
 from __future__ import annotations
@@ -47,6 +52,43 @@ def _scrub_string(value: str) -> str:
 
 # ─── Whitelist for the weekly-snapshot schema ───────────────────────────────
 
+_FARM_TOTALS_FIELDS = {
+    "eggs",
+    "mortality",
+    "feed_kg",
+    "water_litres",
+    "days_logged",
+    "entries_recorded",
+    "eggs_per_day",
+    "mortality_per_day",
+    "feed_kg_per_day",
+    "avg_temperature_c",
+    "avg_humidity_pct",
+    "avg_bird_weight_kg",
+    "feed_conversion_ratio",
+    "fcr_benchmark",
+    "fcr_verdict",
+}
+
+# Per-series forecast description. No customer or driver identity appears in
+# any of these — they are model metadata and aggregate predictions.
+_FORECAST_SERIES_FIELDS = {
+    "available",
+    "reason",
+    "label",
+    "unit",
+    "predicted_total_next_period",
+    "predicted_daily_avg",
+    "recent_daily_avg",
+    "direction",
+    "confidence_interval_pct",
+    "band_low_total",
+    "band_high_total",
+    "accuracy",
+    "trained_at",
+    "history_days_available",
+}
+
 _WEEKLY_SNAPSHOT_WHITELIST: dict[str, Any] = {
     "generated_at": True,
     "window": {"start": True, "end": True, "days": True},
@@ -58,6 +100,33 @@ _WEEKLY_SNAPSHOT_WHITELIST: dict[str, Any] = {
     "driver_stats": [{"assigned", "delivered", "avg_hours_to_deliver"}],
     #  ↑ driver_id and driver_name are intentionally NOT in the whitelist.
     "pending_backlog": {"PENDING", "IN_TRANSIT"},
+
+    # ── Farm side ──────────────────────────────────────────────────────────
+    # Logbook data carries no personal information: it is birds, eggs, feed
+    # and air temperature. The whole block is safe to pass through.
+    "farm_current": _FARM_TOTALS_FIELDS,
+    "farm_daily": [{"day", "eggs", "mortality", "feed_kg", "temperature_c"}],
+    "farm_change": {"eggs_change_pct", "mortality_change_pct", "feed_change_pct"},
+
+    # ── Inventory ──────────────────────────────────────────────────────────
+    # Product names and stock levels only — no customer attached.
+    "inventory": {
+        "active_products": True,
+        "total_units_in_stock": True,
+        "low_stock": [{"name", "unit", "stock", "price"}],
+        "low_stock_threshold": True,
+        "products": [{"name", "unit", "stock", "price"}],
+    },
+
+    # ── Model state ────────────────────────────────────────────────────────
+    "forecasts": {
+        "model": True,
+        "horizon_days": True,
+        "series": {
+            "demand": _FORECAST_SERIES_FIELDS,
+            "eggs": _FORECAST_SERIES_FIELDS,
+        },
+    },
 }
 
 
@@ -116,3 +185,18 @@ def sanitize_question(text: str) -> str:
         return ""
     trimmed = text.strip()[:_MAX_QUESTION_LEN]
     return _scrub_string(trimmed)
+
+
+# ─── Chart-explanation context ──────────────────────────────────────────────
+
+def sanitize_chart_context(context: Any) -> Any:
+    """Scrub a chart context before it reaches the LLM.
+
+    Unlike the weekly snapshot there is no fixed key whitelist here: chart
+    payloads differ in shape by design, and every resolver in services/charts.py
+    is written to emit aggregates only — driver labels are "Driver 1..N", never
+    names. The regex scrubbers still run as defence in depth, so an email,
+    phone number, cuid or GPS pair that somehow reached a resolver is stripped
+    rather than forwarded.
+    """
+    return _scrub_strings_recursive(context)
