@@ -11,7 +11,6 @@ import VehicleRegistration from './pages/VehicleRegistration';
 import AssignedDeliveries from './pages/AssignedDeliveries';
 import CustomerMarketplace from './pages/CustomerMarketplace';
 import CustomerOrders from './pages/CustomerOrders';
-import CustomerWishlist from './pages/CustomerWishlist';
 import DriverEarnings from './pages/DriverEarnings';
 import Settings from './pages/Settings';
 import DesktopSidebar from './components/DesktopSidebar';
@@ -223,7 +222,6 @@ export default function ClientApp() {
             {/* Customer routes */}
             <Route path="customer/marketplace" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerMarketplace /></ProtectedRoute>} />
             <Route path="customer/orders" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerOrders /></ProtectedRoute>} />
-            <Route path="customer/wishlist" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerWishlist /></ProtectedRoute>} />
 
             {/* Shared settings */}
             <Route path="settings" element={<ProtectedRoute allowedRoles={['CUSTOMER', 'DELIVERY']}><Settings /></ProtectedRoute>} />

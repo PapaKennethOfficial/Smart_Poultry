@@ -22,9 +22,9 @@ const TOUR_STEPS = [
     image: "📍"
   },
   {
-    title: "Save Your Favorites",
-    content: "Tap the heart icon on any product to save it to your Wishlist for quick access later.",
-    image: "❤️"
+    title: 'Your Cart',
+    content: 'View your selected items and checkout securely when you are ready.',
+    image: '🛍️'
   }
 ]
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ShoppingCart, Package, Search, Plus, Minus, CheckCircle2, ShoppingBag, MapPin, Heart } from 'lucide-react'
+import { ShoppingCart, Package, Search, Plus, Minus, CheckCircle2, ShoppingBag, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import { useCart } from '../context/CartContext'
@@ -7,6 +7,7 @@ import Pagination from '../components/Pagination'
 import EmptyState from '../components/EmptyState'
 import Skeleton from '../components/Skeleton'
 import PullToRefresh from '../components/PullToRefresh'
+import ProductImage from '../components/ProductImage'
 
 // Keep this list aligned with the backend `PAYMENT_METHODS` enum
 // (smartpoultry-backend/src/routes/order.routes.js). Card and bank transfer
@@ -38,8 +39,6 @@ export default function CustomerMarketplace() {
   
   const { addToCart } = useCart()
   
-  const [wishlistIds, setWishlistIds] = useState(new Set())
-
   const fetchProducts = async () => {
     try {
       setLoading(true)
@@ -47,31 +46,12 @@ export default function CustomerMarketplace() {
       if (activeCategory !== 'All') params.append('category', activeCategory)
       if (searchTerm) params.append('search', searchTerm)
 
-      const [res, wishlistRes] = await Promise.all([
-        api.get(`/api/products?${params.toString()}`),
-        api.get('/api/products/wishlist').catch(() => ({ data: { products: [] } }))
-      ])
-      
+      const res = await api.get(`/api/products?${params.toString()}`)
       setProducts(res.data.products || [])
-      setWishlistIds(new Set((wishlistRes.data.products || []).map(p => p.id)))
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const toggleWishlist = async (product) => {
-    try {
-      const res = await api.post(`/api/products/${product.id}/wishlist`)
-      setWishlistIds(prev => {
-        const next = new Set(prev)
-        if (res.data.wishlisted) next.add(product.id)
-        else next.delete(product.id)
-        return next
-      })
-    } catch (err) {
-      console.error(err)
     }
   }
 
@@ -176,36 +156,53 @@ export default function CustomerMarketplace() {
         ) : (
           <div className="marketplace-products-grid">
             {paginatedProducts.map(p => {
-              const isWishlisted = wishlistIds.has(p.id)
               return (
-              <div key={p.id} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 12 }}>
-                <div style={{ padding: 20, display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <div style={{ marginBottom: 6 }}>
-                    <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: 'var(--text-heading)', fontSize: '1.05rem' }}>{p.name}</div>
+              <div
+                key={p.id}
+                className="product-card"
+                style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 'var(--r-md)', position: 'relative' }}
+              >
+                {/* Image takes the slot the product name used to occupy. */}
+                <ProductImage src={p.imageUrl} alt={p.name} ratio="3 / 2" radius="0" />
+
+                <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                  {/* The name now lives where the description used to be.
+                      Clamped to two lines so a long name cannot make one card
+                      taller than its neighbours and break the grid. */}
+                  <div
+                    style={{
+                      fontFamily: 'Space Grotesk', fontWeight: 600,
+                      color: 'var(--text-heading)', fontSize: '0.82rem',
+                      lineHeight: 1.3, display: '-webkit-box',
+                      WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', minHeight: '2.13em',
+                    }}
+                  >
+                    {p.name}
                   </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6 }}>GHS {p.price}</div>
-                  {p.category && (
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{p.category}</span>
-                  )}
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, flex: 1, lineHeight: 1.5 }}>
-                    {p.description || 'Premium farm product.'}
+
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-heading)', fontVariantNumeric: 'tabular-nums' }}>
+                      GHS {p.price}
+                    </span>
+                    <span style={{ fontSize: '0.66rem', color: 'var(--text-subtle)' }}>/ {p.unit}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>Per {p.unit}</div>
-                      <div style={{ fontSize: '0.75rem', color: p.stock > 5 ? 'var(--primary)' : p.stock > 0 ? '#d97706' : '#ef4444', fontWeight: 600, marginTop: 2 }}>
-                        {p.stock > 5 ? `${p.stock} in stock` : p.stock > 0 ? `Only ${p.stock} left` : 'Out of stock'}
-                      </div>
-                    </div>
-                    <button 
-                      className="btn-outline" 
-                      style={{ padding: '8px 16px', fontSize: '0.75rem', opacity: p.stock === 0 ? 0.4 : 1, borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
-                      onClick={() => addToCart(p)}
-                      disabled={p.stock <= 0}
-                    >
-                      <Plus size={16} /> Add
-                    </button>
+
+                  <div style={{
+                    fontSize: '0.65rem', fontWeight: 600, marginTop: -1,
+                    color: p.stock > 5 ? 'var(--primary)' : p.stock > 0 ? '#d97706' : '#ef4444',
+                  }}>
+                    {p.stock > 5 ? 'In stock' : p.stock > 0 ? `Only ${p.stock} left` : 'Out of stock'}
                   </div>
+
+                  <button
+                    className="btn-primary"
+                    style={{ marginTop: 'auto', width: '100%', fontSize: '0.74rem' }}
+                    onClick={() => addToCart(p)}
+                    disabled={p.stock <= 0}
+                  >
+                    {p.stock <= 0 ? 'Out of stock' : 'Add to cart'}
+                  </button>
                 </div>
               </div>
             )})}
