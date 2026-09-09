@@ -57,7 +57,7 @@ router.post("/", requireAuth, requireRole(["DELIVERY"]), async (req, res, next) 
     const availableBalance = await calculateAvailableBalance(req.user.id)
     if (amount > availableBalance) {
       return res.status(400).json({ 
-        message: `Requested amount (GHS ${amount}) exceeds your available balance (GHS ${availableBalance})` 
+        message: `Requested amount (GH₵ ${amount}) exceeds your available balance (GH₵ ${availableBalance})` 
       })
     }
 

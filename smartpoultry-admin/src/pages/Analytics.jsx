@@ -563,7 +563,7 @@ const PAYMENT_COLOURS = {
   FAILED:    '#ef4444',
 }
 function formatMoney(n) {
-  return 'GHS ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function formatDate(iso) {
   const d = new Date(iso)

@@ -354,7 +354,7 @@ export default function ManagerOrders() {
                       <td>{getOrderTitle(o)}</td>
                       <td>
                         <div>{getOrderQuantityDesc(o)}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>GHS {o.amount.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>GH₵ {o.amount.toFixed(2)}</div>
                       </td>
                       <td>
                         <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || 'N/A'}</div>
@@ -432,12 +432,12 @@ export default function ManagerOrders() {
                       {selectedOrder.items.map((item, idx) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
                           <span>{item.quantity}x {item.product?.name}</span>
-                          <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
+                          <span>GH₵ {(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div><strong style={{ color: 'var(--text-muted)' }}>Total Amount:</strong> GHS {selectedOrder.amount.toFixed(2)}</div>
+                  <div><strong style={{ color: 'var(--text-muted)' }}>Total Amount:</strong> GH₵ {selectedOrder.amount.toFixed(2)}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Payment:</strong> {PAYMENT_LABELS[selectedOrder.paymentMethod] || selectedOrder.paymentMethod || 'N/A'}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Payment Status:</strong> {(selectedOrder.paymentStatus || 'PENDING').replaceAll('_', ' ')}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Placed On:</strong> {new Date(selectedOrder.createdAt).toLocaleDateString()}</div>

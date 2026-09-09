@@ -109,7 +109,7 @@ exports.createLogEntry = async (req, res) => {
     
     // Append user expenses and sales to notes or handle them if schema doesn't have it directly.
     // The current schema doesn't have expenses and sales, so let's format it in notes.
-    const combinedNotes = `Expenses (GHS): ${validatedData.expenses || 0} | Sales (GHS): ${validatedData.sales || 0} ${validatedData.notes ? '| ' + validatedData.notes : ''}`;
+    const combinedNotes = `Expenses (GH₵): ${validatedData.expenses || 0} | Sales (GH₵): ${validatedData.sales || 0} ${validatedData.notes ? '| ' + validatedData.notes : ''}`;
 
     const newEntry = await prisma.$transaction(async (tx) => {
       const entry = await tx.logEntry.create({

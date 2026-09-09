@@ -32,7 +32,7 @@ const statusFilterMap = {
 // ─── Format Helpers ──────────────────────────────────────────────────────────
 
 function formatAmount(amount) {
-  return `GHS ${Number(amount).toLocaleString()}`
+  return `GH₵ ${Number(amount).toLocaleString()}`
 }
 
 function formatDate(dateStr) {
@@ -163,7 +163,7 @@ function NewDeliveryModal({ onClose }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Amount (GHS)</label>
+            <label className="form-label">Amount (GH₵)</label>
             <input className="form-input" type="number" name="amount" value={form.amount} onChange={handleChange} placeholder="e.g. 2400" required min="0" step="0.01" />
           </div>
 

@@ -256,7 +256,7 @@ def revenue_timeseries(days: int = 30) -> dict[str, Any]:
         "order_count": totals["order_count"],
         "avg_order_value": totals["aov"],
         "best_day": best,
-        "currency": "GHS",
+        "currency": "GH₵",
     }
 
 
@@ -267,7 +267,7 @@ def top_products(days: int = 30) -> dict[str, Any]:
     total = sum(r["revenue"] for r in rows) or 1
     for r in rows:
         r["share_pct"] = round(r["revenue"] / total * 100, 1)
-    return {"products": rows, "currency": "GHS"}
+    return {"products": rows, "currency": "GH₵"}
 
 
 def demand_forecast(days: int = 14) -> dict[str, Any]:

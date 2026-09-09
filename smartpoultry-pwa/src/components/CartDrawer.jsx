@@ -340,10 +340,10 @@ export default function CartDrawer() {
                   <div key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-light)' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-heading)' }}>{item.product.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GHS {item.product.price} / {item.product.unit}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GH₵ {item.product.price} / {item.product.unit}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>GHS {(item.product.price * item.quantity).toFixed(2)}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>GH₵ {(item.product.price * item.quantity).toFixed(2)}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg)', borderRadius: 6, padding: 2 }}>
                         <button type="button" onClick={() => removeFromCart(item.product.id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}><Minus size={14}/></button>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, minWidth: 16, textAlign: 'center' }}>{item.quantity}</span>
@@ -356,7 +356,7 @@ export default function CartDrawer() {
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '2px dashed var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
                     <div style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Subtotal</div>
-                    <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-heading)' }}>GHS {cartTotal.toFixed(2)}</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-heading)' }}>GH₵ {cartTotal.toFixed(2)}</div>
                   </div>
                 </div>
 
@@ -453,7 +453,7 @@ export default function CartDrawer() {
         {cartItems.length > 0 && (
           <div className="cart-drawer-footer">
             <button type="submit" form="checkout-form" className="btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem', justifyContent: 'center' }} disabled={submitting}>
-              {submitting ? 'Processing...' : `Checkout (GHS ${cartTotal.toFixed(2)})`}
+              {submitting ? 'Processing...' : `Checkout (GH₵ ${cartTotal.toFixed(2)})`}
             </button>
           </div>
         )}

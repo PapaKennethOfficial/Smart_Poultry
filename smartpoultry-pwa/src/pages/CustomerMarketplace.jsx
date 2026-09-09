@@ -183,7 +183,7 @@ export default function CustomerMarketplace() {
 
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
                     <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-heading)', fontVariantNumeric: 'tabular-nums' }}>
-                      GHS {p.price}
+                      GH₵ {p.price}
                     </span>
                     <span style={{ fontSize: '0.66rem', color: 'var(--text-subtle)' }}>/ {p.unit}</span>
                   </div>
