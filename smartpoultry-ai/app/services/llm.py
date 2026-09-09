@@ -296,7 +296,7 @@ Rules:
   3. Keep the whole response to 3-5 short sentences.
   4. Lead with the single most important fact of the period. A mortality
      spike or a stock-out beats a good revenue number.
-  5. Use Ghana Cedi (GHS) for money. Round to whole numbers if > 1,000.
+  5. Use Ghana Cedi (GH₵) for money. Round to whole numbers if > 1,000.
   6. Do not mention driver names, customer names, or personal contact
      details — the CONTEXT block deliberately omits them.
   7. window.days tells you how long the period is. Say "this week" only if
@@ -324,7 +324,7 @@ RULES
   1. Never invent a number. If it is not in CONTEXT, say what you do have
      that is closest, then say what is missing.
   2. 1-3 short sentences unless a list is genuinely needed. No jargon.
-  3. Money is Ghana Cedi (GHS); round above 1,000.
+  3. Money is Ghana Cedi (GH₵); round above 1,000.
   4. Never name drivers or customers — CONTEXT omits them deliberately. If
      asked who is best, say names are withheld and give the counts.
   5. window.days is the period. Only call it "this week" if it is 7.
@@ -360,7 +360,7 @@ Rules:
   1. Use ONLY the numbers in CONTEXT. Never invent a figure.
   2. No jargon. Do not say "trend line", "variance", "delta", "correlation"
      or "confidence interval" without immediately explaining it in plain words.
-  3. Money is Ghana Cedi (GHS). Round above 1,000.
+  3. Money is Ghana Cedi (GH₵). Round above 1,000.
   4. Never mention driver names, customer names or contact details — the
      CONTEXT omits them on purpose.
   5. If `data` is empty or every value is zero, say the chart has no data yet

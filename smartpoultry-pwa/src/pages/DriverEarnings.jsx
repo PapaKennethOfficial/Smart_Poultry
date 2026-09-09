@@ -71,7 +71,7 @@ export default function DriverEarnings() {
           Total all-time earnings
         </div>
         <div style={{ fontSize: '1.7rem', fontWeight: 700, fontFamily: 'Space Grotesk', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-          GHS {earnings.total.toFixed(2)}
+          GH₵ {earnings.total.toFixed(2)}
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export default function DriverEarnings() {
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cash collected</div>
           </div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>GHS {earnings.cashCollected.toFixed(2)}</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>GH₵ {earnings.cashCollected.toFixed(2)}</div>
           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2 }}>Kept from customers</div>
         </div>
 
@@ -96,8 +96,8 @@ export default function DriverEarnings() {
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Owed to you</div>
           </div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>GHS {earnings.owedByCompany.toFixed(2)}</div>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2, marginBottom: 8 }}>Available: GHS {availableBalance.toFixed(2)}</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>GH₵ {earnings.owedByCompany.toFixed(2)}</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2, marginBottom: 8 }}>Available: GH₵ {availableBalance.toFixed(2)}</div>
 
           <button
             className="btn-primary"
@@ -128,7 +128,7 @@ export default function DriverEarnings() {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-body)', fontVariantNumeric: 'tabular-nums' }}>GHS {w.amount.toFixed(2)}</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-body)', fontVariantNumeric: 'tabular-nums' }}>GH₵ {w.amount.toFixed(2)}</div>
                 <div style={{ fontSize: '0.66rem', marginTop: 2, color: w.status === 'PAID' ? '#10b981' : w.status === 'REJECTED' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                   {w.status === 'PAID' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
                   {w.status}
@@ -161,7 +161,7 @@ export default function DriverEarnings() {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-body)', fontVariantNumeric: 'tabular-nums' }}>+GHS {h.amount.toFixed(2)}</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-body)', fontVariantNumeric: 'tabular-nums' }}>+GH₵ {h.amount.toFixed(2)}</div>
                 {h.paymentMethod !== 'PAY_ON_DELIVERY' && (
                   <div style={{ fontSize: '0.66rem', marginTop: 2, color: h.payoutStatus === 'PAID_OUT' ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                     {h.payoutStatus === 'PAID_OUT' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
@@ -186,7 +186,7 @@ export default function DriverEarnings() {
             
             <form onSubmit={handleWithdraw}>
               <div className="input-group" style={{ marginBottom: 16 }}>
-                <label>Amount (GHS)</label>
+                <label>Amount (GH₵)</label>
                 <input 
                   type="number" 
                   step="0.01"
@@ -198,7 +198,7 @@ export default function DriverEarnings() {
                   required
                 />
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  Available to withdraw: GHS {availableBalance.toFixed(2)}
+                  Available to withdraw: GH₵ {availableBalance.toFixed(2)}
                 </div>
               </div>
 

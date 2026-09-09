@@ -17,7 +17,7 @@ import React, { useMemo } from 'react'
 const money = (v) =>
   v === null || v === undefined || Number.isNaN(Number(v))
     ? '—'
-    : `GHS ${Number(v).toFixed(2)}`
+    : `GH₵ ${Number(v).toFixed(2)}`
 
 const shortDate = (d) => {
   if (!d) return '—'

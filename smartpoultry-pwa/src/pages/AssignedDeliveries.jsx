@@ -366,7 +366,7 @@ export default function AssignedDeliveries() {
              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                <span style={{ color: 'var(--text-subtle)' }}>Collect Cash</span>
                <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                 {displayedMapOrder.paymentMethod === 'PAY_ON_DELIVERY' ? `GHS ${displayedMapOrder.amount.toFixed(2)}` : 'PREPAID'}
+                 {displayedMapOrder.paymentMethod === 'PAY_ON_DELIVERY' ? `GH₵ ${displayedMapOrder.amount.toFixed(2)}` : 'PREPAID'}
                </span>
              </div>
            </div>
@@ -645,7 +645,7 @@ export default function AssignedDeliveries() {
                       {o.items.map((item, idx) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0' }}>
                           <span>{item.quantity}x {item.product?.name}</span>
-                          <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
+                          <span>GH₵ {(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>

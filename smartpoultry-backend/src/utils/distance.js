@@ -16,8 +16,8 @@ const FARM_LAT = 5.6037;
 const FARM_LON = -0.1870;
 
 function calculateDeliveryFee(deliveryLat, deliveryLon) {
-  const baseFee = 10.0; // 10 GHS base fee
-  const ratePerKm = 2.5; // 2.5 GHS per km
+  const baseFee = 10.0; // 10 GH₵ base fee
+  const ratePerKm = 2.5; // 2.5 GH₵ per km
   const dist = haversineKm(FARM_LAT, FARM_LON, deliveryLat, deliveryLon);
   return Number((baseFee + (dist * ratePerKm)).toFixed(2));
 }

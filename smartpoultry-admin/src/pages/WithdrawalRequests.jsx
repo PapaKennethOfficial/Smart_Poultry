@@ -71,7 +71,7 @@ export default function WithdrawalRequests() {
                     <div style={{ fontWeight: 600 }}>{w.driver.name}</div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-subtle)' }}>{w.driver.phone}</div>
                   </td>
-                  <td style={{ fontWeight: 600 }}>GHS {w.amount.toFixed(2)}</td>
+                  <td style={{ fontWeight: 600 }}>GH₵ {w.amount.toFixed(2)}</td>
                   <td>{w.notes || '-'}</td>
                   <td>
                     <span className={`status-badge status-${w.status.toLowerCase()}`}>

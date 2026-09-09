@@ -268,7 +268,7 @@ export default function ManagerInventory() {
                         </span>
                       </td>
                       <td style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                        GHS {product.price?.toFixed(2)}
+                        GH₵ {product.price?.toFixed(2)}
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -356,7 +356,7 @@ export default function ManagerInventory() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <div>
-                  <label className="form-label">Price (GHS)</label>
+                  <label className="form-label">Price (GH₵)</label>
                   <input type="number" step="0.01" className="form-input" required value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="0.00" />
                 </div>
                 <div>

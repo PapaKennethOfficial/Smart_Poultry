@@ -395,7 +395,7 @@ export default function CustomerOrders() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>Total Amount</div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-heading)' }}>GHS {o.amount.toFixed(2)}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-heading)' }}>GH₵ {o.amount.toFixed(2)}</div>
                   </div>
                 </div>
                 
@@ -482,7 +482,7 @@ export default function CustomerOrders() {
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{getOrderQuantityDesc(selectedOrder)}</div>
                   </div>
                   <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                    GHS {selectedOrder.amount.toFixed(2)}
+                    GH₵ {selectedOrder.amount.toFixed(2)}
                   </div>
                 </div>
 
@@ -492,7 +492,7 @@ export default function CustomerOrders() {
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '4px 0' }}>
                         <span>{item.quantity}x {item.product?.name}</span>
-                        <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
+                        <span>GH₵ {(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>

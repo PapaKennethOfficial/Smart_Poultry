@@ -1,0 +1,16 @@
+@echo off
+echo Starting SmartPoultry Servers...
+
+echo Starting Backend...
+start "Backend Server" cmd /k "title Backend && cd smartpoultry-backend && npm run dev"
+
+echo Starting Admin Dashboard...
+start "Admin Dashboard" cmd /k "title Admin UI && cd smartpoultry-admin && npm run dev"
+
+echo Starting PWA...
+start "Customer PWA" cmd /k "title PWA && cd smartpoultry-pwa && npm run dev"
+
+echo Starting AI Microservice...
+start "AI Service" cmd /k "title AI && cd smartpoultry-ai && .\venv\Scripts\activate && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+
+echo All servers have been launched in separate windows!

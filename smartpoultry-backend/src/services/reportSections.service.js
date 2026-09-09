@@ -194,16 +194,16 @@ async function revenueSection(start, end) {
     table: {
       columns: [
         { header: "Date", key: "label", width: 110 },
-        { header: "Revenue (GHS)", key: "revenue", width: 110, align: "right" },
+        { header: "Revenue (GH₵)", key: "revenue", width: 110, align: "right" },
         { header: "Orders", key: "orders", width: 80, align: "right" },
       ],
       rows,
     },
     summary: {
-      "Total revenue": "GHS " + Math.round(total).toLocaleString(),
+      "Total revenue": "GH₵ " + Math.round(total).toLocaleString(),
       "Orders": orders.length,
       "Average order": orders.length
-        ? "GHS " + Math.round(total / orders.length).toLocaleString() : "-",
+        ? "GH₵ " + Math.round(total / orders.length).toLocaleString() : "-",
     },
   };
 }

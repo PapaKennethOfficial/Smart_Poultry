@@ -196,7 +196,7 @@ function AddEntryModal({ onClose }) {
                   <input className="form-input" type="number" step="any" name="waterConsumption" value={formData.waterConsumption} onChange={handleChange} placeholder="e.g. 320" />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Expenses (GHS)</label>
+                  <label className="form-label">Expenses (GH₵)</label>
                   <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
                 </div>
               </div>
@@ -206,7 +206,7 @@ function AddEntryModal({ onClose }) {
               {/* Row 6: Sales */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Sales (GHS)</label>
+                  <label className="form-label">Sales (GH₵)</label>
                   <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
                 </div>
                 <div></div>
@@ -247,11 +247,11 @@ function AddEntryModal({ onClose }) {
               {/* Row 4: Expenses & Sales */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Expenses (GHS)</label>
+                  <label className="form-label">Expenses (GH₵)</label>
                   <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Sales (GHS)</label>
+                  <label className="form-label">Sales (GH₵)</label>
                   <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
                 </div>
               </div>
@@ -340,7 +340,7 @@ export default function Logbook() {
           { label: 'Total Entries',   value: totalEntries.toString(), sub: 'In database'  },
           { label: 'Avg Daily Eggs',  value: '0',          sub: 'Last 7 days'  },
           { label: 'Total Mortality', value: '0',          sub: 'Last 7 days'  },
-          { label: 'Total Expenses',  value: 'GHS 0',      sub: 'Last 7 days'  },
+          { label: 'Total Expenses',  value: 'GH₵ 0',      sub: 'Last 7 days'  },
         ].map((s, i) => (
           <div key={i} style={{
             background: '#fff', borderRadius: 12, padding: '15px 18px',
