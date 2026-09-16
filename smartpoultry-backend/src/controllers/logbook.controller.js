@@ -17,8 +17,6 @@ const logEntrySchema = z.object({
   temperature: z.number().optional().nullable(),
   humidity: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
-  expenses: z.number().min(0).default(0), // Frontend passes expenses
-  sales: z.number().min(0).default(0),    // Frontend passes sales
 });
 
 exports.getLogbook = async (req, res) => {
@@ -106,10 +104,6 @@ exports.getBatches = async (req, res) => {
 exports.createLogEntry = async (req, res) => {
   try {
     const validatedData = logEntrySchema.parse(req.body);
-    
-    // Append user expenses and sales to notes or handle them if schema doesn't have it directly.
-    // The current schema doesn't have expenses and sales, so let's format it in notes.
-    const combinedNotes = `Expenses (GH₵): ${validatedData.expenses || 0} | Sales (GH₵): ${validatedData.sales || 0} ${validatedData.notes ? '| ' + validatedData.notes : ''}`;
 
     const newEntry = await prisma.$transaction(async (tx) => {
       const entry = await tx.logEntry.create({
@@ -127,7 +121,7 @@ exports.createLogEntry = async (req, res) => {
           avgWeight: validatedData.avgWeight,
           temperature: validatedData.temperature,
           humidity: validatedData.humidity,
-          notes: combinedNotes,
+          notes: validatedData.notes,
         },
         include: {
           batch: true
