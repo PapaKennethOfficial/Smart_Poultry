@@ -180,7 +180,7 @@ export default function Financials() {
   const { data: expensesData, isLoading: loadingExpenses, refetch: refetchExpenses } = useQuery({
     queryKey: ['expenses', page],
     queryFn: async () => {
-      const res = await api.get(/api/expenses?page=&limit=);
+      const res = await api.get(`/api/expenses?page=${page}&limit=${PAGE_SIZE}`);
       return res.data;
     },
     enabled: activeTab === 'expenses'
