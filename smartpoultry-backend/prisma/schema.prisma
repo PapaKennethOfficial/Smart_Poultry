@@ -151,8 +151,6 @@ model LogEntry {
   date               DateTime @default(now())
   mortality          Int      @default(0)
   eggsCount          Int      @default(0)
-  dailyEggPurchases  Int      @default(0)
-  weeklyEggPurchases Int      @default(0)
   birdsBought        Int      @default(0)
   feedConsumption    Float    @default(0)
   waterConsumption   Float    @default(0)

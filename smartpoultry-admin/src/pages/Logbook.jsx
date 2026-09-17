@@ -28,8 +28,6 @@ function AddEntryModal({ onClose }) {
     batchId: '',
     feedConsumption: '',
     eggsCount: '',
-    dailyEggPurchases: '',
-    weeklyEggPurchases: '',
     birdsBought: '',
     mortality: '',
     waterConsumption: '',
@@ -85,8 +83,6 @@ function AddEntryModal({ onClose }) {
       batchId: formData.batchId,
       feedConsumption: Number(formData.feedConsumption || 0),
       eggsCount: hasEggs ? Number(formData.eggsCount || 0) : 0,
-      dailyEggPurchases: hasEggs ? Number(formData.dailyEggPurchases || 0) : 0,
-      weeklyEggPurchases: hasEggs ? Number(formData.weeklyEggPurchases || 0) : 0,
       birdsBought: Number(formData.birdsBought || 0),
       mortality: Number(formData.mortality || 0),
       waterConsumption: Number(formData.waterConsumption || 0),
@@ -154,19 +150,7 @@ function AddEntryModal({ onClose }) {
                 </div>
               </div>
 
-              <div style={{ height: 14 }} />
 
-              {/* Row 3: Egg Purchases */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Daily Egg Purchases</label>
-                  <input className="form-input" type="number" name="dailyEggPurchases" value={formData.dailyEggPurchases} onChange={handleChange} placeholder="e.g. 20" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Weekly Egg Purchases</label>
-                  <input className="form-input" type="number" name="weeklyEggPurchases" value={formData.weeklyEggPurchases} onChange={handleChange} placeholder="e.g. 150" />
-                </div>
-              </div>
 
               <div style={{ height: 14 }} />
 
@@ -408,7 +392,6 @@ export default function Logbook() {
                   <th>Batch / House</th>
                   <th>Feed (kg)</th>
                   <th>Egg Count</th>
-                  <th>Purchases (D/W)</th>
                   <th>Birds Bought</th>
                   <th>Mortality</th>
                   <th>Notes</th>
@@ -438,9 +421,6 @@ export default function Logbook() {
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{entry.feedConsumption}</td>
                       <td style={{ fontWeight: 600 }}>{isBroiler ? '-' : entry.eggsCount.toLocaleString()}</td>
-                      <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>
-                        {isBroiler ? '-' : `${entry.dailyEggPurchases} / ${entry.weeklyEggPurchases}`}
-                      </td>
                       <td style={{ fontWeight: 600, color: '#2a3d2b' }}>
                         {entry.birdsBought > 0 ? `+${entry.birdsBought}` : '-'}
                       </td>

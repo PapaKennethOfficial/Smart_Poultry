@@ -230,7 +230,7 @@ export default function Financials() {
             <div className="chart-title">Financial Records</div>
           </div>
           <div className="filter-tabs">
-            <button className={ilter-tab} onClick={() => { setActiveTab('expenses'); setPage(1); }}>
+            <button className={`filter-tab${activeTab === 'expenses' ? ' active' : ''}`} onClick={() => { setActiveTab('expenses'); setPage(1); }}>
               Expenses
             </button>
           </div>
