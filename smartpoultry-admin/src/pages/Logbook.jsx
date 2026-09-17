@@ -401,6 +401,7 @@ export default function Logbook() {
                   <th>Entry ID</th>
                   <th>Date</th>
                   <th>Batch / House</th>
+                  <th>Logged By</th>
                   <th>Feed (kg)</th>
                   <th>Egg Count</th>
                   <th>Birds Bought</th>
