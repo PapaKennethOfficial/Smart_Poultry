@@ -143,9 +143,20 @@ function AddEntryModal({ onClose }) {
                   <input className="form-input" type="number" step="any" name="feedConsumption" value={formData.feedConsumption} onChange={handleChange} placeholder="e.g. 480" required />
                   {errors.feedConsumption && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.feedConsumption}</div>}
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Egg Count</label>
-                  <input className="form-input" type="number" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder="e.g. 1200" />
+<div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Egg Collection</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input className="form-input" type="number" step="any" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder={formData.eggUnit === 'crates' ? "e.g. 40 crates" : "e.g. 1200 eggs"} style={{ flex: 1 }} />
+                    <select className="form-select" name="eggUnit" value={formData.eggUnit} onChange={handleChange} style={{ width: '100px' }}>
+                      <option value="units">Eggs</option>
+                      <option value="crates">Crates</option>
+                    </select>
+                  </div>
+                  {formData.eggUnit === 'crates' && formData.eggsCount > 0 && (
+                     <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 4 }}>
+                       = {Number(formData.eggsCount) * 30} individual eggs
+                     </div>
+                  )}
                   {errors.eggsCount && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.eggsCount}</div>}
                 </div>
               </div>

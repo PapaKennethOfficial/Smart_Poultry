@@ -31,10 +31,16 @@ function AddExpenseModal({ onClose, refetch }) {
     }
   });
 
+const isOther = formData.category === 'Other';
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (Number(formData.amount) <= 0) {
       showError('Amount must be greater than zero');
+      return;
+    }
+    if (isOther && !formData.description.trim()) {
+      showError('Please provide a description for the Other category');
       return;
     }
     mutation.mutate({
@@ -105,8 +111,12 @@ function RecordOfflineSaleModal({ onClose, refetch }) {
   const { showSuccess, showError } = useToast();
 
   const [formData, setFormData] = useState({
-    amount: '',
-    notes: '',
+    customerName: '',
+    itemType: 'Eggs (Crates)',
+    quantity: '',
+    unitPrice: '',
+    totalAmount: '',
+    additionalNotes: '',
   });
 
   const mutation = useMutation({
@@ -122,21 +132,38 @@ function RecordOfflineSaleModal({ onClose, refetch }) {
     }
   });
 
+  const handleQuantityPriceChange = (e) => {
+    const { name, value } = e.target;
+    const newFormData = { ...formData, [name]: value };
+    
+    // Auto calculate total
+    const q = parseFloat(newFormData.quantity || 0);
+    const p = parseFloat(newFormData.unitPrice || 0);
+    if (q > 0 && p > 0) {
+      newFormData.totalAmount = (q * p).toFixed(2);
+    }
+    setFormData(newFormData);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (Number(formData.amount) <= 0) {
-      showError('Amount must be greater than zero');
+    if (Number(formData.totalAmount) <= 0) {
+      showError('Total amount must be greater than zero');
       return;
     }
+    
+    // Construct detailed notes
+    const constructedNotes = `${formData.quantity}x ${formData.itemType} @ GH₵${formData.unitPrice}/ea. Customer: ${formData.customerName || 'Walk-in'}. ${formData.additionalNotes ? 'Notes: ' + formData.additionalNotes : ''}`;
+    
     mutation.mutate({
-      amount: Number(formData.amount),
-      notes: formData.notes
+      amount: Number(formData.totalAmount),
+      notes: constructedNotes
     });
   };
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal-box" style={{ maxWidth: '500px' }}>
+      <div className="modal-box" style={{ maxWidth: '550px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
           <div>
             <div className="modal-title">Record Walk-in Sale</div>
@@ -149,13 +176,40 @@ function RecordOfflineSaleModal({ onClose, refetch }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Total Amount Paid (GH₵)</label>
-            <input className="form-input" type="number" step="any" name="amount" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} required placeholder="e.g. 1500" />
+            <label className="form-label">Customer Name / Reference (Optional)</label>
+            <input className="form-input" type="text" name="customerName" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="e.g. John from Market" />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Item Sold</label>
+              <select className="form-select" name="itemType" value={formData.itemType} onChange={(e) => setFormData({...formData, itemType: e.target.value})}>
+                <option value="Eggs (Crates)">Eggs (Crates)</option>
+                <option value="Eggs (Units)">Eggs (Units)</option>
+                <option value="Live Birds (Broilers)">Live Birds (Broilers)</option>
+                <option value="Live Birds (Spent Layers)">Live Birds (Spent Layers)</option>
+                <option value="Manure (Bags)">Manure (Bags)</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Quantity</label>
+              <input className="form-input" type="number" step="any" name="quantity" value={formData.quantity} onChange={handleQuantityPriceChange} required placeholder="e.g. 10" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Unit Price</label>
+              <input className="form-input" type="number" step="any" name="unitPrice" value={formData.unitPrice} onChange={handleQuantityPriceChange} required placeholder="GH₵" />
+            </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Sale Description</label>
-            <input className="form-input" type="text" name="notes" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="e.g. Sold 30 crates of eggs to local market" required />
+            <label className="form-label">Total Amount (GH₵)</label>
+            <input className="form-input" type="number" step="any" name="totalAmount" value={formData.totalAmount} onChange={(e) => setFormData({...formData, totalAmount: e.target.value})} required style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#237227' }} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Additional Notes</label>
+            <input className="form-input" type="text" name="additionalNotes" value={formData.additionalNotes} onChange={(e) => setFormData({...formData, additionalNotes: e.target.value})} placeholder="Any extra details..." />
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
