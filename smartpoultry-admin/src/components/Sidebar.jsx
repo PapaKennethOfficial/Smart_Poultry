@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, BookOpen, BarChart2, Truck, Package,
   FileText, Settings, LogOut, Leaf, ShoppingCart, ShieldCheck,
-  Wallet
+  Wallet, Banknote
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { X } from 'lucide-react'
@@ -20,12 +20,13 @@ export default function Sidebar({ isOpen, onClose }) {
     if (role === 'MANAGER' || role === 'ADMIN') {
       return [
         { label: 'Dashboard',            icon: LayoutDashboard, to: '/admin/dashboard' },
-        { label: 'Vehicle Verification', icon: ShieldCheck,     to: '/admin/dashboard/verify-vehicles' },
+        { label: 'Farm Logbook',         icon: BookOpen,        to: '/admin/logbook' },
+        { label: 'Financials',           icon: Banknote,        to: '/admin/financials' },
         { label: 'Customer Orders',      icon: ShoppingCart,    to: '/admin/dashboard/orders' },
         { label: 'Inventory',            icon: Package,         to: '/admin/dashboard/inventory' },
         { label: 'Deliveries',           icon: Truck,           to: '/admin/deliveries' },
         { label: 'Driver Withdrawals',   icon: Wallet,          to: '/admin/withdrawals' },
-        { label: 'Farm Logbook',         icon: BookOpen,        to: '/admin/logbook' },
+        { label: 'Vehicle Verification', icon: ShieldCheck,     to: '/admin/dashboard/verify-vehicles' },
         { label: 'Analytics & AI',       icon: BarChart2,       to: '/admin/analytics' },
         { label: 'Reports',              icon: FileText,        to: '/admin/reports' },
       ]

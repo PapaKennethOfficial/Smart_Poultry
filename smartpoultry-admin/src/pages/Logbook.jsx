@@ -28,13 +28,9 @@ function AddEntryModal({ onClose }) {
     batchId: '',
     feedConsumption: '',
     eggsCount: '',
-    dailyEggPurchases: '',
-    weeklyEggPurchases: '',
     birdsBought: '',
     mortality: '',
-    expenses: '',
     waterConsumption: '',
-    sales: '',
     notes: '',
   })
 
@@ -87,13 +83,9 @@ function AddEntryModal({ onClose }) {
       batchId: formData.batchId,
       feedConsumption: Number(formData.feedConsumption || 0),
       eggsCount: hasEggs ? Number(formData.eggsCount || 0) : 0,
-      dailyEggPurchases: hasEggs ? Number(formData.dailyEggPurchases || 0) : 0,
-      weeklyEggPurchases: hasEggs ? Number(formData.weeklyEggPurchases || 0) : 0,
       birdsBought: Number(formData.birdsBought || 0),
       mortality: Number(formData.mortality || 0),
-      expenses: Number(formData.expenses || 0),
       waterConsumption: Number(formData.waterConsumption || 0),
-      sales: Number(formData.sales || 0),
       notes: formData.notes,
     })
   }
@@ -151,26 +143,25 @@ function AddEntryModal({ onClose }) {
                   <input className="form-input" type="number" step="any" name="feedConsumption" value={formData.feedConsumption} onChange={handleChange} placeholder="e.g. 480" required />
                   {errors.feedConsumption && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.feedConsumption}</div>}
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Egg Count</label>
-                  <input className="form-input" type="number" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder="e.g. 1200" />
+<div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Egg Collection</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input className="form-input" type="number" step="any" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder={formData.eggUnit === 'crates' ? "e.g. 40 crates" : "e.g. 1200 eggs"} style={{ flex: 1 }} />
+                    <select className="form-select" name="eggUnit" value={formData.eggUnit} onChange={handleChange} style={{ width: '100px' }}>
+                      <option value="units">Eggs</option>
+                      <option value="crates">Crates</option>
+                    </select>
+                  </div>
+                  {formData.eggUnit === 'crates' && formData.eggsCount > 0 && (
+                     <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 4 }}>
+                       = {Number(formData.eggsCount) * 30} individual eggs
+                     </div>
+                  )}
                   {errors.eggsCount && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.eggsCount}</div>}
                 </div>
               </div>
 
-              <div style={{ height: 14 }} />
 
-              {/* Row 3: Egg Purchases */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Daily Egg Purchases</label>
-                  <input className="form-input" type="number" name="dailyEggPurchases" value={formData.dailyEggPurchases} onChange={handleChange} placeholder="e.g. 20" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Weekly Egg Purchases</label>
-                  <input className="form-input" type="number" name="weeklyEggPurchases" value={formData.weeklyEggPurchases} onChange={handleChange} placeholder="e.g. 150" />
-                </div>
-              </div>
 
               <div style={{ height: 14 }} />
 
@@ -189,25 +180,11 @@ function AddEntryModal({ onClose }) {
 
               <div style={{ height: 14 }} />
 
-              {/* Row 5: Water Consumption & Expenses */}
+              {/* Row 5: Water Consumption */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Water Consumption (L)</label>
                   <input className="form-input" type="number" step="any" name="waterConsumption" value={formData.waterConsumption} onChange={handleChange} placeholder="e.g. 320" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Expenses (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
-                </div>
-              </div>
-
-              <div style={{ height: 14 }} />
-
-              {/* Row 6: Sales */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Sales (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
                 </div>
                 <div></div>
               </div>
@@ -242,19 +219,6 @@ function AddEntryModal({ onClose }) {
                 </div>
               </div>
 
-              <div style={{ height: 14 }} />
-
-              {/* Row 4: Expenses & Sales */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Expenses (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Sales (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
-                </div>
-              </div>
             </>
           )}
 
@@ -334,27 +298,42 @@ export default function Logbook() {
         </div>
       </div>
 
-      {/* Summary row (Dummy Data for now, can be computed or fetched later) */}
+      {/* Summary row (Dynamically calculated from the loaded entries) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
-        {[
-          { label: 'Total Entries',   value: totalEntries.toString(), sub: 'In database'  },
-          { label: 'Avg Daily Eggs',  value: '0',          sub: 'Last 7 days'  },
-          { label: 'Total Mortality', value: '0',          sub: 'Last 7 days'  },
-          { label: 'Total Expenses',  value: 'GH₵ 0',      sub: 'Last 7 days'  },
-        ].map((s, i) => (
-          <div key={i} style={{
-            background: '#fff', borderRadius: 12, padding: '15px 18px',
-            border: '1px solid #dddabd'
-          }}>
-            <div style={{ fontSize: '0.68rem', color: '#8da58f', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>
-              {s.label}
+        {(() => {
+          // Calculate stats from the currently loaded log entries
+          let sumEggs = 0;
+          let sumMortality = 0;
+          let sumFeed = 0;
+
+          logEntries.forEach(entry => {
+            sumEggs += (entry.eggsCount || 0);
+            sumMortality += (entry.mortality || 0);
+            sumFeed += (entry.feedConsumption || 0);
+          });
+
+          const avgEggs = logEntries.length > 0 ? Math.round(sumEggs / logEntries.length) : 0;
+
+          return [
+            { label: 'Total Entries',   value: totalEntries.toString(), sub: 'In database'  },
+            { label: 'Avg Daily Eggs',  value: avgEggs.toLocaleString(), sub: 'From current view'  },
+            { label: 'Total Mortality', value: sumMortality.toLocaleString(), sub: 'From current view'  },
+            { label: 'Total Feed Used',  value: `${sumFeed.toLocaleString()} kg`, sub: 'From current view'  },
+          ].map((s, i) => (
+            <div key={i} style={{
+              background: '#fff', borderRadius: 12, padding: '15px 18px',
+              border: '1px solid #dddabd'
+            }}>
+              <div style={{ fontSize: '0.68rem', color: '#8da58f', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>
+                {s.label}
+              </div>
+              <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.35rem', fontWeight: 700, color: '#0d1f0e', margin: '4px 0 2px' }}>
+                {s.value}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#8da58f' }}>{s.sub}</div>
             </div>
-            <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.35rem', fontWeight: 700, color: '#0d1f0e', margin: '4px 0 2px' }}>
-              {s.value}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#8da58f' }}>{s.sub}</div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {/* Table card */}
@@ -422,12 +401,12 @@ export default function Logbook() {
                   <th>Entry ID</th>
                   <th>Date</th>
                   <th>Batch / House</th>
+                  <th>Logged By</th>
                   <th>Feed (kg)</th>
                   <th>Egg Count</th>
-                  <th>Purchases (D/W)</th>
                   <th>Birds Bought</th>
                   <th>Mortality</th>
-                  <th>Notes (Exp/Sales)</th>
+                  <th>Notes</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -454,9 +433,6 @@ export default function Logbook() {
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{entry.feedConsumption}</td>
                       <td style={{ fontWeight: 600 }}>{isBroiler ? '-' : entry.eggsCount.toLocaleString()}</td>
-                      <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>
-                        {isBroiler ? '-' : `${entry.dailyEggPurchases} / ${entry.weeklyEggPurchases}`}
-                      </td>
                       <td style={{ fontWeight: 600, color: '#2a3d2b' }}>
                         {entry.birdsBought > 0 ? `+${entry.birdsBought}` : '-'}
                       </td>

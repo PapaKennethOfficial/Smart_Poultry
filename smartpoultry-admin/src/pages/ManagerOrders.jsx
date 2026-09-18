@@ -166,17 +166,37 @@ export default function ManagerOrders() {
     currentPage * itemsPerPage
   )
 
-  const total = orders.length
+const total = orders.length
   const pending = orders.filter(o => o.status === 'PENDING').length
   const inTransit = orders.filter(o => o.status === 'IN_TRANSIT').length
   const delivered = orders.filter(o => o.status === 'DELIVERED').length
+  const walkInSales = orders.filter(o => o.paymentMethod === 'CASH_AT_FARM').length
 
-  const getOrderTitle = (o) => {
-    if (o.items && o.items.length > 0) {
-      if (o.items.length === 1) return o.items[0].product?.name;
-      return `${o.items[0].product?.name} + ${o.items.length - 1} more`;
+const getOrderTitle = (o) => {
+    if (o.paymentMethod === 'CASH_AT_FARM') {
+      const match = o.notes?.match(/x (.*?) @/);
+      return match ? match[1] : (o.notes?.split('. ')[0] || 'Walk-in Sale');
     }
-    return o.product?.name;
+    if (o.items && o.items.length > 0) {
+      if (o.items.length === 1) return o.items[0].product?.name || 'Unknown Product';
+      return `${o.items[0].product?.name || 'Item'} + ${o.items.length - 1} more`;
+    }
+    return o.product?.name || 'Unknown Product';
+  }
+
+  const getCustomerName = (o) => {
+    if (o.paymentMethod === 'CASH_AT_FARM') {
+      const match = o.notes?.match(/Customer: (.*?)\./);
+      return match ? match[1] : 'Walk-in Customer';
+    }
+    return getCustomerName(o) || 'Unknown Customer';
+  }
+  
+  const getCustomerContact = (o) => {
+    if (o.paymentMethod === 'CASH_AT_FARM') {
+      return 'Walk-in (No Phone)';
+    }
+    return o.contactNumber || o.customer?.phone || o.customer?.email || 'N/A';
   }
 
   const getOrderQuantityDesc = (o) => {
@@ -346,9 +366,9 @@ export default function ManagerOrders() {
                     <tr key={o.id}>
                       <td style={{ fontWeight: 600, fontFamily: 'monospace' }}>{o.orderId}</td>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{o.customer?.name}</div>
+                        <div style={{ fontWeight: 500 }}>{getCustomerName(o)}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-                          {o.contactNumber || o.customer?.phone || o.customer?.email}
+                          {getCustomerContact(o)}
                         </div>
                       </td>
                       <td>{getOrderTitle(o)}</td>
@@ -408,7 +428,7 @@ export default function ManagerOrders() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
               <div>
                 <h2 className="modal-title">Order {selectedOrder.orderId}</h2>
-                <div className="modal-subtitle" style={{ marginBottom: 0 }}>Customer: {selectedOrder.customer?.name}</div>
+                <div className="modal-subtitle" style={{ marginBottom: 0 }}>Customer: {getCustomerName(selectedOrder)}</div>
               </div>
               <span className={`badge ${STATUS_MAP[selectedOrder.status]?.color || 'badge-gray'}`}>{selectedOrder.status}</span>
             </div>
@@ -456,7 +476,7 @@ export default function ManagerOrders() {
                     <div><strong style={{ color: 'var(--text-muted)' }}>Driver:</strong> {selectedOrder.driver?.name || <span style={{ color: 'var(--clr-danger-txt)' }}>Not Assigned</span>}</div>
                   </div>
                   <div style={{ marginBottom: 12 }}>
-                    <strong style={{ color: 'var(--text-muted)' }}>Customer Contact:</strong> {selectedOrder.contactNumber || selectedOrder.customer?.phone || 'N/A'}
+                    <strong style={{ color: 'var(--text-muted)' }}>Customer Contact:</strong> {getCustomerContact(selectedOrder)}
                   </div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Address:</strong> {selectedOrder.address}</div>
                   {selectedOrder.notes && (

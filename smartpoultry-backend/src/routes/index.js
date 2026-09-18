@@ -20,6 +20,7 @@ const orderRoutes = require("../routes/order.routes")
 const productRoutes = require("../routes/product.routes")
 const aiRoutes = require("../routes/ai.routes")
 const withdrawalRoutes = require("../routes/withdrawal.routes")
+const expenseRoutes = require("../routes/expense.routes")
 
 router.use("/deliveries", deliveryRoutes)
 router.use("/dashboard", dashboardRoutes)
@@ -35,6 +36,7 @@ router.use("/orders", orderRoutes)
 router.use("/products", productRoutes)
 router.use("/ai", aiRoutes)
 router.use("/withdrawals", withdrawalRoutes)
+router.use("/expenses", expenseRoutes)
 
 // ─── Namespaced v1 routes with strict RBAC (for future mobile apps) ───────────
 // TODO: create src/routes/admin.js, driver.js, customer.js before enabling
