@@ -41,11 +41,13 @@ function getDateRange(range) {
 }
 
 /** Query LogEntry rows for a given date range */
-async function queryReportData(type, start, end) {
+async function queryReportData(type, start, end, batchId) {
+  const where = { date: { gte: start, lte: end } };
+  if (batchId && batchId !== 'all') {
+    where.batchId = batchId;
+  }
   return prisma.logEntry.findMany({
-    where: {
-      date: { gte: start, lte: end },
-    },
+    where,
     include: {
       batch: { select: { batchNumber: true, breed: true } },
       loggedBy: { select: { name: true } },
@@ -289,7 +291,7 @@ async function generateCSV(data, type) {
 
 const generateReportHandler = async (req, res, next) => {
   try {
-    const { type, dateRange, format } = req.body;
+    const { type, dateRange, format, batchId, sections: reqSections } = req.body;
     // Visuals and narration are on by default; either can be turned off, which
     // matters when the LLM is unavailable or its rate limit is tight.
     const includeVisuals = req.body.includeVisuals !== false;
@@ -317,7 +319,7 @@ const generateReportHandler = async (req, res, next) => {
     }
 
     const { start, end } = getDateRange(dateRange);
-    const data = await queryReportData(type, start, end);
+    const data = await queryReportData(type, start, end, batchId);
 
     const windowDays =
       dateRange === "quarter" ? 90 : dateRange === "month" ? 30 : 7;
@@ -333,9 +335,22 @@ const generateReportHandler = async (req, res, next) => {
       let sections = [];
       if (includeVisuals) {
         try {
+          const TYPE_TO_SECTIONS = {
+            production: ['egg_trend', 'fcr'],
+            financial: ['revenue_timeseries'],
+            delivery: ['fulfilment_funnel'],
+            analytics: ['egg_trend', 'fcr', 'fulfilment_funnel', 'revenue_timeseries']
+          };
+          let targetSections = reqSections;
+          if (!targetSections || !Array.isArray(targetSections) || targetSections.length === 0) {
+             targetSections = TYPE_TO_SECTIONS[type] || [];
+          }
+
           sections = await buildSections(start, end, {
+            ids: targetSections,
             narrate: includeNarration,
             windowDays,
+            batchId,
           });
         } catch (err) {
           console.error("[report] section build failed:", err.message);

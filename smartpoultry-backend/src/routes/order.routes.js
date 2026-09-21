@@ -667,4 +667,33 @@ router.post("/:id/review", requireAuth, requireRole(["CUSTOMER"]), async (req, r
   }
 })
 
+const walkInSchema = z.object({
+  amount: z.coerce.number().min(0, "Amount must be positive"),
+  notes: z.string().trim().optional(),
+})
+
+router.post("/walk-in", requireAuth, requireRole(["ADMIN", "MANAGER"]), async (req, res, next) => {
+  try {
+    const data = parseBody(walkInSchema, req, res)
+    if (!data) return
+
+    const order = await prisma.deliveryOrder.create({
+      data: {
+        orderId: `WLK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        customerId: req.user.id, // The manager logging it acts as the customer logically for the record
+        amount: data.amount,
+        paymentMethod: "CASH_AT_FARM",
+        status: "DELIVERED",
+        deliveryDate: new Date(),
+        notes: data.notes,
+        statusHistory: [{ status: "DELIVERED", timestamp: new Date().toISOString(), by: req.user.id }]
+      },
+    })
+
+    res.status(201).json({ message: "Walk-in sale recorded", order })
+  } catch (error) {
+    next(error)
+  }
+})
+
 module.exports = router

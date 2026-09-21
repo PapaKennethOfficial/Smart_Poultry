@@ -92,6 +92,12 @@ export default function Topbar({ onMenuClick }) {
           <Search size={13} color="#8da58f" />
           <input
             placeholder="Search..."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                alert('Global Search is coming soon! Please use the search tools provided on individual pages for now.');
+                e.target.value = '';
+              }
+            }}
             style={{
               border: 'none', background: 'transparent', outline: 'none',
               fontSize: '0.8rem', color: '#2a3d2b', width: '100%',

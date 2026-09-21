@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import Dashboard from './pages/Dashboard';
 import Logbook from './pages/Logbook';
+import Financials from './pages/Financials';
 import Analytics from './pages/Analytics';
 import Deliveries from './pages/Deliveries';
 import Reports from './pages/Reports';
@@ -33,6 +34,7 @@ export default function AdminApp() {
             <Route path="dashboard/orders" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><ManagerOrders /></ProtectedRoute>} />
             <Route path="dashboard/inventory" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><ManagerInventory /></ProtectedRoute>} />
             <Route path="logbook" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Logbook /></ProtectedRoute>} />
+            <Route path="financials" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Financials /></ProtectedRoute>} />
             <Route path="analytics" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Analytics /></ProtectedRoute>} />
             <Route path="deliveries" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><Deliveries /></ProtectedRoute>} />
             <Route path="withdrawals" element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}><WithdrawalRequests /></ProtectedRoute>} />

@@ -6,8 +6,8 @@ import api from './axios'
  * @param {{ type: string, dateRange: string, format: string }} params
  * @returns {Promise<{ fileUrl: string }>}
  */
-export const generateReport = ({ type, dateRange, format }) =>
-  api.post('/api/reports', { type, dateRange, format }).then((res) => res.data)
+export const generateReport = ({ type, dateRange, format, batchId, sections }) =>
+  api.post('/api/reports', { type, dateRange, format, batchId, sections }).then((res) => res.data)
 
 /**
  * GET /api/reports/history

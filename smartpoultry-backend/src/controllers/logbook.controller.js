@@ -1,3 +1,4 @@
+const { createObjectCsvStringifier } = require("csv-writer");
 const { PrismaClient } = require("@prisma/client");
 const { z } = require("zod");
 const prisma = require("../config/prisma"); // Adjust if they export initialized client from there
@@ -8,8 +9,6 @@ const logEntrySchema = z.object({
   date: z.string().or(z.date()).transform((val) => new Date(val)),
   mortality: z.number().int().min(0).default(0),
   eggsCount: z.number().int().min(0, "Egg count must be a positive number"),
-  dailyEggPurchases: z.number().int().min(0).default(0),
-  weeklyEggPurchases: z.number().int().min(0).default(0),
   birdsBought: z.number().int().min(0).default(0),
   feedConsumption: z.number().min(0, "Feed amount must be a positive number"),
   waterConsumption: z.number().min(0).default(0),
@@ -17,8 +16,6 @@ const logEntrySchema = z.object({
   temperature: z.number().optional().nullable(),
   humidity: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
-  expenses: z.number().min(0).default(0), // Frontend passes expenses
-  sales: z.number().min(0).default(0),    // Frontend passes sales
 });
 
 exports.getLogbook = async (req, res) => {
@@ -106,10 +103,6 @@ exports.getBatches = async (req, res) => {
 exports.createLogEntry = async (req, res) => {
   try {
     const validatedData = logEntrySchema.parse(req.body);
-    
-    // Append user expenses and sales to notes or handle them if schema doesn't have it directly.
-    // The current schema doesn't have expenses and sales, so let's format it in notes.
-    const combinedNotes = `Expenses (GH₵): ${validatedData.expenses || 0} | Sales (GH₵): ${validatedData.sales || 0} ${validatedData.notes ? '| ' + validatedData.notes : ''}`;
 
     const newEntry = await prisma.$transaction(async (tx) => {
       const entry = await tx.logEntry.create({
@@ -119,15 +112,13 @@ exports.createLogEntry = async (req, res) => {
           date: validatedData.date,
           mortality: validatedData.mortality,
           eggsCount: validatedData.eggsCount,
-          dailyEggPurchases: validatedData.dailyEggPurchases,
-          weeklyEggPurchases: validatedData.weeklyEggPurchases,
           birdsBought: validatedData.birdsBought,
           feedConsumption: validatedData.feedConsumption,
           waterConsumption: validatedData.waterConsumption,
           avgWeight: validatedData.avgWeight,
           temperature: validatedData.temperature,
           humidity: validatedData.humidity,
-          notes: combinedNotes,
+          notes: validatedData.notes,
         },
         include: {
           batch: true
@@ -199,5 +190,78 @@ exports.deleteLogEntry = async (req, res) => {
     }
     console.error("Error deleting log entry:", error);
     res.status(500).json({ error: "Failed to delete log entry" });
+  }
+};
+
+exports.exportLogbookCSV = async (req, res) => {
+  try {
+    const { search, batch } = req.query;
+    
+    // Build where clause
+    const where = {
+      deletedAt: null,
+    };
+
+    if (batch && batch !== "all") {
+      where.batch = {
+        breed: {
+          contains: batch,
+          mode: "insensitive"
+        }
+      };
+    }
+
+    if (search) {
+      where.OR = [
+        { notes: { contains: search, mode: "insensitive" } },
+        { batch: { breed: { contains: search, mode: "insensitive" } } },
+        { batch: { batchNumber: { contains: search, mode: "insensitive" } } }
+      ];
+    }
+
+    const entries = await prisma.logEntry.findMany({
+      where,
+      include: {
+        batch: true,
+        loggedBy: { select: { name: true } },
+      },
+      orderBy: {
+        date: 'desc'
+      }
+    });
+
+    const csvStringifier = createObjectCsvStringifier({
+      header: [
+        { id: "date", title: "Date" },
+        { id: "batch", title: "Batch / House" },
+        { id: "loggedBy", title: "Logged By" },
+        { id: "feedConsumption", title: "Feed (kg)" },
+        { id: "eggsCount", title: "Egg Count" },
+        { id: "birdsBought", title: "Birds Bought" },
+        { id: "mortality", title: "Mortality" },
+        { id: "notes", title: "Notes" },
+        { id: "status", title: "Status" },
+      ],
+    });
+
+    const records = entries.map((e) => ({
+      date: new Date(e.date).toLocaleDateString(),
+      batch: e.batch?.breed || "Unknown Batch",
+      loggedBy: e.loggedBy?.name || "—",
+      feedConsumption: e.feedConsumption,
+      eggsCount: e.eggsCount,
+      birdsBought: e.birdsBought,
+      mortality: e.mortality,
+      notes: e.notes || "",
+      status: "Saved"
+    }));
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="logbook_export.csv"');
+    
+    res.send(csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(records));
+  } catch (error) {
+    console.error("Error exporting logbook:", error);
+    res.status(500).json({ error: "Failed to export log entries" });
   }
 };

@@ -20,6 +20,19 @@ router.get("/", async (req, res, next) => {
   }
 })
 
+router.patch("/read-all", async (req, res, next) => {
+  try {
+    await prisma.userNotification.updateMany({
+      where: { userId: req.user.id, isRead: false },
+      data: { isRead: true },
+    })
+
+    res.status(200).json({ message: "Notifications marked as read" })
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.patch("/:id/read", async (req, res, next) => {
   try {
     const notification = await prisma.userNotification.findFirst({
@@ -39,17 +52,6 @@ router.patch("/:id/read", async (req, res, next) => {
   }
 })
 
-router.patch("/read-all", async (req, res, next) => {
-  try {
-    await prisma.userNotification.updateMany({
-      where: { userId: req.user.id, isRead: false },
-      data: { isRead: true },
-    })
 
-    res.status(200).json({ message: "Notifications marked as read" })
-  } catch (error) {
-    next(error)
-  }
-})
 
 module.exports = router

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, Search, Download, Loader2 } from 'lucide-react'
+import { Plus, X, Search, Download, Loader2, Eye } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { useToast } from '../components/Toast'
@@ -9,6 +9,60 @@ import Pagination from '../components/Pagination'
 // if these two ever disagree the page numbers silently lie.
 const LOGBOOK_PAGE_SIZE = 10
 
+
+
+function LogEntryDetailModal({ entry, onClose }) {
+  if (!entry) return null;
+  const batchName = entry.batch?.breed || "Unknown Batch";
+  
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="modal-box" style={{ maxWidth: '600px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
+          <div>
+            <div className="modal-title">Log Entry Details</div>
+            <div className="modal-subtitle">ID: {entry.id.substring(entry.id.length - 6).toUpperCase()}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8da58f' }}>
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.85rem' }}>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Date:</strong> {new Date(entry.date).toLocaleDateString()}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Batch / House:</strong> {batchName}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Logged By:</strong> {entry.loggedBy?.name || '—'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Status:</strong> Saved</div>
+        </div>
+
+        <div className="section-header">
+          <div className="section-title">Measurements</div>
+        </div>
+        <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 24, fontSize: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Feed (kg):</strong> {entry.feedConsumption}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Egg Count:</strong> {entry.eggsCount.toLocaleString()}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Water (L):</strong> {entry.waterConsumption || 0}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Birds Bought:</strong> {entry.birdsBought > 0 ? `+${entry.birdsBought}` : '-'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Mortality:</strong> {entry.mortality} deaths</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Avg Weight:</strong> {entry.avgWeight ? `${entry.avgWeight} kg` : '—'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Temperature:</strong> {entry.temperature ? `${entry.temperature}°C` : '—'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Humidity:</strong> {entry.humidity ? `${entry.humidity}%` : '—'}</div>
+        </div>
+        
+        <div className="section-header">
+          <div className="section-title">Health & Notes</div>
+        </div>
+        <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 24, fontSize: '0.85rem' }}>
+          {entry.notes || 'No notes provided.'}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn-outline" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddEntryModal({ onClose }) {
   const queryClient = useQueryClient()
@@ -28,13 +82,9 @@ function AddEntryModal({ onClose }) {
     batchId: '',
     feedConsumption: '',
     eggsCount: '',
-    dailyEggPurchases: '',
-    weeklyEggPurchases: '',
     birdsBought: '',
     mortality: '',
-    expenses: '',
     waterConsumption: '',
-    sales: '',
     notes: '',
   })
 
@@ -87,13 +137,9 @@ function AddEntryModal({ onClose }) {
       batchId: formData.batchId,
       feedConsumption: Number(formData.feedConsumption || 0),
       eggsCount: hasEggs ? Number(formData.eggsCount || 0) : 0,
-      dailyEggPurchases: hasEggs ? Number(formData.dailyEggPurchases || 0) : 0,
-      weeklyEggPurchases: hasEggs ? Number(formData.weeklyEggPurchases || 0) : 0,
       birdsBought: Number(formData.birdsBought || 0),
       mortality: Number(formData.mortality || 0),
-      expenses: Number(formData.expenses || 0),
       waterConsumption: Number(formData.waterConsumption || 0),
-      sales: Number(formData.sales || 0),
       notes: formData.notes,
     })
   }
@@ -151,26 +197,25 @@ function AddEntryModal({ onClose }) {
                   <input className="form-input" type="number" step="any" name="feedConsumption" value={formData.feedConsumption} onChange={handleChange} placeholder="e.g. 480" required />
                   {errors.feedConsumption && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.feedConsumption}</div>}
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Egg Count</label>
-                  <input className="form-input" type="number" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder="e.g. 1200" />
+<div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Egg Collection</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input className="form-input" type="number" step="any" name="eggsCount" value={formData.eggsCount} onChange={handleChange} placeholder={formData.eggUnit === 'crates' ? "e.g. 40 crates" : "e.g. 1200 eggs"} style={{ flex: 1 }} />
+                    <select className="form-select" name="eggUnit" value={formData.eggUnit} onChange={handleChange} style={{ width: '100px' }}>
+                      <option value="units">Eggs</option>
+                      <option value="crates">Crates</option>
+                    </select>
+                  </div>
+                  {formData.eggUnit === 'crates' && formData.eggsCount > 0 && (
+                     <div style={{ fontSize: '0.75rem', color: '#5e7a61', marginTop: 4 }}>
+                       = {Number(formData.eggsCount) * 30} individual eggs
+                     </div>
+                  )}
                   {errors.eggsCount && <div style={{ color: 'red', fontSize: '0.75rem', marginTop: '4px' }}>{errors.eggsCount}</div>}
                 </div>
               </div>
 
-              <div style={{ height: 14 }} />
 
-              {/* Row 3: Egg Purchases */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Daily Egg Purchases</label>
-                  <input className="form-input" type="number" name="dailyEggPurchases" value={formData.dailyEggPurchases} onChange={handleChange} placeholder="e.g. 20" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Weekly Egg Purchases</label>
-                  <input className="form-input" type="number" name="weeklyEggPurchases" value={formData.weeklyEggPurchases} onChange={handleChange} placeholder="e.g. 150" />
-                </div>
-              </div>
 
               <div style={{ height: 14 }} />
 
@@ -189,25 +234,11 @@ function AddEntryModal({ onClose }) {
 
               <div style={{ height: 14 }} />
 
-              {/* Row 5: Water Consumption & Expenses */}
+              {/* Row 5: Water Consumption */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Water Consumption (L)</label>
                   <input className="form-input" type="number" step="any" name="waterConsumption" value={formData.waterConsumption} onChange={handleChange} placeholder="e.g. 320" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Expenses (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
-                </div>
-              </div>
-
-              <div style={{ height: 14 }} />
-
-              {/* Row 6: Sales */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Sales (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
                 </div>
                 <div></div>
               </div>
@@ -242,19 +273,6 @@ function AddEntryModal({ onClose }) {
                 </div>
               </div>
 
-              <div style={{ height: 14 }} />
-
-              {/* Row 4: Expenses & Sales */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Expenses (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="expenses" value={formData.expenses} onChange={handleChange} placeholder="e.g. 1200" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Sales (GH₵)</label>
-                  <input className="form-input" type="number" step="any" name="sales" value={formData.sales} onChange={handleChange} placeholder="e.g. 2400" />
-                </div>
-              </div>
             </>
           )}
 
@@ -287,6 +305,7 @@ function AddEntryModal({ onClose }) {
 
 export default function Logbook() {
   const [showModal, setShowModal] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState(null)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
@@ -317,6 +336,27 @@ export default function Logbook() {
   })
 
   const logEntries = data?.data || []
+
+  const handleExportCSV = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (debouncedSearch) params.append('search', debouncedSearch)
+      if (activeTab !== 'all') params.append('batch', activeTab)
+      
+      const response = await api.get(`/api/logbook/export?${params.toString()}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `logbook_export_${new Date().toISOString().split('T')[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+    } catch (err) {
+      console.error('Export failed', err)
+      alert('Failed to export CSV')
+    }
+  }
+
   const totalEntries = data?.meta?.total || 0
 
   return (
@@ -334,27 +374,42 @@ export default function Logbook() {
         </div>
       </div>
 
-      {/* Summary row (Dummy Data for now, can be computed or fetched later) */}
+      {/* Summary row (Dynamically calculated from the loaded entries) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
-        {[
-          { label: 'Total Entries',   value: totalEntries.toString(), sub: 'In database'  },
-          { label: 'Avg Daily Eggs',  value: '0',          sub: 'Last 7 days'  },
-          { label: 'Total Mortality', value: '0',          sub: 'Last 7 days'  },
-          { label: 'Total Expenses',  value: 'GH₵ 0',      sub: 'Last 7 days'  },
-        ].map((s, i) => (
-          <div key={i} style={{
-            background: '#fff', borderRadius: 12, padding: '15px 18px',
-            border: '1px solid #dddabd'
-          }}>
-            <div style={{ fontSize: '0.68rem', color: '#8da58f', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>
-              {s.label}
+        {(() => {
+          // Calculate stats from the currently loaded log entries
+          let sumEggs = 0;
+          let sumMortality = 0;
+          let sumFeed = 0;
+
+          logEntries.forEach(entry => {
+            sumEggs += (entry.eggsCount || 0);
+            sumMortality += (entry.mortality || 0);
+            sumFeed += (entry.feedConsumption || 0);
+          });
+
+          const avgEggs = logEntries.length > 0 ? Math.round(sumEggs / logEntries.length) : 0;
+
+          return [
+            { label: 'Total Entries',   value: totalEntries.toString(), sub: 'In database'  },
+            { label: 'Avg Daily Eggs',  value: avgEggs.toLocaleString(), sub: 'From current view'  },
+            { label: 'Total Mortality', value: sumMortality.toLocaleString(), sub: 'From current view'  },
+            { label: 'Total Feed Used',  value: `${sumFeed.toLocaleString()} kg`, sub: 'From current view'  },
+          ].map((s, i) => (
+            <div key={i} style={{
+              background: '#fff', borderRadius: 12, padding: '15px 18px',
+              border: '1px solid #dddabd'
+            }}>
+              <div style={{ fontSize: '0.68rem', color: '#8da58f', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>
+                {s.label}
+              </div>
+              <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.35rem', fontWeight: 700, color: '#0d1f0e', margin: '4px 0 2px' }}>
+                {s.value}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#8da58f' }}>{s.sub}</div>
             </div>
-            <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.35rem', fontWeight: 700, color: '#0d1f0e', margin: '4px 0 2px' }}>
-              {s.value}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#8da58f' }}>{s.sub}</div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {/* Table card */}
@@ -394,7 +449,7 @@ export default function Logbook() {
               />
             </div>
 
-            <button className="btn-outline" style={{ padding: '6px 13px', fontSize: '0.78rem' }}>
+            <button className="btn-outline" onClick={handleExportCSV} style={{ padding: '6px 13px', fontSize: '0.78rem' }}>
               <Download size={13} />
               Export CSV
             </button>
@@ -422,13 +477,13 @@ export default function Logbook() {
                   <th>Entry ID</th>
                   <th>Date</th>
                   <th>Batch / House</th>
+                  <th>Logged By</th>
                   <th>Feed (kg)</th>
                   <th>Egg Count</th>
-                  <th>Purchases (D/W)</th>
                   <th>Birds Bought</th>
                   <th>Mortality</th>
-                  <th>Notes (Exp/Sales)</th>
-                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -452,11 +507,9 @@ export default function Logbook() {
                           {batchName}
                         </span>
                       </td>
+                      <td>{entry.loggedBy?.name || '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{entry.feedConsumption}</td>
                       <td style={{ fontWeight: 600 }}>{isBroiler ? '-' : entry.eggsCount.toLocaleString()}</td>
-                      <td style={{ color: '#5e7a61', fontSize: '0.82rem' }}>
-                        {isBroiler ? '-' : `${entry.dailyEggPurchases} / ${entry.weeklyEggPurchases}`}
-                      </td>
                       <td style={{ fontWeight: 600, color: '#2a3d2b' }}>
                         {entry.birdsBought > 0 ? `+${entry.birdsBought}` : '-'}
                       </td>
@@ -466,7 +519,11 @@ export default function Logbook() {
                         </span>
                       </td>
                       <td className="td-notes" title={entry.notes}>{entry.notes || '-'}</td>
-                      <td><span className="badge badge-green">Saved</span></td>
+                      <td>
+                        <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => setSelectedEntry(entry)}>
+                          <Eye size={13} style={{ marginRight: 4 }} /> View
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -489,6 +546,7 @@ export default function Logbook() {
       </div>
 
       {showModal && <AddEntryModal onClose={() => setShowModal(false)} />}
+      {selectedEntry && <LogEntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />}
     </div>
   )
 }
