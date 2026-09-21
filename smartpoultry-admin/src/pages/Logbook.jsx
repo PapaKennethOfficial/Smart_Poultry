@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, Search, Download, Loader2 } from 'lucide-react'
+import { Plus, X, Search, Download, Loader2, Eye } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/axios'
 import { useToast } from '../components/Toast'
@@ -9,6 +9,60 @@ import Pagination from '../components/Pagination'
 // if these two ever disagree the page numbers silently lie.
 const LOGBOOK_PAGE_SIZE = 10
 
+
+
+function LogEntryDetailModal({ entry, onClose }) {
+  if (!entry) return null;
+  const batchName = entry.batch?.breed || "Unknown Batch";
+  
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="modal-box" style={{ maxWidth: '600px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
+          <div>
+            <div className="modal-title">Log Entry Details</div>
+            <div className="modal-subtitle">ID: {entry.id.substring(entry.id.length - 6).toUpperCase()}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8da58f' }}>
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.85rem' }}>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Date:</strong> {new Date(entry.date).toLocaleDateString()}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Batch / House:</strong> {batchName}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Logged By:</strong> {entry.loggedBy?.name || '—'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Status:</strong> Saved</div>
+        </div>
+
+        <div className="section-header">
+          <div className="section-title">Measurements</div>
+        </div>
+        <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 24, fontSize: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Feed (kg):</strong> {entry.feedConsumption}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Egg Count:</strong> {entry.eggsCount.toLocaleString()}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Water (L):</strong> {entry.waterConsumption || 0}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Birds Bought:</strong> {entry.birdsBought > 0 ? `+${entry.birdsBought}` : '-'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Mortality:</strong> {entry.mortality} deaths</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Avg Weight:</strong> {entry.avgWeight ? `${entry.avgWeight} kg` : '—'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Temperature:</strong> {entry.temperature ? `${entry.temperature}°C` : '—'}</div>
+          <div><strong style={{ color: 'var(--text-muted)' }}>Humidity:</strong> {entry.humidity ? `${entry.humidity}%` : '—'}</div>
+        </div>
+        
+        <div className="section-header">
+          <div className="section-title">Health & Notes</div>
+        </div>
+        <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8, marginBottom: 24, fontSize: '0.85rem' }}>
+          {entry.notes || 'No notes provided.'}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn-outline" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddEntryModal({ onClose }) {
   const queryClient = useQueryClient()
@@ -251,6 +305,7 @@ function AddEntryModal({ onClose }) {
 
 export default function Logbook() {
   const [showModal, setShowModal] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState(null)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
@@ -281,6 +336,27 @@ export default function Logbook() {
   })
 
   const logEntries = data?.data || []
+
+  const handleExportCSV = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (debouncedSearch) params.append('search', debouncedSearch)
+      if (activeTab !== 'all') params.append('batch', activeTab)
+      
+      const response = await api.get(`/api/logbook/export?${params.toString()}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `logbook_export_${new Date().toISOString().split('T')[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+    } catch (err) {
+      console.error('Export failed', err)
+      alert('Failed to export CSV')
+    }
+  }
+
   const totalEntries = data?.meta?.total || 0
 
   return (
@@ -373,7 +449,7 @@ export default function Logbook() {
               />
             </div>
 
-            <button className="btn-outline" style={{ padding: '6px 13px', fontSize: '0.78rem' }}>
+            <button className="btn-outline" onClick={handleExportCSV} style={{ padding: '6px 13px', fontSize: '0.78rem' }}>
               <Download size={13} />
               Export CSV
             </button>
@@ -407,7 +483,7 @@ export default function Logbook() {
                   <th>Birds Bought</th>
                   <th>Mortality</th>
                   <th>Notes</th>
-                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -431,6 +507,7 @@ export default function Logbook() {
                           {batchName}
                         </span>
                       </td>
+                      <td>{entry.loggedBy?.name || '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{entry.feedConsumption}</td>
                       <td style={{ fontWeight: 600 }}>{isBroiler ? '-' : entry.eggsCount.toLocaleString()}</td>
                       <td style={{ fontWeight: 600, color: '#2a3d2b' }}>
@@ -442,7 +519,11 @@ export default function Logbook() {
                         </span>
                       </td>
                       <td className="td-notes" title={entry.notes}>{entry.notes || '-'}</td>
-                      <td><span className="badge badge-green">Saved</span></td>
+                      <td>
+                        <button className="btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => setSelectedEntry(entry)}>
+                          <Eye size={13} style={{ marginRight: 4 }} /> View
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -465,6 +546,7 @@ export default function Logbook() {
       </div>
 
       {showModal && <AddEntryModal onClose={() => setShowModal(false)} />}
+      {selectedEntry && <LogEntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />}
     </div>
   )
 }

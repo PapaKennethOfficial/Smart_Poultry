@@ -33,6 +33,7 @@ const PAYMENT_LABELS = {
   BANK_TRANSFER: 'Bank Transfer',
   CARD: 'Card',
   PAY_ON_DELIVERY: 'Pay on Delivery',
+  CASH_AT_FARM: 'Cash at Farm',
 }
 
 export default function ManagerOrders() {
@@ -189,7 +190,7 @@ const getOrderTitle = (o) => {
       const match = o.notes?.match(/Customer: (.*?)\./);
       return match ? match[1] : 'Walk-in Customer';
     }
-    return getCustomerName(o) || 'Unknown Customer';
+    return o.customer?.name || 'Unknown Customer';
   }
   
   const getCustomerContact = (o) => {
@@ -200,11 +201,15 @@ const getOrderTitle = (o) => {
   }
 
   const getOrderQuantityDesc = (o) => {
+    if (o.paymentMethod === 'CASH_AT_FARM') {
+      const match = o.notes?.match(/^(\d+)x/);
+      return match ? `${match[1]} items` : 'N/A';
+    }
     if (o.items && o.items.length > 0) {
       const totalQty = o.items.reduce((sum, i) => sum + i.quantity, 0);
       return `${totalQty} items total`;
     }
-    return `${o.quantity} ${o.product?.unit || ''}`;
+    return `${o.quantity || 0} ${o.product?.unit || ''}`.trim();
   }
 
   return (
@@ -374,7 +379,7 @@ const getOrderTitle = (o) => {
                       <td>{getOrderTitle(o)}</td>
                       <td>
                         <div>{getOrderQuantityDesc(o)}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>GH₵ {o.amount.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>GHS {o.amount.toFixed(2)}</div>
                       </td>
                       <td>
                         <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || 'N/A'}</div>
@@ -452,12 +457,12 @@ const getOrderTitle = (o) => {
                       {selectedOrder.items.map((item, idx) => (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
                           <span>{item.quantity}x {item.product?.name}</span>
-                          <span>GH₵ {(item.price * item.quantity).toFixed(2)}</span>
+                          <span>GHS {(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div><strong style={{ color: 'var(--text-muted)' }}>Total Amount:</strong> GH₵ {selectedOrder.amount.toFixed(2)}</div>
+                  <div><strong style={{ color: 'var(--text-muted)' }}>Total Amount:</strong> GHS {selectedOrder.amount.toFixed(2)}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Payment:</strong> {PAYMENT_LABELS[selectedOrder.paymentMethod] || selectedOrder.paymentMethod || 'N/A'}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Payment Status:</strong> {(selectedOrder.paymentStatus || 'PENDING').replaceAll('_', ' ')}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Placed On:</strong> {new Date(selectedOrder.createdAt).toLocaleDateString()}</div>

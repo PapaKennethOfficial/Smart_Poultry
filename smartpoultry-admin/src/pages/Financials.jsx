@@ -74,7 +74,7 @@ const isOther = formData.category === 'Other';
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div className="form-group">
-              <label className="form-label">Amount (GH₵)</label>
+              <label className="form-label">Amount (GHS)</label>
               <input className="form-input" type="number" step="any" name="amount" value={formData.amount} onChange={handleChange} required placeholder="e.g. 500" />
             </div>
             <div className="form-group">
@@ -153,7 +153,7 @@ function RecordOfflineSaleModal({ onClose, refetch }) {
     }
     
     // Construct detailed notes
-    const constructedNotes = `${formData.quantity}x ${formData.itemType} @ GH₵${formData.unitPrice}/ea. Customer: ${formData.customerName || 'Walk-in'}. ${formData.additionalNotes ? 'Notes: ' + formData.additionalNotes : ''}`;
+    const constructedNotes = `${formData.quantity}x ${formData.itemType} @ GHS${formData.unitPrice}/ea. Customer: ${formData.customerName || 'Walk-in'}. ${formData.additionalNotes ? 'Notes: ' + formData.additionalNotes : ''}`;
     
     mutation.mutate({
       amount: Number(formData.totalAmount),
@@ -198,12 +198,12 @@ function RecordOfflineSaleModal({ onClose, refetch }) {
             </div>
             <div className="form-group">
               <label className="form-label">Unit Price</label>
-              <input className="form-input" type="number" step="any" name="unitPrice" value={formData.unitPrice} onChange={handleQuantityPriceChange} required placeholder="GH₵" />
+              <input className="form-input" type="number" step="any" name="unitPrice" value={formData.unitPrice} onChange={handleQuantityPriceChange} required placeholder="GHS" />
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Total Amount (GH₵)</label>
+            <label className="form-label">Total Amount (GHS)</label>
             <input className="form-input" type="number" step="any" name="totalAmount" value={formData.totalAmount} onChange={(e) => setFormData({...formData, totalAmount: e.target.value})} required style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#237227' }} />
           </div>
 
@@ -273,7 +273,7 @@ export default function Financials() {
             Current View Expenses
           </div>
           <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.35rem', fontWeight: 700, color: '#e53e3e', margin: '4px 0 2px' }}>
-            GH₵ {currentViewExpenses.toLocaleString()}
+            GHS {currentViewExpenses.toLocaleString()}
           </div>
         </div>
       </div>
@@ -304,7 +304,7 @@ export default function Financials() {
                     <th>Category</th>
                     <th>Description</th>
                     <th>Logged By</th>
-                    <th>Amount (GH₵)</th>
+                    <th>Amount (GHS)</th>
                   </tr>
                 </thead>
                 <tbody>

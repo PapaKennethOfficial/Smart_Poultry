@@ -8,7 +8,7 @@ import {
   ScatterChart, Scatter, ZAxis,
 } from 'recharts'
 import { Brain, TrendingUp, Zap, Target, Loader2, Sparkles, RefreshCw, AlertTriangle, MessageSquare, Send, User as UserIcon, DollarSign, ShoppingCart, Package, Receipt, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react'
-import { fetchForecast, fetchFCR, fetchInsights, fetchFulfilmentFunnel, fetchDriverEfficiency, fetchOrderHeatmap } from '../api/analytics'
+import { fetchEggTrend, fetchFCR, fetchInsights, fetchFulfilmentFunnel, fetchDriverEfficiency, fetchOrderHeatmap } from '../api/analytics'
 import { useDemandForecast, useRetrainDemandForecast } from '../hooks/analytics/useDemandForecast'
 import { useMorningBriefing, useAskInsight } from '../hooks/analytics/useInsights'
 import { useSalesTracker } from '../hooks/analytics/useSalesTracker'
@@ -1022,7 +1022,7 @@ export default function Analytics() {
 
   useEffect(() => {
     // Fetch forecast
-    fetchForecast()
+    fetchEggTrend(30)
       .then(data => {
         setForecast(data)
       })
@@ -1120,7 +1120,7 @@ export default function Analytics() {
 
       {/* Charts row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        {/* 10-day forecast */}
+        {/* 30-day egg trend */}
         <div className="chart-card">
           <div className="chart-header">
             <div>

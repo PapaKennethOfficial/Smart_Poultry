@@ -5,6 +5,7 @@ const authorize = require("../middleware/role");
 const {
   getLogbook,
   getBatches,
+  exportLogbookCSV,
   createLogEntry,
   updateLogEntry,
   deleteLogEntry,
@@ -15,6 +16,7 @@ router.use(requireAuth);
 
 // Everyone can view logbook (WORKER, MANAGER, ADMIN)
 router.get("/", getLogbook);
+router.get("/export", exportLogbookCSV);
 
 // Fetch active batches for the logbook form dropdown
 router.get("/batches", getBatches);

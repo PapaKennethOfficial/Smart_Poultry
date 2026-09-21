@@ -1,3 +1,4 @@
+const { createObjectCsvStringifier } = require("csv-writer");
 const { PrismaClient } = require("@prisma/client");
 const { z } = require("zod");
 const prisma = require("../config/prisma"); // Adjust if they export initialized client from there
@@ -189,5 +190,78 @@ exports.deleteLogEntry = async (req, res) => {
     }
     console.error("Error deleting log entry:", error);
     res.status(500).json({ error: "Failed to delete log entry" });
+  }
+};
+
+exports.exportLogbookCSV = async (req, res) => {
+  try {
+    const { search, batch } = req.query;
+    
+    // Build where clause
+    const where = {
+      deletedAt: null,
+    };
+
+    if (batch && batch !== "all") {
+      where.batch = {
+        breed: {
+          contains: batch,
+          mode: "insensitive"
+        }
+      };
+    }
+
+    if (search) {
+      where.OR = [
+        { notes: { contains: search, mode: "insensitive" } },
+        { batch: { breed: { contains: search, mode: "insensitive" } } },
+        { batch: { batchNumber: { contains: search, mode: "insensitive" } } }
+      ];
+    }
+
+    const entries = await prisma.logEntry.findMany({
+      where,
+      include: {
+        batch: true,
+        loggedBy: { select: { name: true } },
+      },
+      orderBy: {
+        date: 'desc'
+      }
+    });
+
+    const csvStringifier = createObjectCsvStringifier({
+      header: [
+        { id: "date", title: "Date" },
+        { id: "batch", title: "Batch / House" },
+        { id: "loggedBy", title: "Logged By" },
+        { id: "feedConsumption", title: "Feed (kg)" },
+        { id: "eggsCount", title: "Egg Count" },
+        { id: "birdsBought", title: "Birds Bought" },
+        { id: "mortality", title: "Mortality" },
+        { id: "notes", title: "Notes" },
+        { id: "status", title: "Status" },
+      ],
+    });
+
+    const records = entries.map((e) => ({
+      date: new Date(e.date).toLocaleDateString(),
+      batch: e.batch?.breed || "Unknown Batch",
+      loggedBy: e.loggedBy?.name || "—",
+      feedConsumption: e.feedConsumption,
+      eggsCount: e.eggsCount,
+      birdsBought: e.birdsBought,
+      mortality: e.mortality,
+      notes: e.notes || "",
+      status: "Saved"
+    }));
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="logbook_export.csv"');
+    
+    res.send(csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(records));
+  } catch (error) {
+    console.error("Error exporting logbook:", error);
+    res.status(500).json({ error: "Failed to export log entries" });
   }
 };

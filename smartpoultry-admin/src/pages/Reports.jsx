@@ -1,5 +1,6 @@
+import api from '../api/axios'
 import { useState, useEffect } from 'react'
-import { Download, FileText, Calendar, BarChart2, TrendingUp, Truck, DollarSign, Loader2 } from 'lucide-react'
+import { Download, FileText, Calendar, BarChart2, TrendingUp, Truck, DollarSign, Loader2, X } from 'lucide-react'
 import { generateReport, fetchReportHistory, fetchAuditLogs } from '../api/reports'
 
 const reportTypes = [
@@ -9,10 +10,62 @@ const reportTypes = [
   { id: 'analytics',  icon: TrendingUp,  label: 'AI Analytics Report',desc: 'Forecast accuracy, model insights',            color: '#FFAA00', bg: 'rgba(255,170,0,0.10)'   },
 ]
 
+
+const AVAILABLE_SECTIONS = [
+  { id: 'egg_trend', label: 'Egg Production Summary', defaultFor: ['production', 'analytics'] },
+  { id: 'fcr', label: 'Feed Conversion Ratio', defaultFor: ['production', 'analytics'] },
+  { id: 'revenue_timeseries', label: 'Financial Overview', defaultFor: ['financial', 'analytics'] },
+  { id: 'fulfilment_funnel', label: 'Delivery Performance', defaultFor: ['delivery', 'analytics'] }
+];
+
+
+function ScheduleReportModal({ onClose }) {
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="modal-box" style={{ maxWidth: '400px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
+          <div>
+            <div className="modal-title">Schedule Report</div>
+            <div className="modal-subtitle">Set up automated recurring reports</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8da58f' }}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Frequency</label>
+          <select className="form-select">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Email Recipients</label>
+          <input className="form-input" type="text" placeholder="manager@farm.com" />
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+          <button type="button" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => {
+            alert('Schedule saved to local config.');
+            onClose();
+          }}>
+            Save Schedule
+          </button>
+          <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Reports() {
   const [selectedType, setSelectedType] = useState('production')
   const [dateRange, setDateRange]       = useState('week')
   const [format, setFormat]             = useState('pdf')
+  const [batchId, setBatchId]           = useState('all')
+  const [batches, setBatches]           = useState([])
+  const [selectedSections, setSelectedSections] = useState(AVAILABLE_SECTIONS.filter(s => s.defaultFor.includes('production')).map(s => s.id))
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
   
   const [history, setHistory]           = useState([])
   const [logs, setLogs]                 = useState([])
@@ -23,6 +76,9 @@ export default function Reports() {
 
   // Fetch report history and audit logs on mount
   const loadData = async () => {
+    try {
+      api.get('/api/logbook/batches').then(res => setBatches(res.data)).catch(console.error)
+    } catch(e) {}
     try {
       setLoadingHistory(true)
       const reportHistory = await fetchReportHistory()
@@ -55,7 +111,9 @@ export default function Reports() {
       const result = await generateReport({
         type: selectedType,
         dateRange,
-        format
+        format,
+        batchId,
+        sections: selectedSections
       })
       if (result && result.fileUrl) {
         // Trigger download
@@ -101,7 +159,10 @@ export default function Reports() {
               {reportTypes.map(r => (
                 <div
                   key={r.id}
-                  onClick={() => setSelectedType(r.id)}
+                  onClick={() => {
+                    setSelectedType(r.id);
+                    setSelectedSections(AVAILABLE_SECTIONS.filter(s => s.defaultFor.includes(r.id)).map(s => s.id));
+                  }}
                   style={{
                     padding: '14px', borderRadius: 11, cursor: 'pointer',
                     border: selectedType === r.id ? `1.5px solid ${r.color}` : '1.5px solid #dddabd',
@@ -140,11 +201,11 @@ export default function Reports() {
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Batch / House</label>
-                <select className="form-select" defaultValue="all">
+                <select className="form-select" value={batchId} onChange={e => setBatchId(e.target.value)}>
                   <option value="all">All Batches</option>
-                  <option value="broilers" disabled>Batch A - Broilers</option>
-                  <option value="layers" disabled>Batch B - Layers</option>
-                  <option value="noilers" disabled>Batch C - Noilers</option>
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id}>{b.batchNumber} - {b.breed}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -175,15 +236,21 @@ export default function Reports() {
           <div className="chart-card" style={{ marginBottom: 14 }}>
             <div className="section-title" style={{ marginBottom: 12 }}>Include Sections</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 9 }}>
-              {[
-                'Egg Production Summary', 'Feed & Water Consumption',
-                'Mortality Analysis',     'Environmental Data',
-                'AI Forecast Comparison', 'Financial Overview',
-                'Delivery Performance',   'Audit Logs'
-              ].map((s, i) => (
+              {AVAILABLE_SECTIONS.map((s, i) => (
                 <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }}>
-                  <input type="checkbox" defaultChecked={i < 4} style={{ accentColor: '#237227', width: 14, height: 14 }} />
-                  <span style={{ fontSize: '0.82rem', color: '#2a3d2b' }}>{s}</span>
+                  <input 
+                    type="checkbox" 
+                    checked={selectedSections.includes(s.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSections([...selectedSections, s.id]);
+                      } else {
+                        setSelectedSections(selectedSections.filter(id => id !== s.id));
+                      }
+                    }}
+                    style={{ accentColor: '#237227', width: 14, height: 14 }} 
+                  />
+                  <span style={{ fontSize: '0.82rem', color: '#2a3d2b' }}>{s.label}</span>
                 </label>
               ))}
             </div>
@@ -214,7 +281,7 @@ export default function Reports() {
                 </>
               )}
             </button>
-            <button className="btn-outline" disabled>
+            <button className="btn-outline" onClick={() => setShowScheduleModal(true)}>
               <Calendar size={14} />
               Schedule Auto-Report
             </button>
@@ -321,6 +388,7 @@ export default function Reports() {
           </div>
         </div>
       </div>
+      {showScheduleModal && <ScheduleReportModal onClose={() => setShowScheduleModal(false)} />}
     </div>
   )
 }

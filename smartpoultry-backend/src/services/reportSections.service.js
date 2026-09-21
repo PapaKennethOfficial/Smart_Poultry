@@ -26,9 +26,11 @@ const shortDay = (d) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /** Daily egg totals, one row per calendar day. */
-async function eggSection(start, end) {
+async function eggSection(start, end, batchId) {
+  const where = { date: { gte: start, lte: end }, deletedAt: null };
+  if (batchId && batchId !== 'all') where.batchId = batchId;
   const entries = await prisma.logEntry.findMany({
-    where: { date: { gte: start, lte: end }, deletedAt: null },
+    where,
     select: { date: true, eggsCount: true, mortality: true, feedConsumption: true },
     orderBy: { date: "asc" },
   });
@@ -71,9 +73,11 @@ async function eggSection(start, end) {
 }
 
 /** Weekly feed conversion ratio against the benchmark. */
-async function fcrSection(start, end) {
+async function fcrSection(start, end, batchId) {
+  const where = { date: { gte: start, lte: end }, deletedAt: null };
+  if (batchId && batchId !== 'all') where.batchId = batchId;
   const entries = await prisma.logEntry.findMany({
-    where: { date: { gte: start, lte: end }, deletedAt: null },
+    where,
     select: { date: true, feedConsumption: true, eggsCount: true },
     orderBy: { date: "asc" },
   });
@@ -194,16 +198,16 @@ async function revenueSection(start, end) {
     table: {
       columns: [
         { header: "Date", key: "label", width: 110 },
-        { header: "Revenue (GH₵)", key: "revenue", width: 110, align: "right" },
+        { header: "Revenue (GHS)", key: "revenue", width: 110, align: "right" },
         { header: "Orders", key: "orders", width: 80, align: "right" },
       ],
       rows,
     },
     summary: {
-      "Total revenue": "GH₵ " + Math.round(total).toLocaleString(),
+      "Total revenue": "GHS " + Math.round(total).toLocaleString(),
       "Orders": orders.length,
       "Average order": orders.length
-        ? "GH₵ " + Math.round(total / orders.length).toLocaleString() : "-",
+        ? "GHS " + Math.round(total / orders.length).toLocaleString() : "-",
     },
   };
 }
@@ -220,14 +224,14 @@ const BUILDERS = {
  * Pass narrate:false to skip the LLM entirely.
  */
 async function buildSections(start, end, opts) {
-  const { ids = Object.keys(BUILDERS), narrate = true, windowDays } = opts || {};
+  const { ids = Object.keys(BUILDERS), narrate = true, windowDays, batchId } = opts || {};
   const sections = [];
 
   for (const id of ids) {
     const builder = BUILDERS[id];
     if (!builder) continue;
     try {
-      sections.push(await builder(start, end));
+      sections.push(await builder(start, end, batchId));
     } catch (err) {
       console.error("[report] section " + id + " failed:", err.message);
     }
